@@ -1,0 +1,45 @@
+name: Home
+description: Manage the Home world. Users need to find a place to build, make a claim, set a home, and live in it.
+author: StarTux
+version: 0.1
+main: com.cavetale.home.HomePlugin
+depend: []
+softdepend: []
+commands:
+  home:
+    aliases: []
+    description: Go to your primary home
+    permission: home.home
+    usage: |-
+      /home - Visit your primary home
+      /home NAME - Visit a named home
+  homes:
+    aliases: []
+    description: Homes menu.
+    permission: home.home
+    usage: |-
+      /homes - View the homes menu
+  sethome:
+    aliases: []
+    description: Set or reset a home
+    permission: home.home
+    usage: |-
+      /sethome - Set your primary home
+      /sethome NAME - set a named home
+  claim:
+    aliases: [ claims ]
+    description: Manage your claims.
+    usage: |-
+      /claim - View your claim options
+      /claim new - Make a new claim
+      /claim grow - Grow your claim
+      /claim buy - Buy new claim blocks
+  setclaim:
+    aliases: []
+    description: Make a new claim
+    usage: /setclaim - Make a new claim
+permissions:
+  home.home:
+    description: Use /home
+    default: false
+    children: {}

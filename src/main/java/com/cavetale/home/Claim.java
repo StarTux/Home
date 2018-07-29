@@ -14,15 +14,15 @@ import org.json.simple.JSONValue;
 
 @Data
 final class Claim {
-    private final HomePlugin plugin;
-    private Integer id;
-    private UUID owner;
-    private String world;
-    private Area area;
-    private final List<UUID> members = new ArrayList<>(); // Can build
-    private final List<UUID> visitors = new ArrayList<>(); // Can visit
-    private final Map<Setting, Object> settings = new EnumMap<>(Setting.class);
-    private int blocks;
+    final HomePlugin plugin;
+    Integer id;
+    UUID owner;
+    String world;
+    Area area;
+    final List<UUID> members = new ArrayList<>(); // Can build
+    final List<UUID> visitors = new ArrayList<>(); // Can visit
+    final Map<Setting, Object> settings = new EnumMap<>(Setting.class);
+    int blocks;
 
     Claim(HomePlugin plugin) {
         this.plugin = plugin;

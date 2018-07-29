@@ -213,8 +213,8 @@ public final class HomePlugin extends JavaPlugin implements Listener {
         Home home = findHome(playerId, null);
         boolean homeCreated = false;
         if (home == null) {
-            home = new Home(this, playerId, playerLocation, null);
-            home.saveToDatabase();
+            home = new Home(playerId, playerLocation, null);
+            db.save(home);
             homes.add(home);
             homeCreated = true;
         }
@@ -282,10 +282,10 @@ public final class HomePlugin extends JavaPlugin implements Listener {
         String homeName = args.length == 0 ? null : args[0];
         Home home = findHome(playerId, homeName);
         if (home == null) {
-            home = new Home(this, playerId, player.getLocation(), homeName);
+            home = new Home(playerId, player.getLocation(), homeName);
             homes.add(home);
         }
-        home.saveToDatabase();
+        db.save(home);
         if (homeName == null) {
             Msg.msg(player, ChatColor.GREEN, "Primary home set.");
         } else {
@@ -358,10 +358,26 @@ public final class HomePlugin extends JavaPlugin implements Listener {
             claim.loadSQLRow(row);
             claims.add(claim);
         }
-        for (Home.SQLRow row: db.find(Home.SQLRow.class).findList()) {
-            Home home = new Home(this);
-            home.loadSQLRow(row);
-            homes.add(home);
+        for (ClaimTrust trust: db.find(ClaimTrust.class).findList()) {
+            for (Claim claim: claims) {
+                if (claim.id.equals(trust.claimId)) {
+                    switch (trust.type) {
+                    case "visit": claim.visitors.add(trust.trustee); break;
+                    case "member": claim.members.add(trust.trustee); break;
+                    default: break;
+                    }
+                    break;
+                }
+            }
+        }
+        homes.addAll(db.find(Home.class).findList());
+        for (HomeInvite invite: db.find(HomeInvite.class).findList()) {
+            for (Home home: homes) {
+                if (home.id.equals(invite.homeId)) {
+                    home.invites.add(invite);
+                    break;
+                }
+            }
         }
     }
 

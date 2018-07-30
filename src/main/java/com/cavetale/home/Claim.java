@@ -62,13 +62,13 @@ final class Claim {
     // SQL Interface
 
     @Data @Table(name = "claims")
-    static final class SQLRow {
+    public static final class SQLRow {
         private @Id Integer id;
         @Column(nullable = false) private UUID owner;
-        @Column(nullable = false) private String world;
+        @Column(nullable = false, length = 16) private String world;
         @Column(nullable = false) private Integer ax, ay, bx, by;
         @Column(nullable = false) private Integer blocks;
-        @Column(nullable = false) private String settings;
+        @Column(nullable = false, length = 255) private String settings;
     }
 
     SQLRow toSQLRow() {
@@ -114,6 +114,10 @@ final class Claim {
     }
 
     // Utility
+
+    boolean isOwner(UUID playerId) {
+        return owner.equals(playerId);
+    }
 
     boolean canBuild(UUID playerId) {
         return owner.equals(playerId) || members.contains(playerId);

@@ -2,6 +2,8 @@ name: Home
 description: Manage the Home world. Users need to find a place to build, make a claim, set a home, and live in it.
 author: StarTux
 version: 0.1
+api-version: 1.13
+website: https://cavetale.com
 main: com.cavetale.home.HomePlugin
 depend: []
 softdepend: []
@@ -34,10 +36,10 @@ commands:
       /claim new - Make a new claim
       /claim grow - Grow your claim
       /claim buy - Buy new claim blocks
-  setclaim:
+  newclaim:
     aliases: []
     description: Make a new claim
-    usage: /setclaim - Make a new claim
+    usage: /newclaim - Make a new claim
 permissions:
   home.home:
     description: Use /home

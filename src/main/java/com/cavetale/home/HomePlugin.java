@@ -1,5 +1,6 @@
 package com.cavetale.home;
 
+import com.winthier.generic_events.GenericEvents;
 import com.winthier.sql.SQLDatabase;
 import java.util.ArrayList;
 import java.util.Iterator;
@@ -78,8 +79,10 @@ public final class HomePlugin extends JavaPlugin implements Listener {
 
     @Override
     public void onEnable() {
+        reloadConfig();
+        saveDefaultConfig();
         db = new SQLDatabase(this);
-        db.registerTables(Claim.SQLRow.class);
+        db.registerTables(Claim.SQLRow.class, ClaimTrust.class, Home.class, HomeInvite.class);
         db.createAllTables();
         loadFromConfig();
         loadFromDatabase();
@@ -88,9 +91,9 @@ public final class HomePlugin extends JavaPlugin implements Listener {
                 @Override public boolean onCommand(CommandSender sender, Command command, String alias, String[] args) {
                     return onClaimCommand(sender, command, alias, args);
                 } });
-        getCommand("setclaim").setExecutor(new CommandExecutor() {
+        getCommand("newclaim").setExecutor(new CommandExecutor() {
                 @Override public boolean onCommand(CommandSender sender, Command command, String alias, String[] args) {
-                    return onSetclaimCommand(sender, command, alias, args);
+                    return onNewclaimCommand(sender, command, alias, args);
                 } });
         getCommand("home").setExecutor(new CommandExecutor() {
                 @Override public boolean onCommand(CommandSender sender, Command command, String alias, String[] args) {
@@ -116,21 +119,36 @@ public final class HomePlugin extends JavaPlugin implements Listener {
     @Value
     class CachedLocation {
         private final String world;
-        private final int x, y, z;
+        private final int x, z;
+        private final int claimId;
     }
 
     void onTick() {
         for (Player player: getServer().getOnlinePlayers()) {
-            if (!isHomeWorld(player.getWorld())) continue;
-            CachedLocation cl = (CachedLocation)player.getMetadata(META_LOCATION).stream().filter(a -> a.getOwningPlugin() == this).map(a -> a.value()).findFirst().orElse(null);
+            if (!isHomeWorld(player.getWorld())) {
+                player.removeMetadata(META_LOCATION, this);
+                continue;
+            }
+            CachedLocation cl1 = (CachedLocation)player.getMetadata(META_LOCATION).stream().filter(a -> a.getOwningPlugin() == this).map(a -> a.value()).findFirst().orElse(null);
             Location pl = player.getLocation();
-            CachedLocation cl2 = new CachedLocation(pl.getWorld().getName(), pl.getBlockX(), pl.getBlockY(), pl.getBlockZ());
-            if (cl == null || !cl.world.equals(cl2.world) || cl.x != cl2.x || cl.y != cl2.y || cl.z != cl2.z) {
+            if (cl1 == null || !cl1.world.equals(pl.getWorld().getName()) || cl1.x != pl.getBlockX() || cl1.z != pl.getBlockZ()) {
+                Claim claim = getClaimAt(pl);
+                CachedLocation cl2 = new CachedLocation(pl.getWorld().getName(), pl.getBlockX(), pl.getBlockZ(), claim == null ? -1 : claim.getId());
+                if (cl1 == null) cl1 = cl2; // Taking the easy way out
                 player.setMetadata(META_LOCATION, new FixedMetadataValue(this, cl2));
-                Claim claim = claims.stream().filter(c -> c.getWorld().equals(cl2.world) && c.getArea().contains(cl2.x, cl2.z)).findFirst().orElse(null);
                 if (claim == null) {
                     if (player.getGameMode() != GameMode.ADVENTURE) {
                         player.setGameMode(GameMode.ADVENTURE);
+                    }
+                    if (cl1.claimId != cl2.claimId) {
+                        Claim oldClaim = getClaimById(cl1.claimId);
+                        if (oldClaim != null) {
+                            if (oldClaim.isOwner(player.getUniqueId())) {
+                                Msg.msg(player, ChatColor.YELLOW, "Leaving your claim");
+                            } else {
+                                Msg.msg(player, ChatColor.YELLOW, "Leaving %s's claim", GenericEvents.cachedPlayerName(oldClaim.getOwner()));
+                            }
+                        }
                     }
                 } else {
                     UUID uuid = player.getUniqueId();
@@ -141,6 +159,13 @@ public final class HomePlugin extends JavaPlugin implements Listener {
                     } else {
                         if (player.getGameMode() != GameMode.ADVENTURE) {
                             player.setGameMode(GameMode.ADVENTURE);
+                        }
+                    }
+                    if (cl1.claimId != cl2.claimId) {
+                        if (claim.isOwner(player.getUniqueId())) {
+                            Msg.msg(player, ChatColor.BLUE, "Entering your claim");
+                        } else {
+                            Msg.msg(player, ChatColor.YELLOW, "Entering %s's claim", GenericEvents.cachedPlayerName(claim.getOwner()));
                         }
                     }
                 }
@@ -170,7 +195,7 @@ public final class HomePlugin extends JavaPlugin implements Listener {
         return true;
     }
 
-    boolean onSetclaimCommand(CommandSender sender, Command command, String alias, String[] args) {
+    boolean onNewclaimCommand(CommandSender sender, Command command, String alias, String[] args) {
         if (!(sender instanceof Player)) return false;
         if (args.length != 0) return false;
         Player player = (Player)sender;
@@ -209,21 +234,7 @@ public final class HomePlugin extends JavaPlugin implements Listener {
         Claim claim = new Claim(this, playerId, playerWorldName, area);
         claim.saveToDatabase();
         claims.add(claim);
-        // Make a matching home
-        Home home = findHome(playerId, null);
-        boolean homeCreated = false;
-        if (home == null) {
-            home = new Home(playerId, playerLocation, null);
-            db.save(home);
-            homes.add(home);
-            homeCreated = true;
-        }
-        // Notify the player
-        if (homeCreated) {
-            Msg.msg(player, ChatColor.GREEN, "Claim created and primary home set!");
-        } else {
-            Msg.msg(player, ChatColor.GREEN, "Claim created!");
-        }
+        Msg.msg(player, ChatColor.GREEN, "Claim created!");
         return true;
     }
 
@@ -232,16 +243,36 @@ public final class HomePlugin extends JavaPlugin implements Listener {
         Player player = (Player)sender;
         if (args.length == 0) {
             Home home = findHome(player.getUniqueId(), null);
-            if (home == null) {
-                findPlaceToBuild(player);
+            if (home != null) {
+                Location location = home.createLocation();
+                if (location == null) {
+                    Msg.msg(player, ChatColor.RED, "Primary home could not be found.");
+                    return true;
+                }
+                player.teleport(location);
+                Msg.msg(player, ChatColor.GREEN, "Welcome home :)");
                 return true;
             }
-            Location location = home.createLocation();
-            if (location == null) {
-                Msg.msg(player, ChatColor.RED, "Primary home could not be found.");
+            UUID playerId = player.getUniqueId();
+            Location bedSpawn = player.getBedSpawnLocation();
+            if (bedSpawn != null) {
+                Claim claim = getClaimAt(bedSpawn.getBlock());
+                if (claim != null && claim.canVisit(playerId)) {
+                    player.teleport(bedSpawn.add(0.5, 0.0, 0.5));
+                    Msg.msg(player, ChatColor.BLUE, "Welcome to your bed. :)");
+                    return true;
+                }
+            }
+            Claim claim = claims.stream().filter(c -> c.getWorld().equals(homeWorld) && c.getOwner().equals(playerId)).findFirst().orElse(null);
+            if (claim != null) {
+                World bworld = getServer().getWorld(claim.getWorld());
+                Area area = claim.getArea();
+                Location location = bworld.getHighestBlockAt((area.ax + area.bx) / 2, (area.ay + area.by) / 2).getLocation().add(0.5, 0.0, 0.5);
+                player.teleport(location);
+                Msg.msg(player, ChatColor.GREEN, "Welcome to your claim. :)");
                 return true;
             }
-            player.teleport(location);
+            findPlaceToBuild(player);
             return true;
         }
         if (args.length == 1) {
@@ -252,7 +283,7 @@ public final class HomePlugin extends JavaPlugin implements Listener {
             }
             Location location = home.createLocation();
             if (location == null) {
-                Msg.msg(player, ChatColor.RED, "Home %s \"could\" not be found.");
+                Msg.msg(player, ChatColor.RED, "Home \"%s\" could not be found.");
                 return true;
             }
             player.teleport(location);
@@ -306,6 +337,10 @@ public final class HomePlugin extends JavaPlugin implements Listener {
         }
         // Determine center and border
         World bworld = getServer().getWorld(homeWorld);
+        if (bworld == null) {
+            getLogger().warning("Home world not found: " + homeWorld);
+            return;
+        }
         WorldBorder border = bworld.getWorldBorder();
         Location center = border.getCenter();
         int cx = center.getBlockX();
@@ -332,8 +367,8 @@ public final class HomePlugin extends JavaPlugin implements Listener {
         // Teleport, notify, and set cooldown
         player.teleport(location);
         Msg.raw(player, "",
-                Msg.button(ChatColor.WHITE, "Find a place to build. ", null, null),
-                Msg.button(ChatColor.GREEN, "[Claim]", "/setclaim ", Msg.format("&a/setclaim&f&o\nCreate a claim and set a home at this location so you can build and return any time.")),
+                Msg.button(ChatColor.WHITE, "Found you a place to build. ", null, null),
+                Msg.button(ChatColor.GREEN, "[Claim]", "/newclaim ", Msg.format("&a/newclaim&f&o\nCreate a claim and set a home at this location so you can build and return any time.")),
                 Msg.button(ChatColor.WHITE, " it or ", null, null),
                 Msg.button(ChatColor.YELLOW, "[Retry]", "/home", Msg.format("&a/home&f&o\nFind another random location.")),
                 Msg.button(ChatColor.WHITE, ".", null, null));
@@ -390,21 +425,31 @@ public final class HomePlugin extends JavaPlugin implements Listener {
             || worldName.equals(homeTheEndWorld);
     }
 
+    Claim getClaimById(int claimId) {
+        return claims.stream().filter(c -> c.getId() == claimId).findFirst().orElse(null);
+    }
+
     Claim getClaimAt(Block block) {
-        String blockWorld = block.getWorld().getName();
-        // Figure out claim world
-        String claimWorld;
-        if (blockWorld.equals(homeWorld)) {
+        return getClaimAt(block.getWorld().getName(), block.getX(), block.getZ());
+    }
+
+    Claim getClaimAt(Location location) {
+        return getClaimAt(location.getWorld().getName(), location.getBlockX(), location.getBlockZ());
+    }
+
+    Claim getClaimAt(String world, int x, int y) {
+        final String claimWorld;
+        if (world.equals(homeWorld)) {
             claimWorld = homeWorld;
-        } else if (blockWorld.equals(homeNetherWorld)) {
+        } else if (world.equals(homeNetherWorld)) {
             claimWorld = homeWorld;
-        } else if (blockWorld.equals(homeTheEndWorld)) {
+        } else if (world.equals(homeTheEndWorld)) {
             claimWorld = homeTheEndWorld;
         } else {
             return null;
         }
         // Find claim
-        return claims.stream().filter(c -> claimWorld.equals(c.getWorld()) && c.getArea().contains(block.getX(), block.getZ())).findFirst().orElse(null);
+        return claims.stream().filter(c -> claimWorld.equals(c.getWorld()) && c.getArea().contains(x, y)).findFirst().orElse(null);
     }
 
     Home findHome(UUID owner, String name) {

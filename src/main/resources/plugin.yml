@@ -47,6 +47,11 @@ commands:
       /claim new - Make a new claim
       /claim grow - Grow your claim
       /claim buy - Buy new claim blocks
+  build:
+    aliases: [ wild ]
+    description: Find a place to build.
+    permission: home.build
+    usage: /build - Find a place to build.
   newclaim:
     aliases: []
     description: Make a new claim
@@ -59,6 +64,9 @@ permissions:
   home.claim:
     description: Use claims
     default: op
-  home.visi:
+  home.visit:
     description: Visit public homes
+    default: op
+  home.build:
+    description: Use /build
     default: op

@@ -74,6 +74,7 @@ public final class HomePlugin extends JavaPlugin implements Listener {
     private String homeWorld, homeNetherWorld, homeTheEndWorld;
     private int claimMargin = 1024;
     private int homeMargin = 64;
+    private int buildCooldown = 10;
     private Random random = new Random(System.currentTimeMillis());
     private static final String META_COOLDOWN_WILD = "home.cooldown.wild";
     private static final String META_LOCATION = "home.location";
@@ -95,6 +96,7 @@ public final class HomePlugin extends JavaPlugin implements Listener {
         getCommand("sethome").setExecutor((s, c, l, a) -> onSethomeCommand(s, c, l, a));
         getCommand("homes").setExecutor((s, c, l, a) -> onHomesCommand(s, c, l, a));
         getCommand("visit").setExecutor((s, c, l, a) -> onVisitCommand(s, c, l, a));
+        getCommand("build").setExecutor((s, c, l, a) -> onBuildCommand(s, c, l, a));
         new BukkitRunnable() {
             @Override public void run() {
                 onTick();
@@ -484,11 +486,24 @@ public final class HomePlugin extends JavaPlugin implements Listener {
         return true;
     }
 
+    boolean onBuildCommand(CommandSender sender, Command command, String alias, String[] args) {
+        if (args.length != 0) return false;
+        if (!(sender instanceof Player)) return false;
+        final Player player = (Player)sender;
+        final UUID playerId = player.getUniqueId();
+        if (null != claims.stream().filter(c -> c.isOwner(playerId) && c.isInWorld(homeWorld)).findFirst().orElse(null)) {
+            Msg.msg(player, ChatColor.RED, "You already have a claim!");
+            return true;
+        }
+        findPlaceToBuild(player);
+        return true;
+    }
+
     void findPlaceToBuild(Player player) {
         // Cooldown
         MetadataValue meta = player.getMetadata(META_COOLDOWN_WILD).stream().filter(m -> m.getOwningPlugin() == this).findFirst().orElse(null);
         if (meta != null) {
-            long remain = (meta.asLong() - System.nanoTime()) / 1000000000 - 10;
+            long remain = (meta.asLong() - System.nanoTime()) / 1000000000 - (long)buildCooldown;
             if (remain > 0) {
                 Msg.msg(player, ChatColor.RED, "Please wait %d more seconds", remain);
                 return;
@@ -498,6 +513,7 @@ public final class HomePlugin extends JavaPlugin implements Listener {
         World bworld = getServer().getWorld(homeWorld);
         if (bworld == null) {
             getLogger().warning("Home world not found: " + homeWorld);
+            Msg.msg(player, ChatColor.RED, "Something went wrong. Please contact an administrator.");
             return;
         }
         WorldBorder border = bworld.getWorldBorder();
@@ -542,6 +558,7 @@ public final class HomePlugin extends JavaPlugin implements Listener {
         homeTheEndWorld = homeWorld + "_the_end";
         claimMargin = getConfig().getInt("ClaimMargin");
         homeMargin = getConfig().getInt("HomeMargin");
+        buildCooldown = getConfig().getInt("BuildCooldown");
     }
 
     void loadFromDatabase() {

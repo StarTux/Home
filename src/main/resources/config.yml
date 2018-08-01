@@ -1,3 +1,4 @@
 HomeWorld: home
-ClaimMargin: 512
-HomeMargin: 64
+ClaimMargin: 512 # Minimum distance between old and new claims
+HomeMargin: 64 # Minimum distance between old and new homes
+BuildCooldown: 10 # In seconds

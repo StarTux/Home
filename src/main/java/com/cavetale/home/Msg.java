@@ -31,9 +31,9 @@ final class Msg {
         raw(player, map);
     }
 
-    @SuppressWarnings("deprecation")
     static void title(Player player, String title, String subtitle) {
-        player.sendTitle(format(title), format(subtitle));
+        player.resetTitle();
+        player.sendTitle(format(title), format(subtitle), -1, -1, -1);
     }
 
     static void actionBar(Player player, String text, Object... args) {
@@ -66,6 +66,7 @@ final class Msg {
                 clickEvent.put("action", "run_command");
             }
             clickEvent.put("value", command);
+            map.put("insertion", command);
         }
         List<String> lines = new ArrayList<>();
         if (tooltip != null) {

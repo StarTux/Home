@@ -3,10 +3,12 @@ package com.cavetale.home;
 import com.winthier.generic_events.GenericEvents;
 import com.winthier.sql.SQLDatabase;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Iterator;
 import java.util.List;
 import java.util.Random;
 import java.util.UUID;
+import java.util.stream.Collectors;
 import lombok.Getter;
 import lombok.Value;
 import org.bukkit.ChatColor;
@@ -18,7 +20,6 @@ import org.bukkit.WorldBorder;
 import org.bukkit.block.Block;
 import org.bukkit.block.BlockState;
 import org.bukkit.command.Command;
-import org.bukkit.command.CommandExecutor;
 import org.bukkit.command.CommandSender;
 import org.bukkit.entity.AnimalTamer;
 import org.bukkit.entity.Entity;
@@ -72,6 +73,7 @@ public final class HomePlugin extends JavaPlugin implements Listener {
     private final List<Home> homes = new ArrayList<>();
     private String homeWorld, homeNetherWorld, homeTheEndWorld;
     private int claimMargin = 1024;
+    private int homeMargin = 64;
     private Random random = new Random(System.currentTimeMillis());
     private static final String META_COOLDOWN_WILD = "home.cooldown.wild";
     private static final String META_LOCATION = "home.location";
@@ -87,22 +89,12 @@ public final class HomePlugin extends JavaPlugin implements Listener {
         loadFromConfig();
         loadFromDatabase();
         getServer().getPluginManager().registerEvents(this, this);
-        getCommand("claim").setExecutor(new CommandExecutor() {
-                @Override public boolean onCommand(CommandSender sender, Command command, String alias, String[] args) {
-                    return onClaimCommand(sender, command, alias, args);
-                } });
-        getCommand("newclaim").setExecutor(new CommandExecutor() {
-                @Override public boolean onCommand(CommandSender sender, Command command, String alias, String[] args) {
-                    return onNewclaimCommand(sender, command, alias, args);
-                } });
-        getCommand("home").setExecutor(new CommandExecutor() {
-                @Override public boolean onCommand(CommandSender sender, Command command, String alias, String[] args) {
-                    return onHomeCommand(sender, command, alias, args);
-                } });
-        getCommand("sethome").setExecutor(new CommandExecutor() {
-                @Override public boolean onCommand(CommandSender sender, Command command, String alias, String[] args) {
-                    return onSethomeCommand(sender, command, alias, args);
-                } });
+        getCommand("claim").setExecutor((s, c, l, a) -> onClaimCommand(s, c, l, a));
+        getCommand("newclaim").setExecutor((s, c, l, a) -> onNewclaimCommand(s, c, l, a));
+        getCommand("home").setExecutor((s, c, l, a) -> onHomeCommand(s, c, l, a));
+        getCommand("sethome").setExecutor((s, c, l, a) -> onSethomeCommand(s, c, l, a));
+        getCommand("homes").setExecutor((s, c, l, a) -> onHomesCommand(s, c, l, a));
+        getCommand("visit").setExecutor((s, c, l, a) -> onVisitCommand(s, c, l, a));
         new BukkitRunnable() {
             @Override public void run() {
                 onTick();
@@ -173,11 +165,6 @@ public final class HomePlugin extends JavaPlugin implements Listener {
         }
     }
 
-    @Override
-    public boolean onCommand(CommandSender sender, Command command, String alias, String[] args) {
-        return true;
-    }
-
     boolean onClaimCommand(CommandSender sender, Command command, String alias, String[] args) {
         if (args.length == 0) return false;
         if (!(sender instanceof Player)) return false;
@@ -208,7 +195,7 @@ public final class HomePlugin extends JavaPlugin implements Listener {
         } else if (playerWorldName.equals(homeTheEndWorld)) {
             isHomeEndWorld = true;
         } else {
-            Msg.msg(player, ChatColor.RED, "You cannot make a claim in this world.");
+            Msg.msg(player, ChatColor.RED, "You cannot make a claim in this world");
             return true;
         }
         // Check for other claims
@@ -219,12 +206,12 @@ public final class HomePlugin extends JavaPlugin implements Listener {
         for (Claim claim: claims) {
             if (claim.getWorld().equals(playerWorldName)) {
                 if (claim.getOwner().equals(playerId)) {
-                    Msg.msg(player, ChatColor.RED, "You already have a claim in this world.");
+                    Msg.msg(player, ChatColor.RED, "You already have a claim in this world");
                     return true;
                 }
                 // Check claim distance
                 if (claim.getArea().isWithin(x, y, claimMargin)) {
-                    Msg.msg(player, ChatColor.RED, "You are too close to another claim.");
+                    Msg.msg(player, ChatColor.RED, "You are too close to another claim");
                     return true;
                 }
             }
@@ -246,7 +233,7 @@ public final class HomePlugin extends JavaPlugin implements Listener {
             if (home != null) {
                 Location location = home.createLocation();
                 if (location == null) {
-                    Msg.msg(player, ChatColor.RED, "Primary home could not be found.");
+                    Msg.msg(player, ChatColor.RED, "Primary home could not be found");
                     return true;
                 }
                 player.teleport(location);
@@ -283,7 +270,7 @@ public final class HomePlugin extends JavaPlugin implements Listener {
             }
             Location location = home.createLocation();
             if (location == null) {
-                Msg.msg(player, ChatColor.RED, "Home \"%s\" could not be found.");
+                Msg.msg(player, ChatColor.RED, "Home \"%s\" could not be found");
                 return true;
             }
             player.teleport(location);
@@ -299,18 +286,34 @@ public final class HomePlugin extends JavaPlugin implements Listener {
         UUID playerId = player.getUniqueId();
         Claim claim = getClaimAt(player.getLocation().getBlock());
         if (!isHomeWorld(player.getWorld())) {
-            Msg.msg(player, ChatColor.RED, "You cannot set homes in this world.");
+            Msg.msg(player, ChatColor.RED, "You cannot set homes in this world");
             return true;
         }
         if (claim == null) {
-            Msg.msg(player, ChatColor.RED, "You can only set homes inside a claim.");
+            Msg.msg(player, ChatColor.RED, "You can only set homes inside a claim");
             return true;
         }
         if (!claim.canBuild(playerId)) {
-            Msg.msg(player, ChatColor.RED, "You cannot set homes in this claim.");
+            Msg.msg(player, ChatColor.RED, "You cannot set homes in this claim");
             return true;
         }
+        String playerWorld = player.getWorld().getName();
+        int playerX = player.getLocation().getBlockX();
+        int playerZ = player.getLocation().getBlockZ();
         String homeName = args.length == 0 ? null : args[0];
+        for (Home home: homes) {
+            if (home.isOwner(playerId) && home.isInWorld(playerWorld)
+                && !home.isNamed(homeName)
+                && Math.abs(playerX - (int)home.getX()) < homeMargin
+                && Math.abs(playerZ - (int)home.getZ()) < homeMargin) {
+                if (home.getName() == null) {
+                    Msg.msg(player, ChatColor.RED, "Your primary home is nearby", home.getName());
+                } else {
+                    Msg.msg(player, ChatColor.RED, "You have a home named \"%s\" nearby", home.getName());
+                }
+                return true;
+            }
+        }
         Home home = findHome(playerId, homeName);
         if (home == null) {
             home = new Home(playerId, player.getLocation(), homeName);
@@ -318,10 +321,166 @@ public final class HomePlugin extends JavaPlugin implements Listener {
         }
         db.save(home);
         if (homeName == null) {
-            Msg.msg(player, ChatColor.GREEN, "Primary home set.");
+            Msg.msg(player, ChatColor.GREEN, "Primary home set");
         } else {
-            Msg.msg(player, ChatColor.GREEN, "Home \"%s\" set.", homeName);
+            Msg.msg(player, ChatColor.GREEN, "Home \"%s\" set", homeName);
         }
+        return true;
+    }
+
+    boolean onHomesCommand(CommandSender sender, Command command, String alias, String[] args) {
+        if (!(sender instanceof Player)) return false;
+        final Player player = (Player)sender;
+        final UUID playerId = player.getUniqueId();
+        if (args.length == 0) {
+            List<Home> playerHomes = findHomes(playerId);
+            if (playerHomes.isEmpty()) {
+                Msg.msg(player, ChatColor.YELLOW, "No homes to show");
+                return true;
+            }
+            Msg.msg(player, ChatColor.BLUE, "You have %d homes", playerHomes.size());
+            for (Home home: playerHomes) {
+                Object nameButton;
+                if (home.getName() == null) {
+                    nameButton = Msg.button(ChatColor.GRAY, "&oPrimary", "/home", "&9/home\nTeleport to your primary home");
+                } else {
+                    String cmd = "/home " + home.getName();
+                    nameButton = Msg.button(ChatColor.WHITE, home.getName(), cmd, "&9" + cmd + "\nTeleport to home \"" + home.getName() + "\"");
+                }
+                Msg.raw(player, "",
+                        Msg.button(ChatColor.BLUE, "+ ", null, null),
+                        nameButton);
+            }
+            return true;
+        }
+        switch (args[0]) {
+        case "set":
+            return onSethomeCommand(sender, command, alias, Arrays.copyOfRange(args, 1, args.length));
+        case "invite":
+            if (args.length == 2 || args.length == 3) {
+                String targetName = args[1];
+                UUID targetId = GenericEvents.cachedPlayerUuid(targetName);
+                if (targetId == null) {
+                    Msg.msg(player, ChatColor.RED, "Player not found: %s", targetName);
+                    return true;
+                }
+                String homeName = args.length >= 3 ? args[2] : null;
+                Home home = findHome(playerId, homeName);
+                if (home == null) {
+                    if (homeName == null) {
+                        Msg.msg(player, ChatColor.RED, "Your primary home is not set");
+                    } else {
+                        Msg.msg(player, ChatColor.RED, "You have no home named %s", homeName);
+                    }
+                    return true;
+                }
+                if (!home.invites.contains(targetId)) {
+                    HomeInvite invite = new HomeInvite(targetId);
+                    db.save(invite);
+                    home.invites.add(targetId);
+                }
+                Msg.msg(player, ChatColor.GREEN, "Invite sent to %s", targetName);
+                Player target = getServer().getPlayer(targetId);
+                if (target == null) return true;
+                if (home.getName() == null) {
+                    String cmd = "/home " + player.getName() + ":";
+                    Msg.raw(target, "",
+                            Msg.button(ChatColor.WHITE, player.getName() + " invited you to their primary home: ", null, null),
+                            Msg.button(ChatColor.GREEN, "[Visit]", cmd, "&a" + cmd + "\nVisit this home"));
+                } else {
+                    String cmd = "/home " + player.getName() + ":" + home.getName();
+                    Msg.raw(target, "",
+                            Msg.button(ChatColor.WHITE, player.getName() + " invited you to their home: ", null, null),
+                            Msg.button(ChatColor.GREEN, "[" + home.getName() + "]", cmd, "&a" + cmd + "\nVisit this home"));
+                }
+                return true;
+            }
+            break;
+        case "public":
+            if (args.length == 2 || args.length == 3) {
+                String homeName = args[1];
+                Home home = findHome(playerId, homeName);
+                if (home == null) {
+                    Msg.msg(player, ChatColor.RED, "Home not found: %s", homeName);
+                    return true;
+                }
+                if (home.getPublicName() != null) {
+                    Msg.msg(player, ChatColor.RED, "Home is already public under the alias \"%s\"", home.getPublicName());
+                    return true;
+                }
+                String publicName = args.length >= 3 ? args[2] : home.getName();
+                if (publicName == null) {
+                    Msg.msg(player, ChatColor.RED, "Please supply a public name for this home");
+                    return true;
+                }
+                if (findPublicHome(publicName) != null) {
+                    Msg.msg(player, ChatColor.RED, "A public home by that name already exists. Please supply a different alias.");
+                    return true;
+                }
+                home.setPublicName(publicName);
+                db.save(home);
+                String cmd = "/visit " + publicName;
+                Msg.raw(player, "",
+                        Msg.button(ChatColor.WHITE, "Home made public. Players may visit via ", null, null),
+                        Msg.button(ChatColor.GREEN, cmd, cmd, "&a" + cmd + "\nCan also be found under /visit."));
+                return true;
+            }
+            break;
+        case "delete":
+            if (args.length == 1 || args.length == 2) {
+                String homeName = args.length >= 2 ? args[1] : null;
+                Home home = findHome(playerId, homeName);
+                if (home == null) {
+                    if (homeName == null) {
+                        Msg.msg(player, ChatColor.RED, "Your primary home is not set");
+                    } else {
+                        Msg.msg(player, ChatColor.RED, "You do not have a home named \"%s\"", homeName);
+                    }
+                    return true;
+                }
+                db.delete(home);
+                homes.remove(home);
+                if (homeName == null) {
+                    Msg.msg(player, ChatColor.YELLOW, "Primary home unset. The &o/home&e command will take you to your bed spawn or primary claim.");
+                } else {
+                    Msg.msg(player, ChatColor.YELLOW, "Home \"%s\" deleted", homeName);
+                }
+                return true;
+            }
+            break;
+        default:
+            break;
+        }
+        return false;
+    }
+
+    boolean onVisitCommand(CommandSender sender, Command command, String alias, String[] args) {
+        if (!(sender instanceof Player)) return false;
+        final Player player = (Player)sender;
+        if (args.length == 0) {
+            List<Home> publicHomes = homes.stream().filter(h -> h.getPublicName() != null).collect(Collectors.toList());
+            Msg.msg(player, ChatColor.GREEN, "%d public homes", publicHomes.size());
+            for (Home home: publicHomes) {
+                String cmd = "/visit " + home.getPublicName();
+                Msg.raw(player, "",
+                        Msg.button(ChatColor.GREEN, "+ ", null, null),
+                        Msg.button(ChatColor.WHITE, home.getPublicName(), cmd, "&9" + cmd + "\nVisit this home"),
+                        Msg.button(ChatColor.GRAY, " by " + home.getOwnerName(), null, null));
+            }
+            return true;
+        }
+        Home home = findPublicHome(args[0]);
+        if (home == null) {
+            Msg.msg(player, ChatColor.RED, "Public home not found: %s", args[0]);
+            return true;
+        }
+        Location location = home.createLocation();
+        if (location == null) {
+            Msg.msg(player, ChatColor.RED, "Could not take you to this home.");
+            return true;
+        }
+        player.teleport(location);
+        Msg.msg(player, ChatColor.GREEN, "Teleported to %s's public home \"%s\"", home.getOwnerName(), home.getPublicName());
         return true;
     }
 
@@ -331,7 +490,7 @@ public final class HomePlugin extends JavaPlugin implements Listener {
         if (meta != null) {
             long remain = (meta.asLong() - System.nanoTime()) / 1000000000 - 10;
             if (remain > 0) {
-                Msg.msg(player, ChatColor.RED, "Please wait %d more seconds.", remain);
+                Msg.msg(player, ChatColor.RED, "Please wait %d more seconds", remain);
                 return;
             }
         }
@@ -354,14 +513,14 @@ public final class HomePlugin extends JavaPlugin implements Listener {
             int x = cx - size / 2 + random.nextInt(size);
             int z = cz - size / 2 + random.nextInt(size);
             for (Claim claim: claims) {
-                if (claim.getWorld().equals(homeWorld) && claim.getArea().isWithin(x, z, claimMargin)) {
+                if (claim.isInWorld(homeWorld) && claim.getArea().isWithin(x, z, claimMargin)) {
                     continue SAMPLE;
                 }
             }
             location = bworld.getBlockAt(x, 255, z).getLocation().add(0.5, 0.5, 0.5);
         }
         if (location == null) {
-            Msg.msg(player, ChatColor.RED, "Could not find a place to build. Please try again.");
+            Msg.msg(player, ChatColor.RED, "Could not find a place to build. Please try again");
             return;
         }
         // Teleport, notify, and set cooldown
@@ -370,8 +529,7 @@ public final class HomePlugin extends JavaPlugin implements Listener {
                 Msg.button(ChatColor.WHITE, "Found you a place to build. ", null, null),
                 Msg.button(ChatColor.GREEN, "[Claim]", "/newclaim ", Msg.format("&a/newclaim&f&o\nCreate a claim and set a home at this location so you can build and return any time.")),
                 Msg.button(ChatColor.WHITE, " it or ", null, null),
-                Msg.button(ChatColor.YELLOW, "[Retry]", "/home", Msg.format("&a/home&f&o\nFind another random location.")),
-                Msg.button(ChatColor.WHITE, ".", null, null));
+                Msg.button(ChatColor.YELLOW, "[Retry]", "/home", Msg.format("&a/home&f&o\nFind another random location.")));
         player.setMetadata(META_COOLDOWN_WILD, new FixedMetadataValue(this, System.nanoTime()));
         player.setMetadata(META_NOFALL, new FixedMetadataValue(this, true));
     }
@@ -383,6 +541,7 @@ public final class HomePlugin extends JavaPlugin implements Listener {
         homeNetherWorld = homeWorld + "_nether";
         homeTheEndWorld = homeWorld + "_the_end";
         claimMargin = getConfig().getInt("ClaimMargin");
+        homeMargin = getConfig().getInt("HomeMargin");
     }
 
     void loadFromDatabase() {
@@ -409,7 +568,7 @@ public final class HomePlugin extends JavaPlugin implements Listener {
         for (HomeInvite invite: db.find(HomeInvite.class).findList()) {
             for (Home home: homes) {
                 if (home.id.equals(invite.homeId)) {
-                    home.invites.add(invite);
+                    home.invites.add(invite.getInvitee());
                     break;
                 }
             }
@@ -452,12 +611,20 @@ public final class HomePlugin extends JavaPlugin implements Listener {
         return claims.stream().filter(c -> claimWorld.equals(c.getWorld()) && c.getArea().contains(x, y)).findFirst().orElse(null);
     }
 
+    List<Home> findHomes(UUID owner) {
+        return homes.stream().filter(h -> h.isOwner(owner)).collect(Collectors.toList());
+    }
+
     Home findHome(UUID owner, String name) {
         if (name == null) {
-            return homes.stream().filter(h -> owner.equals(h.getOwner()) && h.getName() == null).findFirst().orElse(null);
+            return homes.stream().filter(h -> h.isOwner(owner) && h.getName() == null).findFirst().orElse(null);
         } else {
-            return homes.stream().filter(h -> owner.equals(h.getOwner()) && h.getName().equals(name)).findFirst().orElse(null);
+            return homes.stream().filter(h -> h.isOwner(owner) && h.getName().equals(name)).findFirst().orElse(null);
         }
+    }
+
+    Home findPublicHome(String name) {
+        return homes.stream().filter(h -> name.equals(h.getPublicName())).findFirst().orElse(null);
     }
 
     // Event Handling

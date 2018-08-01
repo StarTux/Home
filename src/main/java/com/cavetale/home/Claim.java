@@ -126,4 +126,8 @@ final class Claim {
     boolean canVisit(UUID playerId) {
         return owner.equals(playerId) || members.contains(playerId) || visitors.contains(playerId);
     }
+
+    boolean isInWorld(String worldName) {
+        return this.world.equals(worldName);
+    }
 }

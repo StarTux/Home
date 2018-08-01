@@ -12,5 +12,12 @@ import lombok.Data;
 public final class HomeInvite {
     @Id Integer id;
     @Column(nullable = false) Integer homeId;
-    @Column(nullable = true) UUID invitee; // null means public
+    @Column(nullable = false) UUID invitee;
+
+    public HomeInvite() { }
+
+    HomeInvite(UUID invitee) {
+        if (invitee == null) throw new NullPointerException("Invitee cannot be null");
+        this.invitee = invitee;
+    }
 }

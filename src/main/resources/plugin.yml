@@ -21,6 +21,10 @@ commands:
     permission: home.home
     usage: |-
       /homes - View the homes menu
+      /homes set [name] - Set a home
+      /homes invite <player> [name] - Allow someone to use your home
+      /homes public <name> [alias] - Make a home public
+      /homes delete [name] - delete a home
   sethome:
     aliases: []
     description: Set or reset a home
@@ -28,20 +32,33 @@ commands:
     usage: |-
       /sethome - Set your primary home
       /sethome NAME - set a named home
+  visit:
+    aliases: []
+    description: Visit a public home
+    permission: home.visit
+    usage: |
   claim:
     aliases: [ claims ]
     description: Manage your claims.
+    permission: home.claim
     usage: |-
       /claim - View your claim options
+      /claim info - View claim info
       /claim new - Make a new claim
       /claim grow - Grow your claim
       /claim buy - Buy new claim blocks
   newclaim:
     aliases: []
     description: Make a new claim
+    permission: home.claim
     usage: /newclaim - Make a new claim
 permissions:
   home.home:
-    description: Use /home
-    default: false
-    children: {}
+    description: Use homes
+    default: op
+  home.claim:
+    description: Use claims
+    default: op
+  home.visi:
+    description: Visit public homes
+    default: op

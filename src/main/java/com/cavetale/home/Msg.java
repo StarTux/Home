@@ -1,7 +1,6 @@
 package com.cavetale.home;
 
 import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -25,10 +24,7 @@ final class Msg {
     }
 
     static void msg(Player player, ChatColor color, String msg, Object... args) {
-        Map<String, Object> map = new HashMap<>();
-        map.put("text", format(msg, args));
-        map.put("color", color.name().toLowerCase());
-        raw(player, map);
+        raw(player, label(color, msg, args));
     }
 
     static void title(Player player, String title, String subtitle) {
@@ -47,8 +43,18 @@ final class Msg {
         if (obj.length == 1) {
             consoleCommand("minecraft:tellraw %s %s", player.getName(), JSONValue.toJSONString(obj[0]));
         } else {
-            consoleCommand("minecraft:tellraw %s %s", player.getName(), JSONValue.toJSONString(Arrays.asList(obj)));
+            List<Object> list = new ArrayList<>(obj.length + 1);
+            list.add("");
+            for (int i = 0; i < obj.length; i += 1) list.add(obj[i]);
+            consoleCommand("minecraft:tellraw %s %s", player.getName(), JSONValue.toJSONString(list));
         }
+    }
+
+    static Object label(ChatColor color, String msg, Object... args) {
+        Map<String, Object> map = new HashMap<>();
+        map.put("text", format(msg, args));
+        map.put("color", color.name().toLowerCase());
+        return map;
     }
 
     static Object button(ChatColor color, String chat, String command, String tooltip) {

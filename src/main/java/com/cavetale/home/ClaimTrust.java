@@ -13,5 +13,17 @@ public final class ClaimTrust {
     @Id Integer id;
     @Column(nullable = false) Integer claimId;
     @Column(nullable = false, length = 16) String type;
-    @Column(nullable = true) UUID trustee; // null means public
+    @Column(nullable = false) UUID trustee;
+
+    static enum Type {
+        MEMBER, VISIT;
+    }
+
+    public ClaimTrust() { }
+
+    ClaimTrust(Claim claim, Type type, UUID trustee) {
+        this.claimId = claim.getId();
+        this.type = type.name().toLowerCase();
+        this.trustee = trustee;
+    }
 }

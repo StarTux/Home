@@ -37,16 +37,12 @@ final class Claim {
     }
 
     enum Setting {
-        PVP,
-        EXPLOSIONS,
-        FIRE,
-        AUTOGROW;
+        PVP(false),
+        EXPLOSIONS(false),
+        FIRE(false),
+        AUTOGROW(true);
 
         final Object defaultValue;
-
-        Setting() {
-            this(false);
-        }
 
         Setting(Object defaultValue) {
             this.defaultValue = defaultValue;

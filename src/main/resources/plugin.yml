@@ -5,9 +5,13 @@ version: 0.1
 api-version: 1.13
 website: https://cavetale.com
 main: com.cavetale.home.HomePlugin
-depend: []
+depend: [ SQL ]
 softdepend: []
 commands:
+  homeadmin:
+    aliases: [ claimadmin ]
+    description: Admin command
+    permisson: home.admin
   home:
     aliases: []
     description: Go to your primary home
@@ -69,4 +73,7 @@ permissions:
     default: op
   home.build:
     description: Use /build
+    default: op
+  home.admin:
+    description: Use /homeadmin
     default: op

@@ -163,8 +163,14 @@ public final class HomePlugin extends JavaPlugin implements Listener {
                         }
                     }
                 } else {
-                    UUID uuid = player.getUniqueId();
-                    if (uuid.equals(claim.getOwner()) || claim.getMembers().contains(uuid)) {
+                    UUID playerId = player.getUniqueId();
+                    if (claim.isOwner(playerId)
+                        && claim.getBlocks() > claim.getArea().size()
+                        && claim.getSetting(Claim.Setting.AUTOGROW) == Boolean.TRUE
+                        && random.nextInt(20) == 0) {
+                        autoGrowClaim(claim);
+                    }
+                    if (claim.isOwner(playerId) || claim.canBuild(playerId)) {
                         if (player.getGameMode() != GameMode.SURVIVAL) {
                             player.setGameMode(GameMode.SURVIVAL);
                         }
@@ -951,6 +957,20 @@ public final class HomePlugin extends JavaPlugin implements Listener {
             json.add(Msg.label(ChatColor.WHITE, " %s", setting.displayName));
             Msg.raw(player, json);
         }
+    }
+
+    void autoGrowClaim(Claim claim) {
+        Area area = claim.getArea();
+        Area newArea = new Area(area.ax - 1, area.ay - 1, area.bx + 1, area.by + 1);
+        if (newArea.size() > claim.getBlocks()) return;
+        String claimWorld = claim.getWorld();
+        for (Claim other: claims) {
+            if (other != claim && other.isInWorld(claimWorld) && other.getArea().overlaps(newArea)) {
+                return;
+            }
+        }
+        claim.setArea(newArea);
+        db.save(claim);
     }
 
     // Configuration utility

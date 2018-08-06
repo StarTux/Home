@@ -64,6 +64,8 @@ import org.bukkit.inventory.InventoryHolder;
 import org.bukkit.metadata.FixedMetadataValue;
 import org.bukkit.metadata.MetadataValue;
 import org.bukkit.plugin.java.JavaPlugin;
+import org.bukkit.potion.PotionEffect;
+import org.bukkit.potion.PotionEffectType;
 import org.bukkit.scheduler.BukkitRunnable;
 import org.spigotmc.event.entity.EntityMountEvent;
 
@@ -132,10 +134,11 @@ public final class HomePlugin extends JavaPlugin implements Listener {
 
     void onTick() {
         for (Player player: getServer().getOnlinePlayers()) {
-            if (player.hasMetadata(META_NOFALL) && player.isOnGround()) {
-                long time = player.getMetadata(META_NOFALL).get(0).asLong();
-                if ((System.nanoTime() - time) / 1000000000 > 20) {
+            if (player.hasMetadata(META_NOFALL)) {
+                if (player.isOnGround() || player.getLocation().getBlock().isLiquid()) {
                     player.removeMetadata(META_NOFALL, this);
+                } else {
+                    player.addPotionEffect(new PotionEffect(PotionEffectType.SLOW_FALLING, 100, 0));
                 }
             }
             if (player.hasMetadata(META_IGNORE)) return;
@@ -158,9 +161,9 @@ public final class HomePlugin extends JavaPlugin implements Listener {
                         Claim oldClaim = getClaimById(cl1.claimId);
                         if (oldClaim != null) {
                             if (oldClaim.isOwner(player.getUniqueId())) {
-                                Msg.msg(player, ChatColor.YELLOW, "Leaving your claim");
+                                Msg.actionBar(player, ChatColor.GRAY, "Leaving your claim");
                             } else {
-                                Msg.msg(player, ChatColor.YELLOW, "Leaving %s's claim", GenericEvents.cachedPlayerName(oldClaim.getOwner()));
+                                Msg.actionBar(player, ChatColor.GRAY, "Leaving %s's claim", GenericEvents.cachedPlayerName(oldClaim.getOwner()));
                             }
                             highlightClaim(oldClaim, player);
                         }
@@ -184,9 +187,9 @@ public final class HomePlugin extends JavaPlugin implements Listener {
                     }
                     if (cl1.claimId != cl2.claimId) {
                         if (claim.isOwner(player.getUniqueId())) {
-                            Msg.msg(player, ChatColor.BLUE, "Entering your claim");
+                            Msg.actionBar(player, ChatColor.GRAY, "Entering your claim");
                         } else {
-                            Msg.msg(player, ChatColor.YELLOW, "Entering %s's claim", GenericEvents.cachedPlayerName(claim.getOwner()));
+                            Msg.actionBar(player, ChatColor.GRAY, "Entering %s's claim", GenericEvents.cachedPlayerName(claim.getOwner()));
                         }
                         highlightClaim(claim, player);
                     }
@@ -613,6 +616,7 @@ public final class HomePlugin extends JavaPlugin implements Listener {
         claim.saveToDatabase();
         claims.add(claim);
         Msg.msg(player, ChatColor.GREEN, "Claim created!");
+        highlightClaim(claim, player);
         return true;
     }
 
@@ -882,7 +886,8 @@ public final class HomePlugin extends JavaPlugin implements Listener {
         if (!(sender instanceof Player)) return false;
         final Player player = (Player)sender;
         final UUID playerId = player.getUniqueId();
-        if (null != claims.stream().filter(c -> c.isOwner(playerId) && c.isInWorld(homeWorld)).findFirst().orElse(null)) {
+        if (!player.hasMetadata(META_IGNORE)
+            && null != claims.stream().filter(c -> c.isOwner(playerId) && c.isInWorld(homeWorld)).findFirst().orElse(null)) {
             Msg.msg(player, ChatColor.RED, "You already have a claim!");
             return true;
         }

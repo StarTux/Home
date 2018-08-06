@@ -32,10 +32,9 @@ final class Msg {
         player.sendTitle(format(title), format(subtitle), -1, -1, -1);
     }
 
-    static void actionBar(Player player, String text, Object... args) {
-        Map<String, Object> map = new HashMap<>();
-        map.put("text", format(text, args));
-        consoleCommand("minecraft:title %s actionbar %s", player.getName(), JSONValue.toJSONString(map));
+    static void actionBar(Player player, ChatColor color, String text, Object... args) {
+        Object json = label(color, text, args);
+        consoleCommand("minecraft:title %s actionbar %s", player.getName(), JSONValue.toJSONString(json));
     }
 
     static void raw(Player player, Object... obj) {

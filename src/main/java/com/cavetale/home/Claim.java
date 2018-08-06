@@ -37,14 +37,16 @@ final class Claim {
     }
 
     enum Setting {
-        PVP(false),
-        EXPLOSIONS(false),
-        FIRE(false),
-        AUTOGROW(true);
+        PVP("PvP Combat", false),
+        EXPLOSIONS("Explosion Damage", false),
+        FIRE("Fire Burns Blocks", false),
+        AUTOGROW("Claim Grows Automatically", true);
 
+        final String displayName;
         final Object defaultValue;
 
-        Setting(Object defaultValue) {
+        Setting(String displayName, Object defaultValue) {
+            this.displayName = displayName;
             this.defaultValue = defaultValue;
         }
     }

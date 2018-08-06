@@ -35,4 +35,26 @@ final class Area {
     int size() {
         return (bx - ax + 1) * (by - ay + 1);
     }
+
+    // Rough distance function getting the sum of the horizontal and
+    // vertical distance.  Only to be used to find nearest claim;
+    // never for precision operations!
+    int distanceToPoint(int x, int y) {
+        int dx, dy;
+        if (x < ax) {
+            dx = ax - x;
+        } else if (x > bx) {
+            dx = x - bx;
+        } else {
+            dx = 0;
+        }
+        if (y < ay) {
+            dy = ay - y;
+        } else if (y > by) {
+            dy = y - by;
+        } else {
+            dy = 0;
+        }
+        return dx + dy;
+    }
 }

@@ -91,8 +91,6 @@ public final class HomePlugin extends JavaPlugin implements Listener {
         db = new SQLDatabase(this);
         db.registerTables(Claim.SQLRow.class, ClaimTrust.class, Home.class, HomeInvite.class);
         db.createAllTables();
-        loadFromConfig();
-        loadFromDatabase();
         getServer().getPluginManager().registerEvents(this, this);
         getCommand("homeadmin").setExecutor((s, c, l, a) -> onHomeadminCommand(s, c, l, a));
         getCommand("claim").setExecutor((s, c, l, a) -> onClaimCommand(s, c, l, a));
@@ -102,6 +100,8 @@ public final class HomePlugin extends JavaPlugin implements Listener {
         getCommand("homes").setExecutor((s, c, l, a) -> onHomesCommand(s, c, l, a));
         getCommand("visit").setExecutor((s, c, l, a) -> onVisitCommand(s, c, l, a));
         getCommand("build").setExecutor((s, c, l, a) -> onBuildCommand(s, c, l, a));
+        loadFromConfig();
+        loadFromDatabase();
         new BukkitRunnable() {
             @Override public void run() {
                 onTick();
@@ -140,7 +140,7 @@ public final class HomePlugin extends JavaPlugin implements Listener {
                 player.removeMetadata(META_LOCATION, this);
                 continue;
             }
-            CachedLocation cl1 = (CachedLocation)player.getMetadata(META_LOCATION).stream().filter(a -> a.getOwningPlugin() == this).map(a -> a.value()).findFirst().orElse(null);
+            CachedLocation cl1 = (CachedLocation)player.getMetadata(META_LOCATION).stream().filter(a -> a.getOwningPlugin() == this).map(MetadataValue::value).findFirst().orElse(null);
             Location pl = player.getLocation();
             if (cl1 == null || !cl1.world.equals(pl.getWorld().getName()) || cl1.x != pl.getBlockX() || cl1.z != pl.getBlockZ()) {
                 Claim claim = getClaimAt(pl);
@@ -209,6 +209,14 @@ public final class HomePlugin extends JavaPlugin implements Listener {
                 }
             }
             break;
+        case "reload":
+            if (args.length == 1) {
+                loadFromConfig();
+                loadFromDatabase();
+                sender.sendMessage("Configuration files and databases reloaded");
+                return true;
+            }
+            break;
         default:
             break;
         }
@@ -233,13 +241,9 @@ public final class HomePlugin extends JavaPlugin implements Listener {
                     Msg.msg(player, ChatColor.RED, "Invalid claim blocks amount: %s", args[1]);
                     return true;
                 }
-                Claim claim = getClaimAt(player.getLocation());
+                Claim claim = findNearestOwnedClaim(player);
                 if (claim == null) {
-                    Msg.msg(player, ChatColor.RED, "Stand in the claim you want to buy blocks for");
-                    return true;
-                }
-                if (!claim.isOwner(playerId)) {
-                    Msg.msg(player, ChatColor.RED, "You can only buy blocks for your own claims");
+                    Msg.msg(player, ChatColor.RED, "You don't have a claim in this world");
                     return true;
                 }
                 double price = (double)buyClaimBlocks * claimBlockCost;
@@ -360,16 +364,204 @@ public final class HomePlugin extends JavaPlugin implements Listener {
                 ClaimTrust ct = new ClaimTrust(claim, ClaimTrust.Type.MEMBER, targetId);
                 db.save(ct);
                 claim.getMembers().add(targetId);
+                if (claim.getVisitors().contains(targetId)) {
+                    claim.getVisitors().remove(targetId);
+                    db.find(ClaimTrust.class).eq("claim_id", claim.getId()).eq("trustee", targetId).delete();
+                }
                 Msg.msg(player, ChatColor.WHITE, "Member added: %s", targetName);
                 return true;
             }
             break;
         case "invite":
+            if (args.length == 2) {
+                Claim claim = getClaimAt(player.getLocation());
+                if (claim == null) {
+                    Msg.msg(player, ChatColor.RED, "Stand in the claim to which you want to invite people");
+                    return true;
+                }
+                if (!claim.isOwner(playerId)) {
+                    Msg.msg(player, ChatColor.RED, "You are not the owner of this claim");
+                    return true;
+                }
+                String targetName = args[1];
+                UUID targetId = GenericEvents.cachedPlayerUuid(targetName);
+                if (targetId == null) {
+                    Msg.msg(player, ChatColor.RED, "Player not found: %s", targetName);
+                    return true;
+                }
+                if (claim.canVisit(targetId)) {
+                    Msg.msg(player, ChatColor.RED, "Player is already invited to this claim");
+                    return true;
+                }
+                ClaimTrust ct = new ClaimTrust(claim, ClaimTrust.Type.VISIT, targetId);
+                db.save(ct);
+                claim.getMembers().add(targetId);
+                Msg.msg(player, ChatColor.WHITE, "Player invited: %s", targetName);
+                return true;
+            }
+            break;
+        case "remove":
+            if (args.length == 2) {
+                Claim claim = getClaimAt(player.getLocation());
+                if (claim == null) {
+                    Msg.msg(player, ChatColor.RED, "Stand in the claim to which you want to invite people");
+                    return true;
+                }
+                if (!claim.isOwner(playerId)) {
+                    Msg.msg(player, ChatColor.RED, "You are not the owner of this claim");
+                    return true;
+                }
+                String targetName = args[1];
+                UUID targetId = GenericEvents.cachedPlayerUuid(targetName);
+                if (targetId == null) {
+                    Msg.msg(player, ChatColor.RED, "Player not found: %s", targetName);
+                    return true;
+                }
+                if (claim.getMembers().contains(targetId)) {
+                    claim.getMembers().remove(targetId);
+                    db.find(ClaimTrust.class).eq("claim_id", claim.getId()).eq("trustee", targetId).delete();
+                    Msg.msg(player, ChatColor.YELLOW, "%s may no longer build", targetName);
+                } else if (claim.getVisitors().contains(targetId)) {
+                    claim.getVisitors().remove(targetId);
+                    db.find(ClaimTrust.class).eq("claim_id", claim.getId()).eq("trustee", targetId).delete();
+                    Msg.msg(player, ChatColor.YELLOW, "%s may no longer visit", targetName);
+                } else {
+                    Msg.msg(player, ChatColor.RED, "%s has no permission in this claim", targetName);
+                    return true;
+                }
+                return true;
+            }
+            break;
+        case "set":
+            if (args.length == 1) {
+                Claim claim = getClaimAt(player.getLocation());
+                if (claim == null) {
+                    Msg.msg(player, ChatColor.RED, "Stand in the claim you wish to edit");
+                    return true;
+                }
+                if (!claim.isOwner(playerId)) {
+                    Msg.msg(player, ChatColor.RED, "Only the claim owner can do this");
+                    return true;
+                }
+                showClaimSettings(claim, player);
+                return true;
+            } else if (args.length == 3) {
+                Claim claim = getClaimAt(player.getLocation());
+                if (claim == null) {
+                    Msg.msg(player, ChatColor.RED, "Stand in the claim you wish to edit");
+                    return true;
+                }
+                if (!claim.isOwner(playerId)) {
+                    Msg.msg(player, ChatColor.RED, "Only the claim owner can do this");
+                    return true;
+                }
+                Claim.Setting setting;
+                try {
+                    setting = Claim.Setting.valueOf(args[1].toUpperCase());
+                } catch (IllegalArgumentException iae) {
+                    Msg.msg(player, ChatColor.RED, "Unknown claim setting: %s", args[1]);
+                    return true;
+                }
+                Object value;
+                switch (args[2]) {
+                case "on": case "true": case "enabled": value = true; break;
+                case "off": case "false": case "disabled": value = false; break;
+                default:
+                    Msg.msg(player, ChatColor.RED, "Unknown settings value: %s", args[2]);
+                    return true;
+                }
+                if (!value.equals(claim.getSetting(setting))) {
+                    if (value.equals(setting.defaultValue)) {
+                        claim.getSettings().remove(setting);
+                    } else {
+                        claim.getSettings().put(setting, value);
+                    }
+                }
+                db.save(claim);
+                showClaimSettings(claim, player);
+                return true;
+            }
+        case "grow":
+            if (args.length == 1) {
+                Location playerLocation = player.getLocation();
+                int x = playerLocation.getBlockX();
+                int z = playerLocation.getBlockZ();
+                Claim claim = findNearestOwnedClaim(player);
+                if (claim == null) {
+                    Msg.msg(player, ChatColor.RED, "You don't have a claim nearby");
+                    return true;
+                }
+                if (claim.getArea().contains(x, z)) {
+                    Msg.msg(player, ChatColor.RED, "Stand where you want the claim to grow to");
+                    highlightClaim(claim, player);
+                    return true;
+                }
+                Area area = claim.getArea();
+                int ax = Math.min(area.ax, x);
+                int ay = Math.min(area.ay, z);
+                int bx = Math.max(area.bx, x);
+                int by = Math.max(area.by, z);
+                Area newArea = new Area(ax, ay, bx, by);
+                if (claim.getBlocks() < newArea.size()) {
+                    Msg.raw(player,
+                            Msg.label(ChatColor.RED, "%s more claim blocks required. ", newArea.size() - claim.getBlocks()),
+                            Msg.button(ChatColor.RED, "[Buy More]", "/claim buy ", "&9/claim buy <amount>\n&fBuy more claim blocks"));
+                    return true;
+                }
+                for (Claim other: claims) {
+                    if (other != claim && other.isInWorld(claim.getWorld()) && other.getArea().overlaps(newArea)) {
+                        Msg.msg(player, ChatColor.RED, "Your claim would connect with another claim");
+                        return true;
+                    }
+                }
+                claim.setArea(newArea);
+                db.save(claim);
+                Msg.msg(player, ChatColor.BLUE, "Grew your claim to where you are standing");
+                highlightClaim(claim, player);
+                return true;
+            }
+            break;
+        case "shrink":
+            if (args.length == 1) {
+                Location playerLocation = player.getLocation();
+                int x = playerLocation.getBlockX();
+                int z = playerLocation.getBlockZ();
+                Claim claim = getClaimAt(playerLocation);
+                if (claim == null) {
+                    Msg.msg(player, ChatColor.RED, "Stand in the claim you wish to shrink");
+                    return true;
+                }
+                if (!claim.isOwner(playerId)) {
+                    Msg.msg(player, ChatColor.RED, "You can only shrink your own claims");
+                    return true;
+                }
+                Area area = claim.getArea();
+                int ax = area.ax;
+                int ay = area.ay;
+                int bx = area.bx;
+                int by = area.by;
+                if (Math.abs(ax - x) < Math.abs(bx - x)) { // Closer to western edge
+                    ax = x;
+                } else {
+                    bx = x;
+                }
+                if (Math.abs(ay - z) < Math.abs(by - z)) {
+                    ay = z;
+                } else {
+                    by = z;
+                }
+                Area newArea = new Area(ax, ay, bx, by);
+                claim.setArea(newArea);
+                db.save(claim);
+                Msg.msg(player, ChatColor.BLUE, "Shrunk your claim to where you are standing");
+                highlightClaim(claim, player);
+                return true;
+            }
             break;
         default:
             return false;
         }
-        return true;
+        return false;
     }
 
     boolean onNewclaimCommand(CommandSender sender, Command command, String alias, String[] args) {
@@ -440,13 +632,14 @@ public final class HomePlugin extends JavaPlugin implements Listener {
                     return true;
                 }
             }
-            Claim claim = claims.stream().filter(c -> c.getWorld().equals(homeWorld) && c.getOwner().equals(playerId)).findFirst().orElse(null);
+            Claim claim = claims.stream().filter(c -> c.isInWorld(homeWorld) && c.isOwner(playerId)).findFirst().orElse(null);
             if (claim != null) {
                 World bworld = getServer().getWorld(claim.getWorld());
                 Area area = claim.getArea();
                 Location location = bworld.getHighestBlockAt((area.ax + area.bx) / 2, (area.ay + area.by) / 2).getLocation().add(0.5, 0.0, 0.5);
                 player.teleport(location);
                 Msg.msg(player, ChatColor.GREEN, "Welcome to your claim. :)");
+                highlightClaim(claim, player);
                 return true;
             }
             findPlaceToBuild(player);
@@ -739,6 +932,27 @@ public final class HomePlugin extends JavaPlugin implements Listener {
         player.setMetadata(META_NOFALL, new FixedMetadataValue(this, true));
     }
 
+    void showClaimSettings(Claim claim, Player player) {
+        Msg.msg(player, ChatColor.BLUE, "Claim Settings");
+        for (Claim.Setting setting: Claim.Setting.values()) {
+            List<Object> json = new ArrayList<>();
+            json.add(" ");
+            Object value = claim.getSetting(setting);
+            String key = setting.name().toLowerCase();
+            if (value == Boolean.TRUE) {
+                json.add(Msg.label(ChatColor.BLUE, "[ON]"));
+                json.add(" ");
+                json.add(Msg.button(ChatColor.GRAY, "[OFF]", "/claim set " + key + " off", "Disable " + setting.displayName));
+            } else if (value == Boolean.FALSE) {
+                json.add(Msg.button(ChatColor.GRAY, "[ON]", "/claim set " + key + " on", "Enable " + setting.displayName));
+                json.add(" ");
+                json.add(Msg.label(ChatColor.RED, "[OFF]"));
+            }
+            json.add(Msg.label(ChatColor.WHITE, " %s", setting.displayName));
+            Msg.raw(player, json);
+        }
+    }
+
     // Configuration utility
 
     void loadFromConfig() {
@@ -815,7 +1029,16 @@ public final class HomePlugin extends JavaPlugin implements Listener {
             return null;
         }
         // Find claim
-        return claims.stream().filter(c -> claimWorld.equals(c.getWorld()) && c.getArea().contains(x, y)).findFirst().orElse(null);
+        return claims.stream().filter(c -> c.isInWorld(claimWorld) && c.getArea().contains(x, y)).findFirst().orElse(null);
+    }
+
+    Claim findNearestOwnedClaim(Player player) {
+        Location playerLocation = player.getLocation();
+        String playerWorld = playerLocation.getWorld().getName();
+        int x = playerLocation.getBlockX();
+        int z = playerLocation.getBlockZ();
+        UUID playerId = player.getUniqueId();
+        return claims.stream().filter(c -> c.isOwner(playerId) && c.isInWorld(playerWorld)).min((a, b) -> Integer.compare(a.getArea().distanceToPoint(x, z), b.getArea().distanceToPoint(x, z))).orElse(null);
     }
 
     List<Home> findHomes(UUID owner) {
@@ -823,11 +1046,7 @@ public final class HomePlugin extends JavaPlugin implements Listener {
     }
 
     Home findHome(UUID owner, String name) {
-        if (name == null) {
-            return homes.stream().filter(h -> h.isOwner(owner) && h.getName() == null).findFirst().orElse(null);
-        } else {
-            return homes.stream().filter(h -> h.isOwner(owner) && h.getName().equals(name)).findFirst().orElse(null);
-        }
+        return homes.stream().filter(h -> h.isOwner(owner) && h.isNamed(name)).findFirst().orElse(null);
     }
 
     Home findPublicHome(String name) {
@@ -854,10 +1073,9 @@ public final class HomePlugin extends JavaPlugin implements Listener {
             while (block.isEmpty()) block = block.getRelative(0, -1, 0);
             while (!block.isEmpty()) block = block.getRelative(0, 1, 0);
             int dx = Math.abs(block.getX() - playerX);
-            int dy = Math.abs(block.getY() - playerY);
             int dz = Math.abs(block.getZ() - playerZ);
-            int dist = dx * dx + dy * dy + dz * dz;
-            if (dist > 65536) continue;
+            int dist = dx * dx + dz * dz;
+            if (dist > 9216) continue; // 6 * 16, squared
             player.spawnParticle(Particle.BARRIER, block.getLocation().add(0.5, 0.5, 0.5), 1, 0.0, 0.0, 0.0, 0.0);
         }
     }
@@ -892,7 +1110,7 @@ public final class HomePlugin extends JavaPlugin implements Listener {
             return true;
         }
         // Find claim
-        Claim claim = claims.stream().filter(c -> claimWorld.equals(c.getWorld()) && c.getArea().contains(block.getX(), block.getZ())).findFirst().orElse(null);
+        Claim claim = claims.stream().filter(c -> c.isInWorld(claimWorld) && c.getArea().contains(block.getX(), block.getZ())).findFirst().orElse(null);
         if (claim == null) {
             // Action is not in a claim.  Apply default permissions.
             // Building is not allowed, combat is.

@@ -51,6 +51,12 @@ commands:
       /claim new - Make a new claim
       /claim grow - Grow your claim
       /claim buy - Buy new claim blocks
+      /claim add <player> - Add a member
+      /claim invite <player> - Add visitor
+      /claim remove <player> - Remove member or visitor
+      /claim set - View or edit claim settings
+      /claim grow - Grow claim to your location
+      /claim shrink - Grow claim to your location
   build:
     aliases: [ wild ]
     description: Find a place to build.

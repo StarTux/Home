@@ -8,11 +8,11 @@ import javax.persistence.UniqueConstraint;
 import lombok.Data;
 
 @Data @Table(name = "claim_trust",
-             uniqueConstraints = @UniqueConstraint(columnNames = {"claim_id", "type", "trustee"}))
+             uniqueConstraints = @UniqueConstraint(columnNames = {"claim_id", "trustee"}))
 public final class ClaimTrust {
     @Id Integer id;
     @Column(nullable = false) Integer claimId;
-    @Column(nullable = false, length = 16) String type;
+    @Column(nullable = false, length = 15) String type;
     @Column(nullable = false) UUID trustee;
 
     static enum Type {

@@ -23,9 +23,9 @@ public final class Home {
     @Column(nullable = false) UUID owner;
     @Column(nullable = true, length = 32) String name;
     @Column(nullable = false) private Date created;
-    @Column(nullable = false) private String world;
+    @Column(nullable = false, length = 32) private String world;
     @Column(nullable = false) private double x, y, z, pitch, yaw;
-    @Column(nullable = true) private String publicName;
+    @Column(nullable = true, length = 32) private String publicName;
     final transient List<UUID> invites = new ArrayList<>();
 
     Home() { }

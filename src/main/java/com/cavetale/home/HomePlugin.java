@@ -133,7 +133,10 @@ public final class HomePlugin extends JavaPlugin implements Listener {
     void onTick() {
         for (Player player: getServer().getOnlinePlayers()) {
             if (player.hasMetadata(META_NOFALL) && player.isOnGround()) {
-                player.removeMetadata(META_NOFALL, this);
+                long time = player.getMetadata(META_NOFALL).get(0).asLong();
+                if ((System.nanoTime() - time) / 1000000000 > 20) {
+                    player.removeMetadata(META_NOFALL, this);
+                }
             }
             if (player.hasMetadata(META_IGNORE)) return;
             if (!isHomeWorld(player.getWorld())) {
@@ -935,7 +938,7 @@ public final class HomePlugin extends JavaPlugin implements Listener {
                 Msg.label(ChatColor.WHITE, " it or "),
                 Msg.button(ChatColor.YELLOW, "[Retry]", "/home", Msg.format("&a/home&f&o\nFind another random location.")));
         player.setMetadata(META_COOLDOWN_WILD, new FixedMetadataValue(this, System.nanoTime()));
-        player.setMetadata(META_NOFALL, new FixedMetadataValue(this, true));
+        player.setMetadata(META_NOFALL, new FixedMetadataValue(this, System.nanoTime()));
     }
 
     void showClaimSettings(Claim claim, Player player) {

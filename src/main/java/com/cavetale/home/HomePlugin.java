@@ -140,7 +140,7 @@ public final class HomePlugin extends JavaPlugin implements Listener {
                     player.addPotionEffect(new PotionEffect(PotionEffectType.SLOW_FALLING, 100, 0));
                 }
             }
-            if (player.hasMetadata(META_IGNORE)) return;
+            if (player.hasMetadata(META_IGNORE)) continue;
             if (!isHomeWorld(player.getWorld())) {
                 player.removeMetadata(META_LOCATION, this);
                 continue;
@@ -153,7 +153,7 @@ public final class HomePlugin extends JavaPlugin implements Listener {
                 if (cl1 == null) cl1 = cl2; // Taking the easy way out
                 player.setMetadata(META_LOCATION, new FixedMetadataValue(this, cl2));
                 if (claim == null) {
-                    if (player.getGameMode() != GameMode.ADVENTURE) {
+                    if (player.getGameMode() != GameMode.ADVENTURE && !player.hasMetadata(META_IGNORE)) {
                         player.setGameMode(GameMode.ADVENTURE);
                     }
                     if (cl1.claimId != cl2.claimId) {
@@ -176,7 +176,7 @@ public final class HomePlugin extends JavaPlugin implements Listener {
                         autoGrowClaim(claim);
                     }
                     if (claim.isOwner(playerId) || claim.canBuild(playerId)) {
-                        if (player.getGameMode() != GameMode.SURVIVAL) {
+                        if (player.getGameMode() != GameMode.SURVIVAL && !player.hasMetadata(META_IGNORE)) {
                             player.setGameMode(GameMode.SURVIVAL);
                         }
                     } else {
@@ -226,6 +226,14 @@ public final class HomePlugin extends JavaPlugin implements Listener {
                 loadFromDatabase();
                 sender.sendMessage("Configuration files and databases reloaded");
                 return true;
+            }
+            break;
+        case "debug":
+            if (args.length == 1) {
+                sender.sendMessage("Nofall: " + player.hasMetadata(META_NOFALL));
+                sender.sendMessage("Nofall sz: " + player.getMetadata(META_NOFALL).size());
+                sender.sendMessage("OnGround: " + player.isOnGround());
+                sender.sendMessage("Liquid: " + player.getLocation().getBlock().isLiquid());
             }
             break;
         default:

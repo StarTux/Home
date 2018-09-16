@@ -88,7 +88,6 @@ public final class HomePlugin extends JavaPlugin implements Listener {
 
     @Override
     public void onEnable() {
-        reloadConfig();
         saveDefaultConfig();
         db = new SQLDatabase(this);
         db.registerTables(Claim.SQLRow.class, ClaimTrust.class, Home.class, HomeInvite.class);
@@ -984,6 +983,7 @@ public final class HomePlugin extends JavaPlugin implements Listener {
     // Configuration utility
 
     void loadFromConfig() {
+        reloadConfig();
         homeWorld = getConfig().getString("HomeWorld");
         homeNetherWorld = homeWorld + "_nether";
         homeTheEndWorld = homeWorld + "_the_end";

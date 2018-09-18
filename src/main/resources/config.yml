@@ -1,5 +1,13 @@
-HomeWorld: home
+# `home` is the primary home world. `home_nether` is a mirror of
+# `home`, meaning it contains the same top-level
+# claims. `home_the_end` is treated separately.
+Worlds:
+  home: {}
+  home_nether:
+    mirror: home
+  home_the_end: {}
 ClaimMargin: 512 # Minimum distance between old and new claims
 HomeMargin: 64 # Minimum distance between old and new homes
 BuildCooldown: 10 # In seconds
 ClaimBlockCost: 0.1 # Cost per claim block
+ManageGameMode: true # Set survival or adventure GameMode in home world

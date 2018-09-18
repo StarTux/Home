@@ -4,8 +4,10 @@ import com.winthier.generic_events.GenericEvents;
 import com.winthier.sql.SQLDatabase;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.HashMap;
 import java.util.Iterator;
 import java.util.List;
+import java.util.Map;
 import java.util.Random;
 import java.util.UUID;
 import java.util.stream.Collectors;
@@ -22,6 +24,7 @@ import org.bukkit.block.Block;
 import org.bukkit.block.BlockState;
 import org.bukkit.command.Command;
 import org.bukkit.command.CommandSender;
+import org.bukkit.configuration.ConfigurationSection;
 import org.bukkit.entity.AnimalTamer;
 import org.bukkit.entity.Entity;
 import org.bukkit.entity.EntityType;
@@ -74,11 +77,14 @@ public final class HomePlugin extends JavaPlugin implements Listener {
     private SQLDatabase db;
     private final List<Claim> claims = new ArrayList<>();
     private final List<Home> homes = new ArrayList<>();
-    private String homeWorld, homeNetherWorld, homeTheEndWorld;
+    private final List<String> homeWorlds = new ArrayList<>();
+    private String primaryHomeWorld;
+    private final Map<String, String> mirrorWorlds = new HashMap<>();
     private int claimMargin = 1024;
     private int homeMargin = 64;
     private int buildCooldown = 10;
     private double claimBlockCost = 1.0;
+    private boolean manageGameMode = true;
     private Random random = new Random(System.currentTimeMillis());
     private static final String META_COOLDOWN_WILD = "home.cooldown.wild";
     private static final String META_LOCATION = "home.location";
@@ -116,6 +122,8 @@ public final class HomePlugin extends JavaPlugin implements Listener {
         homes.clear();
     }
 
+    // --- Inner classes for utility
+
     @Value
     class CachedLocation {
         private final String world;
@@ -130,6 +138,8 @@ public final class HomePlugin extends JavaPlugin implements Listener {
         int claimId;
         String token;
     }
+
+    // --- Player interactivity
 
     void onTick() {
         for (Player player: getServer().getOnlinePlayers()) {
@@ -524,7 +534,7 @@ public final class HomePlugin extends JavaPlugin implements Listener {
                 if (claim.getBlocks() < newArea.size()) {
                     Msg.raw(player,
                             Msg.label(ChatColor.RED, "%s more claim blocks required. ", newArea.size() - claim.getBlocks()),
-                            Msg.button(ChatColor.RED, "[Buy More]", "/claim buy ", "&9/claim buy <amount>\n&fBuy more claim blocks"));
+                            Msg.button(ChatColor.RED, "[Buy More]", "/claim buy ", Msg.format("&9/claim buy <amount>\n&fBuy more claim blocks")));
                     return true;
                 }
                 for (Claim other: claims) {
@@ -591,21 +601,18 @@ public final class HomePlugin extends JavaPlugin implements Listener {
         boolean isHomeEndWorld = false;
         World playerWorld = player.getWorld();
         String playerWorldName = playerWorld.getName();
-        if (playerWorldName.equals(homeWorld)) {
-            isHomeWorld = true;
-        } else if (playerWorldName.equals(homeTheEndWorld)) {
-            isHomeEndWorld = true;
-        } else {
+        if (!homeWorlds.contains(playerWorldName)) {
             Msg.msg(player, ChatColor.RED, "You cannot make a claim in this world");
             return true;
         }
+        if (mirrorWorlds.containsKey(playerWorldName)) playerWorldName = mirrorWorlds.get(playerWorldName);
         // Check for other claims
         Location playerLocation = player.getLocation();
         int x = playerLocation.getBlockX();
         int y = playerLocation.getBlockZ();
         UUID playerId = player.getUniqueId();
         for (Claim claim: claims) {
-            if (claim.getWorld().equals(playerWorldName)) {
+            if (claim.isInWorld(playerWorldName)) {
                 if (claim.getOwner().equals(playerId)) {
                     Msg.msg(player, ChatColor.RED, "You already have a claim in this world");
                     return true;
@@ -631,6 +638,7 @@ public final class HomePlugin extends JavaPlugin implements Listener {
         if (!(sender instanceof Player)) return false;
         Player player = (Player)sender;
         if (args.length == 0) {
+            // Try to find a set home
             Home home = findHome(player.getUniqueId(), null);
             if (home != null) {
                 Location location = home.createLocation();
@@ -642,7 +650,18 @@ public final class HomePlugin extends JavaPlugin implements Listener {
                 Msg.msg(player, ChatColor.GREEN, "Welcome home :)");
                 return true;
             }
+            // No home was found, so if the player has no claim in the
+            // home world, find a place to build.  We do this here so
+            // that an existing bed spawn does not prevent someone
+            // from using /home as expected.  Either making a claim or
+            // setting a home will have caused this function to exit
+            // already.
             UUID playerId = player.getUniqueId();
+            if (findClaimsInWorld(playerId, primaryHomeWorld).isEmpty()) {
+                findPlaceToBuild(player);
+                return true;
+            }
+            // Try the bed spawn next.
             Location bedSpawn = player.getBedSpawnLocation();
             if (bedSpawn != null) {
                 Claim claim = getClaimAt(bedSpawn.getBlock());
@@ -652,8 +671,12 @@ public final class HomePlugin extends JavaPlugin implements Listener {
                     return true;
                 }
             }
-            Claim claim = claims.stream().filter(c -> c.isInWorld(homeWorld) && c.isOwner(playerId)).findFirst().orElse(null);
-            if (claim != null) {
+            // Try the primary claim in the home world.
+            List<Claim> playerClaims = findClaimsInWorld(playerId, primaryHomeWorld);
+            // or any claim
+            if (playerClaims.isEmpty()) playerClaims = findClaims(playerId);
+            if (!playerClaims.isEmpty()) {
+                Claim claim = playerClaims.get(0);
                 World bworld = getServer().getWorld(claim.getWorld());
                 Area area = claim.getArea();
                 Location location = bworld.getHighestBlockAt((area.ax + area.bx) / 2, (area.ay + area.by) / 2).getLocation().add(0.5, 0.0, 0.5);
@@ -662,6 +685,7 @@ public final class HomePlugin extends JavaPlugin implements Listener {
                 highlightClaim(claim, player);
                 return true;
             }
+            // Give up and default to a random build location, again.
             findPlaceToBuild(player);
             return true;
         }
@@ -894,7 +918,7 @@ public final class HomePlugin extends JavaPlugin implements Listener {
         final Player player = (Player)sender;
         final UUID playerId = player.getUniqueId();
         if (!player.hasMetadata(META_IGNORE)
-            && null != claims.stream().filter(c -> c.isOwner(playerId) && c.isInWorld(homeWorld)).findFirst().orElse(null)) {
+            && !findClaimsInWorld(playerId, primaryHomeWorld).isEmpty()) {
             Msg.msg(player, ChatColor.RED, "You already have a claim!");
             return true;
         }
@@ -913,9 +937,10 @@ public final class HomePlugin extends JavaPlugin implements Listener {
             }
         }
         // Determine center and border
-        World bworld = getServer().getWorld(homeWorld);
+        String worldName = primaryHomeWorld; // Set up for future expansion
+        World bworld = getServer().getWorld(worldName);
         if (bworld == null) {
-            getLogger().warning("Home world not found: " + homeWorld);
+            getLogger().warning("Home world not found: " + worldName);
             Msg.msg(player, ChatColor.RED, "Something went wrong. Please contact an administrator.");
             return;
         }
@@ -927,16 +952,19 @@ public final class HomePlugin extends JavaPlugin implements Listener {
         if (size < 0) return;
         Location location = null;
         // Try 100 times to find a random spot, then give up
+        List<Claim> worldClaims = findClaimsInWorld(worldName);
         SAMPLE:
         for (int i = 0; i < 100; i += 1) {
             int x = cx - size / 2 + random.nextInt(size);
             int z = cz - size / 2 + random.nextInt(size);
-            for (Claim claim: claims) {
-                if (claim.isInWorld(homeWorld) && claim.getArea().isWithin(x, z, claimMargin)) {
+            for (Claim claim: worldClaims) {
+                if (claim.getArea().isWithin(x, z, claimMargin)) {
                     continue SAMPLE;
                 }
             }
             location = bworld.getBlockAt(x, 255, z).getLocation().add(0.5, 0.5, 0.5);
+            location.setPitch(90.0f);
+            location.setYaw((float)Math.random() * 360.0f - 180.0f);
         }
         if (location == null) {
             Msg.msg(player, ChatColor.RED, "Could not find a place to build. Please try again");
@@ -988,17 +1016,29 @@ public final class HomePlugin extends JavaPlugin implements Listener {
         db.save(claim);
     }
 
-    // Configuration utility
+    // --- Configuration utility
 
     void loadFromConfig() {
         reloadConfig();
-        homeWorld = getConfig().getString("HomeWorld");
-        homeNetherWorld = homeWorld + "_nether";
-        homeTheEndWorld = homeWorld + "_the_end";
+        ConfigurationSection section = getConfig().getConfigurationSection("Worlds");
+        homeWorlds.clear();
+        for (String key: section.getKeys(false)) {
+            ConfigurationSection worldSection = section.getConfigurationSection(key);
+            if (worldSection != null && worldSection.isSet("mirror")) {
+                mirrorWorlds.put(key, worldSection.getString("mirror"));
+            }
+            homeWorlds.add(key);
+        }
+        if (!homeWorlds.isEmpty()) {
+            primaryHomeWorld = homeWorlds.get(0);
+        } else {
+            primaryHomeWorld = getServer().getWorlds().get(0).getName();
+        }
         claimMargin = getConfig().getInt("ClaimMargin");
         homeMargin = getConfig().getInt("HomeMargin");
         buildCooldown = getConfig().getInt("BuildCooldown");
         claimBlockCost = getConfig().getDouble("ClaimBlockCost");
+        manageGameMode = getConfig().getBoolean("ManageGameMode");
     }
 
     void loadFromDatabase() {
@@ -1032,13 +1072,10 @@ public final class HomePlugin extends JavaPlugin implements Listener {
         }
     }
 
-    // Claim Utility
+    // --- Claim Utility
 
     boolean isHomeWorld(World world) {
-        String worldName = world.getName();
-        return worldName.equals(homeWorld)
-            || worldName.equals(homeNetherWorld)
-            || worldName.equals(homeTheEndWorld);
+        return homeWorlds.contains(world.getName());
     }
 
     Claim getClaimById(int claimId) {
@@ -1053,19 +1090,9 @@ public final class HomePlugin extends JavaPlugin implements Listener {
         return getClaimAt(location.getWorld().getName(), location.getBlockX(), location.getBlockZ());
     }
 
-    Claim getClaimAt(String world, int x, int y) {
-        final String claimWorld;
-        if (world.equals(homeWorld)) {
-            claimWorld = homeWorld;
-        } else if (world.equals(homeNetherWorld)) {
-            claimWorld = homeWorld;
-        } else if (world.equals(homeTheEndWorld)) {
-            claimWorld = homeTheEndWorld;
-        } else {
-            return null;
-        }
-        // Find claim
-        return claims.stream().filter(c -> c.isInWorld(claimWorld) && c.getArea().contains(x, y)).findFirst().orElse(null);
+    Claim getClaimAt(String w, int x, int y) {
+        final String world = mirrorWorlds.containsKey(w) ? mirrorWorlds.get(w) : w;
+        return claims.stream().filter(c -> c.isInWorld(world) && c.getArea().contains(x, y)).findFirst().orElse(null);
     }
 
     Claim findNearestOwnedClaim(Player player) {
@@ -1075,18 +1102,6 @@ public final class HomePlugin extends JavaPlugin implements Listener {
         int z = playerLocation.getBlockZ();
         UUID playerId = player.getUniqueId();
         return claims.stream().filter(c -> c.isOwner(playerId) && c.isInWorld(playerWorld)).min((a, b) -> Integer.compare(a.getArea().distanceToPoint(x, z), b.getArea().distanceToPoint(x, z))).orElse(null);
-    }
-
-    List<Home> findHomes(UUID owner) {
-        return homes.stream().filter(h -> h.isOwner(owner)).collect(Collectors.toList());
-    }
-
-    Home findHome(UUID owner, String name) {
-        return homes.stream().filter(h -> h.isOwner(owner) && h.isNamed(name)).findFirst().orElse(null);
-    }
-
-    Home findPublicHome(String name) {
-        return homes.stream().filter(h -> name.equals(h.getPublicName())).findFirst().orElse(null);
     }
 
     void highlightClaim(Claim claim, Player player) {
@@ -1116,6 +1131,34 @@ public final class HomePlugin extends JavaPlugin implements Listener {
         }
     }
 
+    // Public home and claim finders
+
+    public List<Home> findHomes(UUID owner) {
+        return homes.stream().filter(h -> h.isOwner(owner)).collect(Collectors.toList());
+    }
+
+    public Home findHome(UUID owner, String name) {
+        return homes.stream().filter(h -> h.isOwner(owner) && h.isNamed(name)).findFirst().orElse(null);
+    }
+
+    public Home findPublicHome(String name) {
+        return homes.stream().filter(h -> name.equals(h.getPublicName())).findFirst().orElse(null);
+    }
+
+    public List<Claim> findClaims(UUID owner) {
+        return claims.stream().filter(c -> c.isOwner(owner)).collect(Collectors.toList());
+    }
+
+    public List<Claim> findClaimsInWorld(UUID owner, String w) {
+        final String world = mirrorWorlds.containsKey(w) ? mirrorWorlds.get(w) : w;
+        return claims.stream().filter(c -> c.isOwner(owner) && c.isInWorld(world)).collect(Collectors.toList());
+    }
+
+    public List<Claim> findClaimsInWorld(String w) {
+        final String world = mirrorWorlds.containsKey(w) ? mirrorWorlds.get(w) : w;
+        return claims.stream().filter(c -> c.isInWorld(world)).collect(Collectors.toList());
+    }
+
     // Event Handling
 
     enum Action {
@@ -1133,20 +1176,11 @@ public final class HomePlugin extends JavaPlugin implements Listener {
      */
     private boolean checkPlayerAction(Player player, Block block, Action action, Cancellable cancellable) {
         if (player.hasMetadata(META_IGNORE)) return true;
-        String blockWorld = block.getWorld().getName();
-        // Figure out claim world
-        String claimWorld;
-        if (blockWorld.equals(homeWorld)) {
-            claimWorld = homeWorld;
-        } else if (blockWorld.equals(homeNetherWorld)) {
-            claimWorld = homeWorld;
-        } else if (blockWorld.equals(homeTheEndWorld)) {
-            claimWorld = homeTheEndWorld;
-        } else {
-            return true;
-        }
+        String w = block.getWorld().getName();
+        if (!homeWorlds.contains(w)) return true;
+        final String world = mirrorWorlds.containsKey(w) ? mirrorWorlds.get(w) : w;
         // Find claim
-        Claim claim = claims.stream().filter(c -> c.isInWorld(claimWorld) && c.getArea().contains(block.getX(), block.getZ())).findFirst().orElse(null);
+        Claim claim = claims.stream().filter(c -> c.isInWorld(world) && c.getArea().contains(block.getX(), block.getZ())).findFirst().orElse(null);
         if (claim == null) {
             // Action is not in a claim.  Apply default permissions.
             // Building is not allowed, combat is.
@@ -1182,20 +1216,6 @@ public final class HomePlugin extends JavaPlugin implements Listener {
         if (cancellable != null) cancellable.setCancelled(true);
         return false;
     }
-
-    // private boolean autoCheckAction(Player player, Location location, Action action) {
-    //     return Claims.getInstance().autoCheckAction(plugin.createPlayer(player), plugin.createLocation(location), action);
-    // }
-
-    // private boolean autoCheckAction(Player player, Location location, Action action, Cancellable cancel) {
-    //     boolean result = autoCheckAction(player, location, action);
-    //     if (!result) cancel.setCancelled(true);
-    //     return result;
-    // }
-
-    // private boolean isWorldBlacklisted(World world) {
-    //     return plugin.getClaims().getWorldBlacklist().contains(world.getName());
-    // }
 
     /**
      * Utility function to determine whether a player owns an
@@ -1455,7 +1475,6 @@ public final class HomePlugin extends JavaPlugin implements Listener {
             Claim claim = getClaimAt(iter.next());
             if (claim == null || claim.getSetting(Claim.Setting.EXPLOSIONS) != Boolean.TRUE) {
                 iter.remove();
-                return;
             }
         }
     }

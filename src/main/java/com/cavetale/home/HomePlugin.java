@@ -302,7 +302,7 @@ public final class HomePlugin extends JavaPlugin implements Listener {
                     return true;
                 }
                 claim.setBlocks(claim.getBlocks() + meta.amount);
-                db.save(claim);
+                db.save(claim.toSQLRow());
                 if (claim.getSetting(Claim.Setting.AUTOGROW) == Boolean.TRUE) {
                     Msg.msg(player, ChatColor.WHITE, "Added %d blocks to this claim. It will grow automatically.", meta.amount);
                 } else {
@@ -506,7 +506,7 @@ public final class HomePlugin extends JavaPlugin implements Listener {
                         claim.getSettings().put(setting, value);
                     }
                 }
-                db.save(claim);
+                db.save(claim.toSQLRow());
                 showClaimSettings(claim, player);
                 return true;
             }
@@ -544,7 +544,7 @@ public final class HomePlugin extends JavaPlugin implements Listener {
                     }
                 }
                 claim.setArea(newArea);
-                db.save(claim);
+                db.save(claim.toSQLRow());
                 Msg.msg(player, ChatColor.BLUE, "Grew your claim to where you are standing");
                 highlightClaim(claim, player);
                 return true;
@@ -581,7 +581,7 @@ public final class HomePlugin extends JavaPlugin implements Listener {
                 }
                 Area newArea = new Area(ax, ay, bx, by);
                 claim.setArea(newArea);
-                db.save(claim);
+                db.save(claim.toSQLRow());
                 Msg.msg(player, ChatColor.BLUE, "Shrunk your claim to where you are standing");
                 highlightClaim(claim, player);
                 return true;
@@ -1013,7 +1013,7 @@ public final class HomePlugin extends JavaPlugin implements Listener {
             }
         }
         claim.setArea(newArea);
-        db.save(claim);
+        db.save(claim.toSQLRow());
     }
 
     // --- Configuration utility

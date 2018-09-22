@@ -253,11 +253,22 @@ public final class HomePlugin extends JavaPlugin implements Listener {
     }
 
     boolean onClaimCommand(CommandSender sender, Command command, String alias, String[] args) {
-        if (args.length == 0) return false;
         if (!(sender instanceof Player)) return false;
         final Player player = (Player)sender;
+        if (args.length == 0) {
+            if (player == null) return false;
+            Claim claim = getClaimAt(player.getLocation());
+            if (claim != null) {
+                printClaimInfo(player, claim);
+                return true;
+            }
+            return false;
+        }
         final UUID playerId = player.getUniqueId();
         switch (args[0]) {
+        case "new":
+            if (args.length == 1) return onNewclaimCommand(sender, command, alias, new String[0]);
+            break;
         case "buy":
             if (args.length == 2) {
                 int buyClaimBlocks;
@@ -318,54 +329,7 @@ public final class HomePlugin extends JavaPlugin implements Listener {
                     Msg.msg(player, ChatColor.RED, "Stand in the claim you want info on");
                     return true;
                 }
-                Msg.msg(player, ChatColor.GREEN, "Claim info");
-                Msg.raw(player,
-                        Msg.label(ChatColor.WHITE, "Owner "),
-                        Msg.label(ChatColor.GRAY, "%s", GenericEvents.cachedPlayerName(claim.getOwner())));
-                Msg.raw(player,
-                        Msg.label(ChatColor.WHITE, "Size "),
-                        Msg.label(ChatColor.GRAY, "%dx%d total %d", claim.getArea().width(), claim.getArea().height(), claim.getArea().size()));
-                // Members and Visitors
-                List<Object> ls;
-                for (int i = 0; i < 2; i += 1) {
-                    List<UUID> ids = null;
-                    String key = null;
-                    switch (i) {
-                    case 0: key = "Members"; ids = claim.getMembers(); break;
-                    case 1: key = "Visitors"; ids = claim.getVisitors(); break;
-                    default: continue;
-                    }
-                    if (ids.isEmpty()) continue;
-                    ls = new ArrayList<>();
-                    ls.add("");
-                    ls.add(Msg.label(ChatColor.WHITE, key));
-                    for (UUID id: ids) {
-                        ls.add(" ");
-                        ls.add(Msg.label(ChatColor.GRAY, GenericEvents.cachedPlayerName(id)));
-                    }
-                    Msg.raw(player, ls);
-                }
-                // Settings
-                ls = new ArrayList<>();
-                ls.add("");
-                ls.add(Msg.label(ChatColor.WHITE, "Settings"));
-                for (Claim.Setting setting: Claim.Setting.values()) {
-                    Object value = claim.getSetting(setting);
-                    if (value == null) continue;
-                    ls.add(Msg.label(ChatColor.GRAY, " %s:", setting.name().toLowerCase()));
-                    String valueString;
-                    ChatColor valueColor;
-                    if (value == Boolean.TRUE) {
-                        valueColor = ChatColor.BLUE; valueString = "on";
-                    } else if (value == Boolean.FALSE) {
-                        valueColor = ChatColor.RED; valueString = "off";
-                    } else {
-                        valueColor = ChatColor.GRAY; valueString = value.toString();
-                    }
-                    ls.add(Msg.label(valueColor, valueString));
-                }
-                Msg.raw(player, ls);
-                highlightClaim(claim, player);
+                printClaimInfo(player, claim);
                 return true;
             }
             break;
@@ -591,6 +555,57 @@ public final class HomePlugin extends JavaPlugin implements Listener {
             return false;
         }
         return false;
+    }
+
+    void printClaimInfo(Player player, Claim claim) {
+        Msg.msg(player, ChatColor.GREEN, "Claim info");
+        Msg.raw(player,
+                Msg.label(ChatColor.WHITE, "Owner "),
+                Msg.label(ChatColor.GRAY, "%s", GenericEvents.cachedPlayerName(claim.getOwner())));
+        Msg.raw(player,
+                Msg.label(ChatColor.WHITE, "Size "),
+                Msg.label(ChatColor.GRAY, "%dx%d total %d", claim.getArea().width(), claim.getArea().height(), claim.getArea().size()));
+        // Members and Visitors
+        List<Object> ls;
+        for (int i = 0; i < 2; i += 1) {
+            List<UUID> ids = null;
+            String key = null;
+            switch (i) {
+            case 0: key = "Members"; ids = claim.getMembers(); break;
+            case 1: key = "Visitors"; ids = claim.getVisitors(); break;
+            default: continue;
+            }
+            if (ids.isEmpty()) continue;
+            ls = new ArrayList<>();
+            ls.add("");
+            ls.add(Msg.label(ChatColor.WHITE, key));
+            for (UUID id: ids) {
+                ls.add(" ");
+                ls.add(Msg.label(ChatColor.GRAY, GenericEvents.cachedPlayerName(id)));
+            }
+            Msg.raw(player, ls);
+        }
+        // Settings
+        ls = new ArrayList<>();
+        ls.add("");
+        ls.add(Msg.label(ChatColor.WHITE, "Settings"));
+        for (Claim.Setting setting: Claim.Setting.values()) {
+            Object value = claim.getSetting(setting);
+            if (value == null) continue;
+            ls.add(Msg.label(ChatColor.GRAY, " %s:", setting.name().toLowerCase()));
+            String valueString;
+            ChatColor valueColor;
+            if (value == Boolean.TRUE) {
+                valueColor = ChatColor.BLUE; valueString = "on";
+            } else if (value == Boolean.FALSE) {
+                valueColor = ChatColor.RED; valueString = "off";
+            } else {
+                valueColor = ChatColor.GRAY; valueString = value.toString();
+            }
+            ls.add(Msg.label(valueColor, valueString));
+        }
+        Msg.raw(player, ls);
+        highlightClaim(claim, player);
     }
 
     boolean onNewclaimCommand(CommandSender sender, Command command, String alias, String[] args) {

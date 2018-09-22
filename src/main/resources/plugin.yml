@@ -47,6 +47,7 @@ commands:
     permission: home.claim
     usage: |-
       /claim - View your claim options
+      /claim new - Make a claim here
       /claim info - View claim info
       /claim new - Make a new claim
       /claim grow - Grow your claim

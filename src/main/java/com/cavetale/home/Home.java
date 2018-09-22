@@ -28,7 +28,7 @@ public final class Home {
     @Column(nullable = true, length = 32) private String publicName;
     final transient List<UUID> invites = new ArrayList<>();
 
-    Home() { }
+    public Home() { }
 
     Home(UUID owner, Location location, String name) {
         this.owner = owner;

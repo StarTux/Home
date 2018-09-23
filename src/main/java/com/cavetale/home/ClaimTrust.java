@@ -15,7 +15,7 @@ public final class ClaimTrust {
     @Column(nullable = false, length = 15) String type;
     @Column(nullable = false) UUID trustee;
 
-    static enum Type {
+    enum Type {
         MEMBER, VISIT;
     }
 

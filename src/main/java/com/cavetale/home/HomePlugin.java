@@ -43,6 +43,7 @@ import org.bukkit.event.block.BlockPistonExtendEvent;
 import org.bukkit.event.block.BlockPistonRetractEvent;
 import org.bukkit.event.block.BlockPlaceEvent;
 import org.bukkit.event.block.EntityBlockFormEvent;
+import org.bukkit.event.entity.CreatureSpawnEvent;
 import org.bukkit.event.entity.EntityChangeBlockEvent;
 import org.bukkit.event.entity.EntityCombustByEntityEvent;
 import org.bukkit.event.entity.EntityDamageByEntityEvent;
@@ -1650,6 +1651,15 @@ public final class HomePlugin extends JavaPlugin implements Listener {
                 player.removeMetadata(META_NOFALL, this);
                 event.setCancelled(true);
             }
+        }
+    }
+
+    @EventHandler(ignoreCancelled = true, priority = EventPriority.LOWEST)
+    public void onCreatureSpawn(CreatureSpawnEvent event) {
+        if (!isHomeWorld(event.getEntity().getLocation().getWorld())) return;
+        if (event.getEntity().getType() == EntityType.PHANTOM
+            && event.getSpawnReason() != CreatureSpawnEvent.SpawnReason.CUSTOM) {
+            event.setCancelled(true);
         }
     }
 }

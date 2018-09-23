@@ -706,9 +706,25 @@ public final class HomePlugin extends JavaPlugin implements Listener {
             return true;
         }
         if (args.length == 1) {
-            Home home = findHome(player.getUniqueId(), args[0]);
+            Home home;
+            String arg = args[0];
+            if (arg.contains(":")) {
+                String[] toks = arg.split(":", 2);
+                UUID targetId = GenericEvents.cachedPlayerUuid(toks[0]);
+                if (targetId == null) {
+                    Msg.msg(player, ChatColor.RED, "Player not found: %s", toks[0]);
+                    return true;
+                }
+                home = findHome(targetId, toks[1].isEmpty() ? null : toks[1]);
+                if (home == null || !home.isInvited(player.getUniqueId())) {
+                    Msg.msg(player, ChatColor.RED, "Home not found.");
+                    return true;
+                }
+            } else {
+                home = findHome(player.getUniqueId(), arg);
+            }
             if (home == null) {
-                Msg.msg(player, ChatColor.RED, "Home not found: %s", args[0]);
+                Msg.msg(player, ChatColor.RED, "Home not found: %s", arg);
                 return true;
             }
             Location location = home.createLocation();
@@ -716,6 +732,8 @@ public final class HomePlugin extends JavaPlugin implements Listener {
                 Msg.msg(player, ChatColor.RED, "Home \"%s\" could not be found");
                 return true;
             }
+            Msg.msg(player, ChatColor.GREEN, "Going home.");
+            Msg.title(player, "", "7aGoing home.");
             player.teleport(location);
             return true;
         }
@@ -783,6 +801,7 @@ public final class HomePlugin extends JavaPlugin implements Listener {
                 Msg.msg(player, ChatColor.YELLOW, "No homes to show");
                 return true;
             }
+            player.sendMessage("");
             Msg.msg(player, ChatColor.BLUE, "You have %d homes", playerHomes.size());
             for (Home home: playerHomes) {
                 Object nameButton;
@@ -796,6 +815,11 @@ public final class HomePlugin extends JavaPlugin implements Listener {
                         Msg.label(ChatColor.BLUE, "+ "),
                         nameButton);
             }
+            Msg.raw(player, Msg.button(ChatColor.BLUE, "[Set]", "/home set ", "&9/homes set [name]\n&d&oSet a home."),
+                    "  ", Msg.button(ChatColor.GREEN, "[Invite]", "/home invite ", "&9/homes invite &oPLAYER HOME\n&d&oSet a home."),
+                    "  ", Msg.button(ChatColor.AQUA, "[Invite]", "/home invite ", "&9/homes invite &oHOME ALIAS\n&d&oMake home public."),
+                    "  ", Msg.button(ChatColor.RED, "[Delete]", "/home delete ", "&9/homes delete &oHOME\n&d&oDelete home."));
+            player.sendMessage("");
             return true;
         }
         switch (args[0]) {

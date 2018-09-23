@@ -67,6 +67,10 @@ public final class Home {
         return this.world.equals(worldName);
     }
 
+    boolean isInvited(UUID playerId) {
+        return invites.contains(playerId);
+    }
+
     // Supports null check for primary homes
     boolean isNamed(String homeName) {
         if ((name == null) != (homeName == null)) return false;

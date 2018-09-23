@@ -78,7 +78,7 @@ final class Msg {
             Map<String, Object> hoverEvent = new HashMap<>();
             map.put("hoverEvent", hoverEvent);
             hoverEvent.put("action", "show_text");
-            hoverEvent.put("value", tooltip);
+            hoverEvent.put("value", format(tooltip));
         }
         return map;
     }

@@ -887,7 +887,7 @@ public final class HomePlugin extends JavaPlugin implements Listener {
             return true;
         }
         if (!home.invites.contains(targetId)) {
-            HomeInvite invite = new HomeInvite(targetId);
+            HomeInvite invite = new HomeInvite(home.getId(), targetId);
             db.save(invite);
             home.invites.add(targetId);
         }

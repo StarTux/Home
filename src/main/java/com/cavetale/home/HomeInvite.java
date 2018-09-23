@@ -16,8 +16,9 @@ public final class HomeInvite {
 
     public HomeInvite() { }
 
-    HomeInvite(UUID invitee) {
+    HomeInvite(int homeId, UUID invitee) {
         if (invitee == null) throw new NullPointerException("Invitee cannot be null");
+        this.homeId = homeId;
         this.invitee = invitee;
     }
 }

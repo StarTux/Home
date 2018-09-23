@@ -35,7 +35,14 @@ commands:
     permission: home.home
     usage: |-
       /sethome - Set your primary home
-      /sethome NAME - set a named home
+      /sethome NAME - Set a named home
+  invitehome:
+    aliases: []
+    description: Invite someone to your home
+    permission: home.home
+    usage: |-
+      /invitehome PLAYER - Invite to primary home
+      /invitehome PLAYER NAME - Invite to named home
   visit:
     aliases: []
     description: Visit a public home

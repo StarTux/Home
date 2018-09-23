@@ -104,6 +104,7 @@ public final class HomePlugin extends JavaPlugin implements Listener {
         getCommand("newclaim").setExecutor((s, c, l, a) -> onNewclaimCommand(s, c, l, a));
         getCommand("home").setExecutor((s, c, l, a) -> onHomeCommand(s, c, l, a));
         getCommand("sethome").setExecutor((s, c, l, a) -> onSethomeCommand(s, c, l, a));
+        getCommand("invitehome").setExecutor((s, c, l, a) -> onInviteHomeCommand(s, c, l, a));
         getCommand("homes").setExecutor((s, c, l, a) -> onHomesCommand(s, c, l, a));
         getCommand("visit").setExecutor((s, c, l, a) -> onVisitCommand(s, c, l, a));
         getCommand("build").setExecutor((s, c, l, a) -> onBuildCommand(s, c, l, a));
@@ -760,6 +761,8 @@ public final class HomePlugin extends JavaPlugin implements Listener {
         if (home == null) {
             home = new Home(playerId, player.getLocation(), homeName);
             homes.add(home);
+        } else {
+            home.setLocation(player.getLocation());
         }
         db.save(home);
         if (homeName == null) {
@@ -800,42 +803,7 @@ public final class HomePlugin extends JavaPlugin implements Listener {
             return onSethomeCommand(sender, command, alias, Arrays.copyOfRange(args, 1, args.length));
         case "invite":
             if (args.length == 2 || args.length == 3) {
-                String targetName = args[1];
-                UUID targetId = GenericEvents.cachedPlayerUuid(targetName);
-                if (targetId == null) {
-                    Msg.msg(player, ChatColor.RED, "Player not found: %s", targetName);
-                    return true;
-                }
-                String homeName = args.length >= 3 ? args[2] : null;
-                Home home = findHome(playerId, homeName);
-                if (home == null) {
-                    if (homeName == null) {
-                        Msg.msg(player, ChatColor.RED, "Your primary home is not set");
-                    } else {
-                        Msg.msg(player, ChatColor.RED, "You have no home named %s", homeName);
-                    }
-                    return true;
-                }
-                if (!home.invites.contains(targetId)) {
-                    HomeInvite invite = new HomeInvite(targetId);
-                    db.save(invite);
-                    home.invites.add(targetId);
-                }
-                Msg.msg(player, ChatColor.GREEN, "Invite sent to %s", targetName);
-                Player target = getServer().getPlayer(targetId);
-                if (target == null) return true;
-                if (home.getName() == null) {
-                    String cmd = "/home " + player.getName() + ":";
-                    Msg.raw(target, "",
-                            Msg.label(ChatColor.WHITE, player.getName() + " invited you to their primary home: "),
-                            Msg.button(ChatColor.GREEN, "[Visit]", cmd, "&a" + cmd + "\nVisit this home"));
-                } else {
-                    String cmd = "/home " + player.getName() + ":" + home.getName();
-                    Msg.raw(target, "",
-                            Msg.label(ChatColor.WHITE, player.getName() + " invited you to their home: "),
-                            Msg.button(ChatColor.GREEN, "[" + home.getName() + "]", cmd, "&a" + cmd + "\nVisit this home"));
-                }
-                return true;
+                return onInviteHomeCommand(sender, command, alias, Arrays.copyOfRange(args, 1, args.length));
             }
             break;
         case "public":
@@ -895,6 +863,49 @@ public final class HomePlugin extends JavaPlugin implements Listener {
             break;
         }
         return false;
+    }
+
+    boolean onInviteHomeCommand(CommandSender sender, Command command, String alias, String[] args) {
+        if (!(sender instanceof Player)) return false;
+        if (args.length < 1 || args.length > 2) return false;
+        final Player player = (Player)sender;
+        final UUID playerId = player.getUniqueId();
+        String targetName = args[1];
+        UUID targetId = GenericEvents.cachedPlayerUuid(targetName);
+        if (targetId == null) {
+            Msg.msg(player, ChatColor.RED, "Player not found: %s", targetName);
+            return true;
+        }
+        String homeName = args.length >= 3 ? args[2] : null;
+        Home home = findHome(playerId, homeName);
+        if (home == null) {
+            if (homeName == null) {
+                Msg.msg(player, ChatColor.RED, "Your primary home is not set");
+            } else {
+                Msg.msg(player, ChatColor.RED, "You have no home named %s", homeName);
+            }
+            return true;
+        }
+        if (!home.invites.contains(targetId)) {
+            HomeInvite invite = new HomeInvite(targetId);
+            db.save(invite);
+            home.invites.add(targetId);
+        }
+        Msg.msg(player, ChatColor.GREEN, "Invite sent to %s", targetName);
+        Player target = getServer().getPlayer(targetId);
+        if (target == null) return true;
+        if (home.getName() == null) {
+            String cmd = "/home " + player.getName() + ":";
+            Msg.raw(target, "",
+                    Msg.label(ChatColor.WHITE, player.getName() + " invited you to their primary home: "),
+                    Msg.button(ChatColor.GREEN, "[Visit]", cmd, "&a" + cmd + "\nVisit this home"));
+        } else {
+            String cmd = "/home " + player.getName() + ":" + home.getName();
+            Msg.raw(target, "",
+                    Msg.label(ChatColor.WHITE, player.getName() + " invited you to their home: "),
+                    Msg.button(ChatColor.GREEN, "[" + home.getName() + "]", cmd, "&a" + cmd + "\nVisit this home"));
+        }
+        return true;
     }
 
     boolean onVisitCommand(CommandSender sender, Command command, String alias, String[] args) {

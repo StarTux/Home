@@ -817,7 +817,7 @@ public final class HomePlugin extends JavaPlugin implements Listener {
             }
             Msg.raw(player, Msg.button(ChatColor.BLUE, "[Set]", "/home set ", "&9/homes set [name]\n&d&oSet a home."),
                     "  ", Msg.button(ChatColor.GREEN, "[Invite]", "/home invite ", "&9/homes invite &oPLAYER HOME\n&d&oSet a home."),
-                    "  ", Msg.button(ChatColor.AQUA, "[Invite]", "/home invite ", "&9/homes invite &oHOME ALIAS\n&d&oMake home public."),
+                    "  ", Msg.button(ChatColor.AQUA, "[Public]", "/home public ", "&9/homes invite &oHOME ALIAS\n&d&oMake home public."),
                     "  ", Msg.button(ChatColor.RED, "[Delete]", "/home delete ", "&9/homes delete &oHOME\n&d&oDelete home."));
             player.sendMessage("");
             return true;

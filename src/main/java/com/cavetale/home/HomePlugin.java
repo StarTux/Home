@@ -870,13 +870,13 @@ public final class HomePlugin extends JavaPlugin implements Listener {
         if (args.length < 1 || args.length > 2) return false;
         final Player player = (Player)sender;
         final UUID playerId = player.getUniqueId();
-        String targetName = args[1];
+        String targetName = args[0];
         UUID targetId = GenericEvents.cachedPlayerUuid(targetName);
         if (targetId == null) {
             Msg.msg(player, ChatColor.RED, "Player not found: %s", targetName);
             return true;
         }
-        String homeName = args.length >= 3 ? args[2] : null;
+        String homeName = args.length >= 2 ? args[1] : null;
         Home home = findHome(playerId, homeName);
         if (home == null) {
             if (homeName == null) {

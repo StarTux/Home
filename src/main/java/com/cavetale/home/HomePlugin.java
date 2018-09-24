@@ -13,7 +13,11 @@ import java.util.UUID;
 import java.util.stream.Collectors;
 import lombok.Getter;
 import lombok.Value;
-import org.bukkit.ChatColor;
+import net.md_5.bungee.api.ChatColor;
+import net.md_5.bungee.api.chat.ClickEvent;
+import net.md_5.bungee.api.chat.ComponentBuilder;
+import net.md_5.bungee.api.chat.HoverEvent;
+import net.md_5.bungee.api.chat.TextComponent;
 import org.bukkit.GameMode;
 import org.bukkit.Location;
 import org.bukkit.Material;
@@ -104,9 +108,11 @@ public final class HomePlugin extends JavaPlugin implements Listener {
         getCommand("claim").setExecutor((s, c, l, a) -> onClaimCommand(s, c, l, a));
         getCommand("newclaim").setExecutor((s, c, l, a) -> onNewclaimCommand(s, c, l, a));
         getCommand("home").setExecutor((s, c, l, a) -> onHomeCommand(s, c, l, a));
+        getCommand("home").setTabCompleter((s, c, l, a) -> onHomeTabComplete(s, c, l, a));
         getCommand("sethome").setExecutor((s, c, l, a) -> onSethomeCommand(s, c, l, a));
         getCommand("invitehome").setExecutor((s, c, l, a) -> onInviteHomeCommand(s, c, l, a));
         getCommand("homes").setExecutor((s, c, l, a) -> onHomesCommand(s, c, l, a));
+        getCommand("homes").setTabCompleter((s, c, l, a) -> onHomesTabComplete(s, c, l, a));
         getCommand("visit").setExecutor((s, c, l, a) -> onVisitCommand(s, c, l, a));
         getCommand("build").setExecutor((s, c, l, a) -> onBuildCommand(s, c, l, a));
         loadFromConfig();
@@ -141,8 +147,6 @@ public final class HomePlugin extends JavaPlugin implements Listener {
         String token;
     }
 
-    // --- Player interactivity
-
     void onTick() {
         for (Player player: getServer().getOnlinePlayers()) {
             if (player.hasMetadata(META_NOFALL)) {
@@ -152,7 +156,7 @@ public final class HomePlugin extends JavaPlugin implements Listener {
                     player.addPotionEffect(new PotionEffect(PotionEffectType.SLOW_FALLING, 100, 0));
                 }
             }
-            if (player.hasMetadata(META_IGNORE)) continue;
+            if (player.hasMetadata(META_IGNORE) || player.isOp()) continue;
             if (!isHomeWorld(player.getWorld())) {
                 player.removeMetadata(META_LOCATION, this);
                 continue;
@@ -165,7 +169,7 @@ public final class HomePlugin extends JavaPlugin implements Listener {
                 if (cl1 == null) cl1 = cl2; // Taking the easy way out
                 player.setMetadata(META_LOCATION, new FixedMetadataValue(this, cl2));
                 if (claim == null) {
-                    if (player.getGameMode() != GameMode.ADVENTURE && !player.hasMetadata(META_IGNORE)) {
+                    if (player.getGameMode() != GameMode.ADVENTURE && !player.hasMetadata(META_IGNORE) && !player.isOp()) {
                         player.setGameMode(GameMode.ADVENTURE);
                     }
                     if (cl1.claimId != cl2.claimId) {
@@ -188,7 +192,7 @@ public final class HomePlugin extends JavaPlugin implements Listener {
                         autoGrowClaim(claim);
                     }
                     if (claim.isOwner(playerId) || claim.canBuild(playerId)) {
-                        if (player.getGameMode() != GameMode.SURVIVAL && !player.hasMetadata(META_IGNORE)) {
+                        if (player.getGameMode() != GameMode.SURVIVAL && !player.hasMetadata(META_IGNORE) && !player.isOp()) {
                             player.setGameMode(GameMode.SURVIVAL);
                         }
                     } else {
@@ -208,6 +212,8 @@ public final class HomePlugin extends JavaPlugin implements Listener {
             }
         }
     }
+
+    // --- Player interactivity
 
     boolean onHomeadminCommand(CommandSender sender, Command command, String alias, String[] args) {
         if (args.length == 0) return false;
@@ -298,7 +304,7 @@ public final class HomePlugin extends JavaPlugin implements Listener {
                 player.setMetadata(META_BUY, new FixedMetadataValue(this, meta));
                 Msg.raw(player, "",
                         Msg.label(ChatColor.WHITE, "Click here to confirm this purchase: "),
-                        Msg.button(ChatColor.GREEN, "[Buy]", "/claim confirm " + meta.token, "&aConfirm\nBuy " + buyClaimBlocks + " for " + priceFormat + "."));
+                        Msg.button(ChatColor.GREEN, "[Buy]", "/claim confirm " + meta.token, "§aConfirm\nBuy " + buyClaimBlocks + " for " + priceFormat + "."));
                 return true;
             }
             break;
@@ -500,7 +506,7 @@ public final class HomePlugin extends JavaPlugin implements Listener {
                 if (claim.getBlocks() < newArea.size()) {
                     Msg.raw(player,
                             Msg.label(ChatColor.RED, "%s more claim blocks required. ", newArea.size() - claim.getBlocks()),
-                            Msg.button(ChatColor.RED, "[Buy More]", "/claim buy ", Msg.format("&9/claim buy <amount>\n&fBuy more claim blocks")));
+                            Msg.button(ChatColor.RED, "[Buy More]", "/claim buy ", Msg.format("§9/claim buy <amount>\n§fBuy more claim blocks")));
                     return true;
                 }
                 for (Claim other: claims) {
@@ -566,7 +572,7 @@ public final class HomePlugin extends JavaPlugin implements Listener {
                 Msg.label(ChatColor.GRAY, "%s", GenericEvents.cachedPlayerName(claim.getOwner())));
         Msg.raw(player,
                 Msg.label(ChatColor.WHITE, "Size "),
-                Msg.label(ChatColor.GRAY, "%dx%d total %d", claim.getArea().width(), claim.getArea().height(), claim.getArea().size()));
+                Msg.label(ChatColor.GRAY, "%dx%d = %d/%d claim blocks", claim.getArea().width(), claim.getArea().height(), claim.getArea().size(), claim.getBlocks()));
         // Members and Visitors
         List<Object> ls;
         for (int i = 0; i < 2; i += 1) {
@@ -803,23 +809,49 @@ public final class HomePlugin extends JavaPlugin implements Listener {
                 return true;
             }
             player.sendMessage("");
-            Msg.msg(player, ChatColor.BLUE, "You have %d homes", playerHomes.size());
+            if (playerHomes.size() == 1) {
+                Msg.msg(player, ChatColor.BLUE, "You have one home", playerHomes.size());
+            } else {
+                Msg.msg(player, ChatColor.BLUE, "You have %d homes", playerHomes.size());
+            }
             for (Home home: playerHomes) {
+                List<Object> json = new ArrayList<>();
                 Object nameButton;
                 if (home.getName() == null) {
-                    nameButton = Msg.button(ChatColor.GRAY, "&oPrimary", "/home", "&9/home\nTeleport to your primary home");
+                    nameButton = Msg.button(ChatColor.GRAY, "§oPrimary", "/home", "§9/home\nTeleport to your primary home");
                 } else {
                     String cmd = "/home " + home.getName();
-                    nameButton = Msg.button(ChatColor.WHITE, home.getName(), cmd, "&9" + cmd + "\nTeleport to home \"" + home.getName() + "\"");
+                    nameButton = Msg.button(ChatColor.WHITE, home.getName(), cmd, "§9" + cmd + "\nTeleport to home \"" + home.getName() + "\"");
                 }
-                Msg.raw(player, "",
-                        Msg.label(ChatColor.BLUE, "+ "),
-                        nameButton);
+                json.add("");
+                json.add(Msg.label(ChatColor.BLUE, " + "));
+                json.add(nameButton);
+                json.add(" ");
+                String infocmd = home.getName() == null ? "/homes info" : "/homes info " + home.getName();
+                json.add(Msg.button(ChatColor.GRAY, " (i)", infocmd, "§c" + infocmd + "\n§d§oMore info."));
+                if (home.getInvites().size() == 1) json.add(Msg.label(ChatColor.GREEN, " 1 invite"));
+                if (home.getInvites().size() > 1) json.add(Msg.label(ChatColor.GREEN, " " + home.getInvites().size() + " invites"));
+                if (home.getPublicName() != null) json.add(Msg.label(ChatColor.AQUA, " public"));
+                Msg.raw(player, json);
             }
-            Msg.raw(player, Msg.button(ChatColor.BLUE, "[Set]", "/home set ", "&9/homes set [name]\n&d&oSet a home."),
-                    "  ", Msg.button(ChatColor.GREEN, "[Invite]", "/home invite ", "&9/homes invite &oPLAYER HOME\n&d&oSet a home."),
-                    "  ", Msg.button(ChatColor.AQUA, "[Public]", "/home public ", "&9/homes invite &oHOME ALIAS\n&d&oMake home public."),
-                    "  ", Msg.button(ChatColor.RED, "[Delete]", "/home delete ", "&9/homes delete &oHOME\n&d&oDelete home."));
+            int homeInvites = (int)homes.stream().filter(h -> h.isInvited(playerId)).count();
+            if (homeInvites > 0) {
+                ComponentBuilder cb = new ComponentBuilder(" ");
+                if (homeInvites == 1) {
+                    cb.append("You have one home invite ").color(ChatColor.BLUE);
+                } else {
+                    cb.append("You have " + homeInvites + " home invites ").color(ChatColor.BLUE);
+                }
+                cb.append("[List]").color(ChatColor.LIGHT_PURPLE)
+                    .event(new ClickEvent(ClickEvent.Action.RUN_COMMAND, "/homes invites"))
+                    .event(new HoverEvent(HoverEvent.Action.SHOW_TEXT, TextComponent.fromLegacyText("§d/homes invites\n§d§oList home invites")));
+                player.spigot().sendMessage(cb.create());
+            }
+            Msg.raw(player, Msg.button(ChatColor.BLUE, "[Set]", "/home set ", "§9/homes set [name]\n§d§oSet a home."),
+                    "  ", Msg.button(ChatColor.GRAY, "[Info]", "/home info ", "§7/homes info §oHOME\n§d§oGet home info."),
+                    "  ", Msg.button(ChatColor.GREEN, "[Invite]", "/home invite ", "§a/homes invite §oPLAYER HOME\n§d§oSet a home."),
+                    "  ", Msg.button(ChatColor.AQUA, "[Public]", "/home public ", "§b/homes invite §oHOME ALIAS\n§d§oMake home public."),
+                    "  ", Msg.button(ChatColor.RED, "[Delete]", "/home delete ", "§c/homes delete §oHOME\n§d§oDelete home."));
             player.sendMessage("");
             return true;
         }
@@ -857,7 +889,7 @@ public final class HomePlugin extends JavaPlugin implements Listener {
                 String cmd = "/visit " + publicName;
                 Msg.raw(player, "",
                         Msg.label(ChatColor.WHITE, "Home made public. Players may visit via "),
-                        Msg.button(ChatColor.GREEN, cmd, cmd, "&a" + cmd + "\nCan also be found under /visit."));
+                        Msg.button(ChatColor.GREEN, cmd, cmd, "§a" + cmd + "\nCan also be found under /visit."));
                 return true;
             }
             break;
@@ -877,10 +909,55 @@ public final class HomePlugin extends JavaPlugin implements Listener {
                 db.delete(home);
                 homes.remove(home);
                 if (homeName == null) {
-                    Msg.msg(player, ChatColor.YELLOW, "Primary home unset. The &o/home&e command will take you to your bed spawn or primary claim.");
+                    Msg.msg(player, ChatColor.YELLOW, "Primary home unset. The §o/home§e command will take you to your bed spawn or primary claim.");
                 } else {
                     Msg.msg(player, ChatColor.YELLOW, "Home \"%s\" deleted", homeName);
                 }
+                return true;
+            }
+            break;
+        case "info":
+            if (args.length == 1 || args.length == 2) {
+                Home home;
+                if (args.length == 1) {
+                    home = findHome(playerId, null);
+                } else {
+                    home = findHome(playerId, args[1]);
+                }
+                if (home == null) {
+                    Msg.msg(player, ChatColor.RED, "Home not found.");
+                    return true;
+                }
+                player.sendMessage("");
+                if (home.getName() == null) {
+                    Msg.msg(player, ChatColor.BLUE, "Primary Home Info");
+                } else {
+                    Msg.msg(player, ChatColor.BLUE, "Home Info: %s", home.getName());
+                }
+                StringBuilder sb = new StringBuilder();
+                for (UUID inviteId: home.getInvites()) {
+                    sb.append(" ").append(GenericEvents.cachedPlayerName(inviteId));
+                }
+                Msg.msg(player, ChatColor.WHITE, " §7Location: §f%s %d,%d,%d", home.getWorld(), (int)Math.floor(home.getX()), (int)Math.floor(home.getY()), (int)Math.floor(home.getZ()));
+                Msg.msg(player, ChatColor.WHITE, " §7Invited: §f%s", sb.toString());
+                Msg.msg(player, ChatColor.WHITE, " §7Public: §f%s", home.getPublicName() == null ? "yes" : "no");
+                player.sendMessage("");
+                return true;
+            }
+            break;
+        case "invites":
+            if (args.length == 1) {
+                ComponentBuilder cb = new ComponentBuilder("Your invites:").color(ChatColor.GRAY);
+                for (Home home: homes) {
+                    if (home.isInvited(playerId)) {
+                        String homename = home.getName() == null ? home.getOwnerName() + ":" : home.getOwnerName() + ":" + home.getName();
+                        cb.append(" ");
+                        cb.append(homename).color(ChatColor.GREEN)
+                            .event(new ClickEvent(ClickEvent.Action.RUN_COMMAND, "/home " + homename))
+                            .event(new HoverEvent(HoverEvent.Action.SHOW_TEXT, TextComponent.fromLegacyText("§a/home " + homename + "\n§d§oUse this home invite.")));
+                    }
+                }
+                player.spigot().sendMessage(cb.create());
                 return true;
             }
             break;
@@ -923,12 +1000,12 @@ public final class HomePlugin extends JavaPlugin implements Listener {
             String cmd = "/home " + player.getName() + ":";
             Msg.raw(target, "",
                     Msg.label(ChatColor.WHITE, player.getName() + " invited you to their primary home: "),
-                    Msg.button(ChatColor.GREEN, "[Visit]", cmd, "&a" + cmd + "\nVisit this home"));
+                    Msg.button(ChatColor.GREEN, "[Visit]", cmd, "§a" + cmd + "\nVisit this home"));
         } else {
             String cmd = "/home " + player.getName() + ":" + home.getName();
             Msg.raw(target, "",
                     Msg.label(ChatColor.WHITE, player.getName() + " invited you to their home: "),
-                    Msg.button(ChatColor.GREEN, "[" + home.getName() + "]", cmd, "&a" + cmd + "\nVisit this home"));
+                    Msg.button(ChatColor.GREEN, "[" + home.getName() + "]", cmd, "§a" + cmd + "\nVisit this home"));
         }
         return true;
     }
@@ -943,7 +1020,7 @@ public final class HomePlugin extends JavaPlugin implements Listener {
                 String cmd = "/visit " + home.getPublicName();
                 Msg.raw(player, "",
                         Msg.label(ChatColor.GREEN, "+ "),
-                        Msg.button(ChatColor.WHITE, home.getPublicName(), cmd, "&9" + cmd + "\nVisit this home"),
+                        Msg.button(ChatColor.WHITE, home.getPublicName(), cmd, "§9" + cmd + "\nVisit this home"),
                         Msg.label(ChatColor.GRAY, " by " + home.getOwnerName()));
             }
             return true;
@@ -969,12 +1046,49 @@ public final class HomePlugin extends JavaPlugin implements Listener {
         final Player player = (Player)sender;
         final UUID playerId = player.getUniqueId();
         if (!player.hasMetadata(META_IGNORE)
+            && !player.isOp()
             && !findClaimsInWorld(playerId, primaryHomeWorld).isEmpty()) {
             Msg.msg(player, ChatColor.RED, "You already have a claim!");
             return true;
         }
         findPlaceToBuild(player);
         return true;
+    }
+
+    public List<String> onHomeTabComplete(CommandSender sender, Command command, String alias, String[] args) {
+        if (!(sender instanceof Player)) return null;
+        Player player = (Player)sender;
+        UUID playerId = player.getUniqueId();
+        List<String> result = new ArrayList<>();
+        String arg = args.length == 0 ? "" : args[args.length - 1];
+        if (args.length == 1) {
+            for (Home home: homes) {
+                if (home.isOwner(playerId)) {
+                    if (home.getName() != null && home.getName().startsWith(arg)) {
+                        result.add(home.getName());
+                    }
+                } else {
+                    if (home.isInvited(playerId)) {
+                        String name;
+                        if (home.getName() == null) {
+                            name = home.getOwnerName() + ":";
+                        } else {
+                            name = home.getOwnerName() + ":" + home.getName();
+                        }
+                        if (name.startsWith(arg)) result.add(name);
+                    }
+                }
+            }
+        }
+        return result;
+    }
+
+    public List<String> onHomesTabComplete(CommandSender sender, Command command, String alias, String[] args) {
+        String arg = args.length == 0 ? "" : args[args.length - 1];
+        if (alias.equals("homes") && args.length == 1) {
+            return Arrays.asList("set", "invite", "public", "delete", "info", "invites").stream().filter(i -> i.startsWith(arg)).collect(Collectors.toList());
+        }
+        return null;
     }
 
     void findPlaceToBuild(Player player) {
@@ -1025,9 +1139,9 @@ public final class HomePlugin extends JavaPlugin implements Listener {
         player.teleport(location);
         Msg.raw(player, "",
                 Msg.label(ChatColor.WHITE, "Found you a place to build. "),
-                Msg.button(ChatColor.GREEN, "[Claim]", "/newclaim ", Msg.format("&a/newclaim&f&o\nCreate a claim and set a home at this location so you can build and return any time.")),
+                Msg.button(ChatColor.GREEN, "[Claim]", "/newclaim ", Msg.format("§a/newclaim§f§o\nCreate a claim and set a home at this location so you can build and return any time.")),
                 Msg.label(ChatColor.WHITE, " it or "),
-                Msg.button(ChatColor.YELLOW, "[Retry]", "/home", Msg.format("&a/home&f&o\nFind another random location.")));
+                Msg.button(ChatColor.YELLOW, "[Retry]", "/home", Msg.format("§a/home§f§o\nFind another random location.")));
         player.setMetadata(META_COOLDOWN_WILD, new FixedMetadataValue(this, System.nanoTime()));
         player.setMetadata(META_NOFALL, new FixedMetadataValue(this, System.nanoTime()));
     }
@@ -1226,7 +1340,7 @@ public final class HomePlugin extends JavaPlugin implements Listener {
      * @return True if the event is permitted, false otherwise.
      */
     private boolean checkPlayerAction(Player player, Block block, Action action, Cancellable cancellable) {
-        if (player.hasMetadata(META_IGNORE)) return true;
+        if (player.hasMetadata(META_IGNORE) || player.isOp()) return true;
         String w = block.getWorld().getName();
         if (!homeWorlds.contains(w)) return true;
         final String world = mirrorWorlds.containsKey(w) ? mirrorWorlds.get(w) : w;

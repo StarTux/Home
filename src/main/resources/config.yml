@@ -11,3 +11,5 @@ HomeMargin: 64 # Minimum distance between old and new homes
 BuildCooldown: 10 # In seconds
 ClaimBlockCost: 0.1 # Cost per claim block
 ManageGameMode: true # Set survival or adventure GameMode in home world
+InitialClaimSize: 128 # Length of new claims
+SecondaryClaimSize: 32 # Length of additional claims

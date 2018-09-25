@@ -1,6 +1,8 @@
 package com.cavetale.home;
 
+import com.winthier.generic_events.GenericEvents;
 import java.util.ArrayList;
+import java.util.Date;
 import java.util.EnumMap;
 import java.util.LinkedHashMap;
 import java.util.List;
@@ -10,6 +12,7 @@ import javax.persistence.Column;
 import javax.persistence.Id;
 import javax.persistence.Table;
 import lombok.Data;
+import org.bukkit.Location;
 import org.json.simple.JSONValue;
 
 @Data
@@ -21,8 +24,10 @@ final class Claim {
     Area area;
     final List<UUID> members = new ArrayList<>(); // Can build
     final List<UUID> visitors = new ArrayList<>(); // Can visit
-    final Map<Setting, Object> settings = new EnumMap<>(Setting.class);
     int blocks;
+    long created;
+    final Map<Setting, Object> settings = new EnumMap<>(Setting.class);
+    public static final UUID ADMIN_ID = new UUID(0L, 0L);
 
     Claim(HomePlugin plugin) {
         this.plugin = plugin;
@@ -34,6 +39,7 @@ final class Claim {
         this.world = world;
         this.area = area;
         this.blocks = area.size();
+        this.created = System.currentTimeMillis();
     }
 
     enum Setting {
@@ -67,6 +73,7 @@ final class Claim {
         @Column(nullable = false) private Integer ax, ay, bx, by;
         @Column(nullable = false) private Integer blocks;
         @Column(nullable = false, length = 255) private String settings;
+        @Column(nullable = false) private Date created;
     }
 
     SQLRow toSQLRow() {
@@ -79,6 +86,7 @@ final class Claim {
         row.bx = this.area.bx;
         row.by = this.area.by;
         row.blocks = this.blocks;
+        row.created = new Date(created);
         Map<String, Object> settingsMap = new LinkedHashMap<>();
         for (Map.Entry<Setting, Object> setting: settings.entrySet()) {
             settingsMap.put(setting.getKey().name().toLowerCase(), setting.getValue());
@@ -93,6 +101,7 @@ final class Claim {
         this.world = row.world;
         this.area = new Area(row.ax, row.ay, row.bx, row.by);
         this.blocks = row.blocks;
+        this.created = row.getCreated().getTime();
         @SuppressWarnings("unchecked")
         Map<String, Object> settingsMap = (Map<String, Object>)JSONValue.parse(row.getSettings());
         settings.clear();
@@ -127,5 +136,16 @@ final class Claim {
 
     boolean isInWorld(String worldName) {
         return this.world.equals(worldName);
+    }
+
+    String getOwnerName() {
+        if (ADMIN_ID.equals(owner)) return "admin";
+        return GenericEvents.cachedPlayerName(owner);
+    }
+
+    boolean contains(Location location) {
+        String lwn = location.getWorld().getName();
+        if (!world.equals(lwn) && !world.equals(plugin.getMirrorWorlds().get(lwn))) return false;
+        return area.contains(location.getBlockX(), location.getBlockZ());
     }
 }

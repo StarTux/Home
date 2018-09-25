@@ -12,6 +12,13 @@ commands:
     aliases: [ claimadmin ]
     description: Admin command
     permisson: home.admin
+    usage: |-
+      /homeadmin claims - list claims
+      /homeadmin ignore - ignore claims
+      /homeadmin reload - db and config
+      /homeadmin debug - debug spam
+      /homeadmin giveclaimblocks - Give blocks to claim
+      /homeadmin deleteclaim - Delete claim
   home:
     aliases: []
     description: Go to your primary home
@@ -49,15 +56,14 @@ commands:
     permission: home.visit
     usage: |
   claim:
-    aliases: [ claims ]
+    aliases: [ c, cl, claims ]
     description: Manage your claims.
     permission: home.claim
     usage: |-
       /claim - View your claim options
       /claim new - Make a claim here
       /claim info - View claim info
-      /claim new - Make a new claim
-      /claim grow - Grow your claim
+      /claim home [id] - Teleport to claim
       /claim buy - Buy new claim blocks
       /claim add <player> - Add a member
       /claim invite <player> - Add visitor
@@ -65,16 +71,12 @@ commands:
       /claim set - View or edit claim settings
       /claim grow - Grow claim to your location
       /claim shrink - Grow claim to your location
+      /claim abandon - Abandon your claim
   build:
     aliases: [ wild ]
     description: Find a place to build.
     permission: home.build
     usage: /build - Find a place to build.
-  newclaim:
-    aliases: []
-    description: Make a new claim
-    permission: home.claim
-    usage: /newclaim - Make a new claim
 permissions:
   home.home:
     description: Use homes

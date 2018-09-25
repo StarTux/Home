@@ -93,6 +93,7 @@ public final class HomePlugin extends JavaPlugin implements Listener {
     private double claimBlockCost = 1.0;
     private boolean manageGameMode = true;
     private int initialClaimSize = 128;
+    private int secondaryClaimSize = 32;
     private Random random = new Random(System.nanoTime());
     private static final String META_COOLDOWN_WILD = "home.cooldown.wild";
     private static final String META_LOCATION = "home.location";
@@ -409,28 +410,59 @@ public final class HomePlugin extends JavaPlugin implements Listener {
                 player.setMetadata(META_BUY, new FixedMetadataValue(this, meta));
                 Msg.raw(player, "",
                         Msg.label(ChatColor.WHITE, "Click here to confirm this purchase: "),
-                        Msg.button(ChatColor.GREEN, "[Buy]", "/claim confirm " + meta.token, "§aConfirm\nBuy " + buyClaimBlocks + " for " + priceFormat + "."));
+                        Msg.button(ChatColor.GREEN, "[Buy]", "/claim confirm " + meta.token, "§aConfirm\nBuy " + buyClaimBlocks + " for " + priceFormat + "."),
+                        " ",
+                        Msg.button(ChatColor.RED, "[Cancel]", "/claim cancel", "§cCancel purchase."));
                 return true;
             }
             break;
         case "confirm":
             if (args.length == 2) {
                 MetadataValue fmv = player.getMetadata(META_BUY).stream().filter(m -> m.getOwningPlugin() == this).findFirst().orElse(null);
-                if (fmv == null) return true;
-                BuyClaimBlocks meta = (BuyClaimBlocks)fmv.value();
-                player.removeMetadata(META_BUY, this);
-                Claim claim = getClaimById(meta.claimId);
-                if (claim == null) return true;
-                if (!GenericEvents.takePlayerMoney(playerId, meta.price, this, "buy " + meta.amount + " claim blocks")) {
-                    Msg.msg(player, ChatColor.RED, "You cannot afford %s", GenericEvents.formatMoney(meta.price));
-                    return true;
+                if (fmv != null) {
+                    BuyClaimBlocks meta = (BuyClaimBlocks)fmv.value();
+                    player.removeMetadata(META_BUY, this);
+                    Claim claim = getClaimById(meta.claimId);
+                    if (claim == null) return true;
+                    if (!args[1].equals(meta.token)) {
+                        player.sendMessage(ChatColor.RED + "Purchase expired");
+                        return true;
+                    }
+                    if (!GenericEvents.takePlayerMoney(playerId, meta.price, this, "Buy " + meta.amount + " claim blocks")) {
+                        Msg.msg(player, ChatColor.RED, "You cannot afford %s", GenericEvents.formatMoney(meta.price));
+                        return true;
+                    }
+                    claim.setBlocks(claim.getBlocks() + meta.amount);
+                    db.save(claim.toSQLRow());
+                    if (claim.getSetting(Claim.Setting.AUTOGROW) == Boolean.TRUE) {
+                        Msg.msg(player, ChatColor.WHITE, "Added %d blocks to this claim. It will grow automatically.", meta.amount);
+                    } else {
+                        Msg.msg(player, ChatColor.WHITE, "Added %d blocks to this claim. Grow it manually or enable \"autogrow\" in the settings.", meta.amount);
+                    }
                 }
-                claim.setBlocks(claim.getBlocks() + meta.amount);
-                db.save(claim.toSQLRow());
-                if (claim.getSetting(Claim.Setting.AUTOGROW) == Boolean.TRUE) {
-                    Msg.msg(player, ChatColor.WHITE, "Added %d blocks to this claim. It will grow automatically.", meta.amount);
-                } else {
-                    Msg.msg(player, ChatColor.WHITE, "Added %d blocks to this claim. Grow it manually or enable \"autogrow\" in the settings.", meta.amount);
+                fmv = player.getMetadata(META_ABANDON).stream().filter(m -> m.getOwningPlugin() == this).findFirst().orElse(null);
+                if (fmv != null) {
+                    int claimId = fmv.asInt();
+                    player.removeMetadata(META_ABANDON, this);
+                    Claim claim = findClaimWithId(claimId);
+                    if (claim == null || !claim.isOwner(playerId) || !args[1].equals("" + claimId)) {
+                        player.sendMessage(ChatColor.RED + "Claim removal expired");
+                        return true;
+                    }
+                    db.find(Claim.SQLRow.class).eq("id", claimId).delete();
+                    claims.remove(claim);
+                    player.sendMessage(ChatColor.YELLOW + "Claim removed");
+                    setStoredPlayerData(playerId, "AbandonedClaim", 1);
+                }
+                return true;
+            }
+            break;
+        case "cancel":
+            if (args.length == 1) {
+                if (player.hasMetadata(META_BUY) || player.hasMetadata(META_ABANDON)) {
+                    player.removeMetadata(META_BUY, this);
+                    player.removeMetadata(META_ABANDON, this);
+                    player.sendMessage(ChatColor.GREEN + "Cancelled");
                 }
                 return true;
             }
@@ -671,6 +703,22 @@ public final class HomePlugin extends JavaPlugin implements Listener {
                     player.sendMessage(ChatColor.RED + "There is no claim here.");
                     return true;
                 }
+                if (!claim.isOwner(playerId)) {
+                    player.sendMessage(ChatColor.RED + "This claim does not belong to you.");
+                    return true;
+                }
+                player.setMetadata(META_ABANDON, new FixedMetadataValue(this, claim.getId()));
+                player.spigot().sendMessage(new ComponentBuilder("").append("Really delete this claim?").create());
+                player.spigot().sendMessage(new ComponentBuilder("").append("This cannot be undone! ").color(ChatColor.RED)
+                                            .append("[Confirm]").color(ChatColor.YELLOW)
+                                            .event(new ClickEvent(ClickEvent.Action.RUN_COMMAND, "/claim confirm " + claim.getId()))
+                                            .event(new HoverEvent(HoverEvent.Action.SHOW_TEXT, TextComponent.fromLegacyText(ChatColor.YELLOW + "Confirm claim removal.")))
+                                            .append(" ")
+                                            .append("[Cancel]").color(ChatColor.RED)
+                                            .event(new ClickEvent(ClickEvent.Action.RUN_COMMAND, "/claim cancel"))
+                                            .event(new HoverEvent(HoverEvent.Action.SHOW_TEXT, TextComponent.fromLegacyText(ChatColor.RED + "Cancel claim removal.")))
+                                            .create());
+                return true;
             }
             break;
         default:
@@ -768,6 +816,11 @@ public final class HomePlugin extends JavaPlugin implements Listener {
         cb.append("  ").append("[List]").color(ChatColor.GOLD)
             .event(new ClickEvent(ClickEvent.Action.RUN_COMMAND, "/claim list" + claim.getId()))
             .event(new HoverEvent(HoverEvent.Action.SHOW_TEXT, TextComponent.fromLegacyText(ChatColor.GOLD + "/claim list\n" + ChatColor.WHITE + ChatColor.ITALIC + "List all your claims.")));
+        if (claim.isOwner(playerId)) {
+            cb.append("  ").append("[Abandon]").color(ChatColor.DARK_RED)
+                .event(new ClickEvent(ClickEvent.Action.RUN_COMMAND, "/claim abandon"))
+                .event(new HoverEvent(HoverEvent.Action.SHOW_TEXT, TextComponent.fromLegacyText(ChatColor.DARK_RED + "/claim abandon\n" + ChatColor.WHITE + ChatColor.ITALIC + "Abandon this claim.")));
+        }
         player.spigot().sendMessage(cb.create());
         if (claim.isOwner(playerId) && claim.contains(playerLocation)) {
             cb = new ComponentBuilder("");
@@ -886,7 +939,11 @@ public final class HomePlugin extends JavaPlugin implements Listener {
             }
         }
         // Create the claim
-        int rad = initialClaimSize / 2;
+        int claimSize = initialClaimSize;
+        if (!findClaims(playerId).isEmpty() || getStoredPlayerInt(playerId, "AbandonedClaim") != 0) {
+            claimSize = secondaryClaimSize;
+        }
+        int rad = claimSize / 2;
         int tol = 0;
         if (rad * 2 == initialClaimSize) tol = 1;
         Area area = new Area(x - rad + tol, y - rad + tol, x + rad, y + rad);
@@ -1484,6 +1541,7 @@ public final class HomePlugin extends JavaPlugin implements Listener {
         claimBlockCost = getConfig().getDouble("ClaimBlockCost");
         manageGameMode = getConfig().getBoolean("ManageGameMode");
         initialClaimSize = getConfig().getInt("InitialClaimSize");
+        secondaryClaimSize = getConfig().getInt("SecondaryClaimSize");
     }
 
     void loadFromDatabase() {
@@ -1638,6 +1696,18 @@ public final class HomePlugin extends JavaPlugin implements Listener {
         Map<String, Object> json = (Map<String, Object>)JSONValue.parse(row.getData());
         if (json == null) return null;
         return json.get(key);
+    }
+
+    int getStoredPlayerInt(UUID playerId, String key) {
+        Object val = getStoredPlayerData(playerId, key);
+        if (val == null) return 0;
+        if (val instanceof Number) return ((Number)val).intValue();
+        if (val instanceof String) {
+            try {
+                return Integer.parseInt((String)val);
+            } catch (NumberFormatException nfe) { }
+        }
+        return 0;
     }
 
     void setStoredPlayerData(UUID playerId, String key, Object value) {

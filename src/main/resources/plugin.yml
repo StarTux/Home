@@ -18,6 +18,7 @@ commands:
       /homeadmin reload - db and config
       /homeadmin debug - debug spam
       /homeadmin giveclaimblocks - Give blocks to claim
+      /homeadmin giveallclaimblocks - Give blocks to all claims
       /homeadmin deleteclaim - Delete claim
   home:
     aliases: []

@@ -707,6 +707,17 @@ public final class HomePlugin extends JavaPlugin implements Listener {
                     player.sendMessage(ChatColor.RED + "This claim does not belong to you.");
                     return true;
                 }
+                long life = System.currentTimeMillis() - claim.getCreated();
+                long must = 10L * 60L * 1000L;
+                if (life < must) {
+                    long wait = (must - life) / (1000L * 60L);
+                    if (wait <= 1) {
+                        player.sendMessage(ChatColor.RED + "You must wait one more minute to abandon this claim.");
+                    } else {
+                        player.sendMessage(ChatColor.RED + "You must wait " + wait + " more minutes to abandon this claim.");
+                    }
+                    return true;
+                }
                 player.setMetadata(META_ABANDON, new FixedMetadataValue(this, claim.getId()));
                 player.spigot().sendMessage(new ComponentBuilder("").append("Really delete this claim?").create());
                 player.spigot().sendMessage(new ComponentBuilder("").append("This cannot be undone! ").color(ChatColor.RED)

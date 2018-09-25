@@ -895,7 +895,7 @@ public final class HomePlugin extends JavaPlugin implements Listener {
         }
         if (!playerClaims.isEmpty()) {
             cb = new ComponentBuilder("");
-            cb.append("Owned").color(ChatColor.GRAY);
+            cb.append("Invited").color(ChatColor.GRAY);
             for (Claim claim: playerClaims) {
                 cb.append("  ");
                 ChatColor color = colors[ci++];
@@ -905,15 +905,13 @@ public final class HomePlugin extends JavaPlugin implements Listener {
             }
             player.spigot().sendMessage(cb.create());
         }
-        if (findClaimsInWorld(playerId, player.getWorld().getName()).isEmpty()) {
-            for (Claim claim: playerClaims) {
-                cb = new ComponentBuilder("");
-                cb.append("Make one ").color(ChatColor.GRAY);
-                cb.append("  ").append("[New]").color(ChatColor.GOLD)
-                    .event(new ClickEvent(ClickEvent.Action.RUN_COMMAND, "/claim new" + claim.getId()))
-                    .event(new HoverEvent(HoverEvent.Action.SHOW_TEXT, TextComponent.fromLegacyText(ChatColor.GOLD + "/claim new\n" + ChatColor.WHITE + ChatColor.ITALIC + "Attempt to make a claim right here.")));
-                player.spigot().sendMessage(cb.create());
-            }
+        if (isHomeWorld(player.getWorld()) && findClaimsInWorld(playerId, player.getWorld().getName()).isEmpty()) {
+            cb = new ComponentBuilder("");
+            cb.append("Make one ").color(ChatColor.GRAY);
+            cb.append("  ").append("[New]").color(ChatColor.GOLD)
+                .event(new ClickEvent(ClickEvent.Action.RUN_COMMAND, "/claim new"))
+                .event(new HoverEvent(HoverEvent.Action.SHOW_TEXT, TextComponent.fromLegacyText(ChatColor.GOLD + "/claim new\n" + ChatColor.WHITE + ChatColor.ITALIC + "Make a claim right here.")));
+            player.spigot().sendMessage(cb.create());
         }
         player.sendMessage("");
     }

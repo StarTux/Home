@@ -24,6 +24,8 @@ import org.bukkit.GameMode;
 import org.bukkit.Location;
 import org.bukkit.Material;
 import org.bukkit.Particle;
+import org.bukkit.Sound;
+import org.bukkit.SoundCategory;
 import org.bukkit.World;
 import org.bukkit.WorldBorder;
 import org.bukkit.block.Block;
@@ -34,10 +36,12 @@ import org.bukkit.configuration.ConfigurationSection;
 import org.bukkit.entity.AnimalTamer;
 import org.bukkit.entity.Entity;
 import org.bukkit.entity.EntityType;
+import org.bukkit.entity.LivingEntity;
 import org.bukkit.entity.Monster;
 import org.bukkit.entity.Player;
 import org.bukkit.entity.Projectile;
 import org.bukkit.entity.Tameable;
+import org.bukkit.entity.Vehicle;
 import org.bukkit.event.Cancellable;
 import org.bukkit.event.EventHandler;
 import org.bukkit.event.EventPriority;
@@ -68,6 +72,7 @@ import org.bukkit.event.player.PlayerInteractAtEntityEvent;
 import org.bukkit.event.player.PlayerInteractEntityEvent;
 import org.bukkit.event.player.PlayerInteractEvent;
 import org.bukkit.event.player.PlayerShearEntityEvent;
+import org.bukkit.event.vehicle.VehicleCreateEvent;
 import org.bukkit.event.vehicle.VehicleDamageEvent;
 import org.bukkit.event.vehicle.VehicleDestroyEvent;
 import org.bukkit.inventory.InventoryHolder;
@@ -102,6 +107,9 @@ public final class HomePlugin extends JavaPlugin implements Listener {
     private static final String META_BUY = "home.buyclaimblocks";
     private static final String META_ABANDON = "home.abandonclaim";
     private static final String META_IGNORE = "home.ignore";
+    private static final String META_NOCLAIM_WARN = "home.noclaim.warn";
+    private static final String META_NOCLAIM_COUNT = "home.noclaim.count";
+    private static final String META_NOCLAIM_TIME = "home.noclaim.time";
     private long ticks;
 
     @Override
@@ -175,7 +183,7 @@ public final class HomePlugin extends JavaPlugin implements Listener {
             Claim claim = getClaimAt(pl);
             UUID playerId = player.getUniqueId();
             if (claim != null
-                && claim.isOwner(playerId) && (ticks % 20) == 0
+                && claim.isOwner(playerId) && (ticks % 100) == 0
                 && claim.getBlocks() > claim.getArea().size()
                 && claim.getSetting(Claim.Setting.AUTOGROW) == Boolean.TRUE) {
                 if (autoGrowClaim(claim)) {
@@ -187,8 +195,8 @@ public final class HomePlugin extends JavaPlugin implements Listener {
                 if (cl1 == null) cl1 = cl2; // Taking the easy way out
                 player.setMetadata(META_LOCATION, new FixedMetadataValue(this, cl2));
                 if (claim == null) {
-                    if (player.getGameMode() != GameMode.ADVENTURE && !player.hasMetadata(META_IGNORE) && !player.isOp()) {
-                        player.setGameMode(GameMode.ADVENTURE);
+                    if (player.getGameMode() != GameMode.SURVIVAL && !player.hasMetadata(META_IGNORE) && !player.isOp()) {
+                        player.setGameMode(GameMode.SURVIVAL);
                     }
                     if (cl1.claimId != cl2.claimId) {
                         Claim oldClaim = getClaimById(cl1.claimId);
@@ -201,7 +209,7 @@ public final class HomePlugin extends JavaPlugin implements Listener {
                             highlightClaim(oldClaim, player);
                         }
                     }
-                } else {
+                } else { // (claim != null)
                     if (claim.isOwner(playerId) || claim.canBuild(playerId)) {
                         if (player.getGameMode() != GameMode.SURVIVAL && !player.hasMetadata(META_IGNORE) && !player.isOp()) {
                             player.setGameMode(GameMode.SURVIVAL);
@@ -1827,7 +1835,9 @@ public final class HomePlugin extends JavaPlugin implements Listener {
     enum Action {
         BUILD,
         INTERACT,
-        COMBAT;
+        COMBAT,
+        VEHICLE,
+        BUCKET;
     }
 
     /**
@@ -1853,6 +1863,8 @@ public final class HomePlugin extends JavaPlugin implements Listener {
                 return false;
             case COMBAT:
             case INTERACT:
+            case VEHICLE:
+            case BUCKET:
             default:
                 return true;
             }
@@ -1869,6 +1881,8 @@ public final class HomePlugin extends JavaPlugin implements Listener {
             case INTERACT:
                 return true;
             case BUILD:
+            case VEHICLE:
+            case BUCKET:
             default:
                 // Forbidden actions are cancelled further down.
                 break;
@@ -1892,12 +1906,13 @@ public final class HomePlugin extends JavaPlugin implements Listener {
      * @return true if player owns entity, false otherwise
      */
     static boolean isOwner(Player player, Entity entity) {
-        if (!(entity instanceof Tameable)) return false;
-        Tameable tameable = (Tameable)entity;
-        if (!tameable.isTamed()) return false;
-        AnimalTamer owner = tameable.getOwner();
-        if (owner == null) return false;
-        if (owner.getUniqueId().equals(player.getUniqueId())) return true;
+        if (entity instanceof Tameable) {
+            Tameable tameable = (Tameable)entity;
+            if (!tameable.isTamed()) return false;
+            AnimalTamer owner = tameable.getOwner();
+            if (owner == null) return false;
+            if (owner.getUniqueId().equals(player.getUniqueId())) return true;
+        }
         return false;
     }
 
@@ -1926,13 +1941,105 @@ public final class HomePlugin extends JavaPlugin implements Listener {
         return null;
     }
 
+    void noClaimWarning(Player player) {
+        long now = System.nanoTime();
+        for (MetadataValue meta: player.getMetadata(META_NOCLAIM_WARN)) {
+            if (meta.getOwningPlugin() == this) {
+                long time = meta.asLong();
+                if (now - time < 10000000000L) return;
+                break;
+            }
+        }
+        ComponentBuilder cb = new ComponentBuilder("")
+            .append("You did not ").color(ChatColor.RED)
+            .append("claim").color(ChatColor.YELLOW)
+            .event(new ClickEvent(ClickEvent.Action.RUN_COMMAND, "/claim"))
+            .event(new HoverEvent(HoverEvent.Action.SHOW_TEXT, TextComponent.fromLegacyText(ChatColor.YELLOW + "/claim\n" + ChatColor.WHITE + ChatColor.ITALIC + "Claim land and make it yours.")))
+            .append(" this area. Building is limited.", ComponentBuilder.FormatRetention.NONE).color(ChatColor.RED);
+        player.playSound(player.getEyeLocation(), Sound.ENTITY_POLAR_BEAR_WARNING, SoundCategory.MASTER, 2.0f, 1.0f);
+        player.setMetadata(META_NOCLAIM_WARN, new FixedMetadataValue(this, now));
+        player.spigot().sendMessage(cb.create());
+    }
+
+    boolean noClaimBuild(Player player, Block block) {
+        long now = System.nanoTime();
+        long noClaimCount = 0L;
+        long noClaimTime = 0L;
+        for (MetadataValue meta: player.getMetadata(META_NOCLAIM_TIME)) {
+            if (meta.getOwningPlugin() == this) {
+                noClaimTime = meta.asLong();
+                break;
+            }
+        }
+        if (now - noClaimTime > 30000000000L) {
+            noClaimTime = now;
+            noClaimCount = 1L;
+        } else {
+            for (MetadataValue meta: player.getMetadata(META_NOCLAIM_COUNT)) {
+                if (meta.getOwningPlugin() == this) {
+                    noClaimCount = meta.asLong();
+                    break;
+                }
+            }
+            noClaimCount += 1L;
+            if (noClaimCount > 4L) {
+                noClaimWarning(player);
+                return false;
+            }
+        }
+        player.setMetadata(META_NOCLAIM_TIME, new FixedMetadataValue(this, noClaimTime));
+        player.setMetadata(META_NOCLAIM_COUNT, new FixedMetadataValue(this, noClaimCount));
+        return true;
+    }
+
     @EventHandler(ignoreCancelled = true, priority = EventPriority.LOW)
     public void onBlockBreak(BlockBreakEvent event) {
-        checkPlayerAction(event.getPlayer(), event.getBlock(), Action.BUILD, event);
+        Block block = event.getBlock();
+        if (!isHomeWorld(block.getWorld())) return;
+        Claim claim = getClaimAt(block);
+        Player player = event.getPlayer();
+        if (player.isOp() || player.hasMetadata(META_IGNORE)) return;
+        if (claim == null) {
+            switch (block.getType()) {
+            case CHEST:
+            case SPAWNER:
+            case TRAPPED_CHEST:
+            case IRON_ORE:
+            case DIAMOND_ORE:
+            case GOLD_ORE:
+            case EMERALD_ORE:
+            case COAL_ORE:
+                event.setCancelled(true);
+                return;
+            default:
+                break;
+            }
+            if (!noClaimBuild(player, block)) event.setCancelled(true);
+            return;
+        }
+        checkPlayerAction(player, block, Action.BUILD, event);
     }
 
     @EventHandler(ignoreCancelled = true, priority = EventPriority.LOW)
     public void onBlockPlace(BlockPlaceEvent event) {
+        Block block = event.getBlock();
+        if (!isHomeWorld(block.getWorld())) return;
+        Claim claim = getClaimAt(block);
+        Player player = event.getPlayer();
+        if (player.isOp() || player.hasMetadata(META_IGNORE)) return;
+        if (claim == null) {
+            switch (block.getType()) {
+            case FIRE:
+            case LAVA:
+            case TNT:
+                event.setCancelled(true);
+                return;
+            default:
+                break;
+            }
+            if (!noClaimBuild(player, block)) event.setCancelled(true);
+            return;
+        }
         checkPlayerAction(event.getPlayer(), event.getBlock(), Action.BUILD, event);
     }
 
@@ -2004,18 +2111,36 @@ public final class HomePlugin extends JavaPlugin implements Listener {
     @EventHandler(ignoreCancelled = true, priority = EventPriority.LOW)
     public void onVehicleDamage(VehicleDamageEvent event) {
         Player player = getPlayerDamager(event.getAttacker());
-        if (player != null) checkPlayerAction(player, event.getVehicle().getLocation().getBlock(), Action.BUILD, event);
+        if (player == null) return;
+        Vehicle vehicle = event.getVehicle();
+        if (!isHomeWorld(vehicle.getWorld())) return;
+        if (isOwner(player, vehicle)) return;
+        checkPlayerAction(player, vehicle.getLocation().getBlock(), Action.BUILD, event);
     }
 
     @EventHandler(ignoreCancelled = true, priority = EventPriority.LOW)
     public void onVehicleDestroy(VehicleDestroyEvent event) {
         Player player = getPlayerDamager(event.getAttacker());
-        if (player != null) checkPlayerAction(player, event.getVehicle().getLocation().getBlock(), Action.BUILD, event);
+        if (player == null) return;
+        Vehicle vehicle = event.getVehicle();
+        if (!isHomeWorld(player.getWorld())) return;
+        if (getClaimAt(vehicle.getLocation()) == null) return;
+        if (player != null) checkPlayerAction(player, vehicle.getLocation().getBlock(), Action.BUILD, event);
+    }
+
+    @EventHandler(ignoreCancelled = true, priority = EventPriority.LOW)
+    public void onVehicleCreate(VehicleCreateEvent event) {
+        Vehicle vehicle = event.getVehicle();
+        if (!isHomeWorld(vehicle.getWorld())) return;
+        if (!(vehicle instanceof LivingEntity) && getClaimAt(vehicle.getLocation()) == null) {
+            vehicle.setPersistent(false);
+        }
     }
 
     @EventHandler(ignoreCancelled = true, priority = EventPriority.LOW)
     public void onPlayerInteractEntity(PlayerInteractEntityEvent event) {
         final Player player = event.getPlayer();
+        if (player.isOp() || player.hasMetadata(META_IGNORE)) return;
         final Entity entity = event.getRightClicked();
         if (isOwner(player, entity)) return;
         checkPlayerAction(player, entity.getLocation().getBlock(), Action.INTERACT, event);
@@ -2025,6 +2150,7 @@ public final class HomePlugin extends JavaPlugin implements Listener {
     @EventHandler(ignoreCancelled = true, priority = EventPriority.LOW)
     public void onPlayerInteractAtEntity(PlayerInteractAtEntityEvent event) {
         final Player player = event.getPlayer();
+        if (player.isOp() || player.hasMetadata(META_IGNORE)) return;
         final Entity entity = event.getRightClicked();
         if (isOwner(player, entity)) return;
         checkPlayerAction(player, entity.getLocation().getBlock(), Action.INTERACT, event);
@@ -2037,13 +2163,10 @@ public final class HomePlugin extends JavaPlugin implements Listener {
         checkPlayerAction(player, entity.getLocation().getBlock(), Action.BUILD, event);
     }
 
-    /**
-     * Make sure to whitelist anything that should be caught here
-     * in the PlayerInteractEntityEvent.
-     */
     @EventHandler(ignoreCancelled = true, priority = EventPriority.LOW)
     public void onPlayerShearEntity(PlayerShearEntityEvent event) {
         final Player player = event.getPlayer();
+        if (player.isOp() || player.hasMetadata(META_IGNORE)) return;
         final Entity entity = event.getEntity();
         if (isOwner(player, entity)) return;
         checkPlayerAction(player, entity.getLocation().getBlock(), Action.BUILD, event);
@@ -2053,6 +2176,7 @@ public final class HomePlugin extends JavaPlugin implements Listener {
     public void onEntityMount(EntityMountEvent event) {
         if (!(event.getEntity() instanceof Player)) return;
         final Player player = (Player)event.getEntity();
+        if (player.isOp() || player.hasMetadata(META_IGNORE)) return;
         final Entity mount = event.getMount();
         if (isOwner(player, mount)) return;
         checkPlayerAction(player, mount.getLocation().getBlock(), Action.INTERACT, event);
@@ -2061,6 +2185,7 @@ public final class HomePlugin extends JavaPlugin implements Listener {
     @EventHandler(ignoreCancelled = true, priority = EventPriority.LOW)
     public void onPlayerLeashEntity(PlayerLeashEntityEvent event) {
         final Player player = event.getPlayer();
+        if (player.isOp() || player.hasMetadata(META_IGNORE)) return;
         final Entity entity = event.getEntity();
         if (isOwner(player, entity)) return;
         checkPlayerAction(player, entity.getLocation().getBlock(), Action.BUILD, event);
@@ -2069,6 +2194,7 @@ public final class HomePlugin extends JavaPlugin implements Listener {
     @EventHandler(ignoreCancelled = true, priority = EventPriority.LOW)
     public void onPlayerInteract(PlayerInteractEvent event) {
         final Player player = event.getPlayer();
+        if (player.isOp() || player.hasMetadata(META_IGNORE)) return;
         final Block block = event.getClickedBlock();
         if (block == null) return;
         // Consider soil trampling
@@ -2084,7 +2210,7 @@ public final class HomePlugin extends JavaPlugin implements Listener {
             checkPlayerAction(player, block, Action.INTERACT, event);
             return;
         case LEFT_CLICK_BLOCK:
-            checkPlayerAction(player, block, Action.BUILD, event);
+            checkPlayerAction(player, block, Action.INTERACT, event);
             return;
         default:
             break;
@@ -2123,12 +2249,16 @@ public final class HomePlugin extends JavaPlugin implements Listener {
 
     @EventHandler(ignoreCancelled = true, priority = EventPriority.LOW)
     public void onPlayerBucketEmpty(PlayerBucketEmptyEvent event) {
-        checkPlayerAction(event.getPlayer(), event.getBlockClicked(), Action.BUILD, event);
+        if (event.getBucket() == Material.WATER_BUCKET) {
+            checkPlayerAction(event.getPlayer(), event.getBlockClicked(), Action.BUCKET, event);
+        } else {
+            checkPlayerAction(event.getPlayer(), event.getBlockClicked(), Action.BUILD, event);
+        }
     }
 
     @EventHandler(ignoreCancelled = true, priority = EventPriority.LOW)
     public void onPlayerBucketFill(PlayerBucketFillEvent event) {
-        checkPlayerAction(event.getPlayer(), event.getBlockClicked(), Action.BUILD, event);
+        checkPlayerAction(event.getPlayer(), event.getBlockClicked(), Action.BUCKET, event);
     }
 
     @EventHandler(ignoreCancelled = true, priority = EventPriority.LOW)
@@ -2201,6 +2331,7 @@ public final class HomePlugin extends JavaPlugin implements Listener {
     public void onInventoryOpen(InventoryOpenEvent event) {
         if (!(event.getPlayer() instanceof Player)) return;
         Player player = (Player)event.getPlayer();
+        if (player.isOp() || player.hasMetadata(META_IGNORE)) return;
         if (!isHomeWorld(player.getWorld())) return;
         InventoryHolder holder = event.getInventory().getHolder();
         if (holder == null) return;

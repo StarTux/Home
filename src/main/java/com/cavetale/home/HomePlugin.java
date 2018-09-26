@@ -15,6 +15,7 @@ import java.util.stream.Collectors;
 import lombok.Getter;
 import lombok.Value;
 import net.md_5.bungee.api.ChatColor;
+import net.md_5.bungee.api.ChatMessageType;
 import net.md_5.bungee.api.chat.ClickEvent;
 import net.md_5.bungee.api.chat.ComponentBuilder;
 import net.md_5.bungee.api.chat.HoverEvent;
@@ -174,11 +175,12 @@ public final class HomePlugin extends JavaPlugin implements Listener {
             Claim claim = getClaimAt(pl);
             UUID playerId = player.getUniqueId();
             if (claim != null
-                && claim.isOwner(playerId)
-                && (ticks % 20) == 0
+                && claim.isOwner(playerId) && (ticks % 20) == 0
                 && claim.getBlocks() > claim.getArea().size()
                 && claim.getSetting(Claim.Setting.AUTOGROW) == Boolean.TRUE) {
-                autoGrowClaim(claim);
+                if (autoGrowClaim(claim)) {
+                    highlightClaim(claim, player);
+                }
             }
             if (cl1 == null || !cl1.world.equals(pl.getWorld().getName()) || cl1.x != pl.getBlockX() || cl1.z != pl.getBlockZ()) {
                 CachedLocation cl2 = new CachedLocation(pl.getWorld().getName(), pl.getBlockX(), pl.getBlockZ(), claim == null ? -1 : claim.getId());
@@ -192,9 +194,9 @@ public final class HomePlugin extends JavaPlugin implements Listener {
                         Claim oldClaim = getClaimById(cl1.claimId);
                         if (oldClaim != null) {
                             if (oldClaim.isOwner(player.getUniqueId())) {
-                                Msg.actionBar(player, ChatColor.GRAY, "Leaving your claim");
+                                player.spigot().sendMessage(ChatMessageType.ACTION_BAR, TextComponent.fromLegacyText(ChatColor.GRAY + "Leaving your claim"));
                             } else {
-                                Msg.actionBar(player, ChatColor.GRAY, "Leaving %s's claim", GenericEvents.cachedPlayerName(oldClaim.getOwner()));
+                                player.spigot().sendMessage(ChatMessageType.ACTION_BAR, TextComponent.fromLegacyText(ChatColor.GRAY + "Leaving " + oldClaim.getOwnerName() + "'s claim"));
                             }
                             highlightClaim(oldClaim, player);
                         }
@@ -211,9 +213,9 @@ public final class HomePlugin extends JavaPlugin implements Listener {
                     }
                     if (cl1.claimId != cl2.claimId) {
                         if (claim.isOwner(player.getUniqueId())) {
-                            Msg.actionBar(player, ChatColor.GRAY, "Entering your claim");
+                            player.spigot().sendMessage(ChatMessageType.ACTION_BAR, TextComponent.fromLegacyText(ChatColor.GRAY + "Entering your claim"));
                         } else {
-                            Msg.actionBar(player, ChatColor.GRAY, "Entering %s's claim", GenericEvents.cachedPlayerName(claim.getOwner()));
+                            player.spigot().sendMessage(ChatMessageType.ACTION_BAR, TextComponent.fromLegacyText(ChatColor.GRAY + "Entering " + claim.getOwnerName() + "'s claim"));
                         }
                         highlightClaim(claim, player);
                     }
@@ -241,10 +243,10 @@ public final class HomePlugin extends JavaPlugin implements Listener {
             if (args.length == 1) {
                 if (player.hasMetadata(META_IGNORE)) {
                     player.removeMetadata(META_IGNORE, this);
-                    Msg.msg(player, ChatColor.YELLOW, "Respecting home and claim permissions");
+                    player.sendMessage(ChatColor.YELLOW + "Respecting home and claim permissions");
                 } else {
                     player.setMetadata(META_IGNORE, new FixedMetadataValue(this, true));
-                    Msg.msg(player, ChatColor.YELLOW, "Ignoring home and claim permissions");
+                    player.sendMessage(ChatColor.YELLOW + "Ignoring home and claim permissions");
                 }
                 return true;
             }
@@ -392,27 +394,33 @@ public final class HomePlugin extends JavaPlugin implements Listener {
                     buyClaimBlocks = -1;
                 }
                 if (buyClaimBlocks <= 0) {
-                    Msg.msg(player, ChatColor.RED, "Invalid claim blocks amount: %s", args[1]);
+                    player.sendMessage(ChatColor.RED + "Invalid claim blocks amount: " + args[1]);
                     return true;
                 }
                 Claim claim = findNearestOwnedClaim(player);
                 if (claim == null) {
-                    Msg.msg(player, ChatColor.RED, "You don't have a claim in this world");
+                    player.sendMessage(ChatColor.RED + "You don't have a claim in this world");
                     return true;
                 }
                 double price = (double)buyClaimBlocks * claimBlockCost;
                 String priceFormat = GenericEvents.formatMoney(price);
                 if (GenericEvents.getPlayerBalance(playerId) < price) {
-                    Msg.msg(player, ChatColor.RED, "You do not have %s to buy %d claim blocks", priceFormat, buyClaimBlocks);
+                    player.sendMessage(ChatColor.RED + "You do not have " + priceFormat + " to buy " + buyClaimBlocks + " claim blocks");
                     return true;
                 }
                 BuyClaimBlocks meta = new BuyClaimBlocks(buyClaimBlocks, price, claim.getId(), "" + (random.nextInt() & 0xFFFF));
                 player.setMetadata(META_BUY, new FixedMetadataValue(this, meta));
-                Msg.raw(player, "",
-                        Msg.label(ChatColor.WHITE, "Click here to confirm this purchase: "),
-                        Msg.button(ChatColor.GREEN, "[Buy]", "/claim confirm " + meta.token, "§aConfirm\nBuy " + buyClaimBlocks + " for " + priceFormat + "."),
-                        " ",
-                        Msg.button(ChatColor.RED, "[Cancel]", "/claim cancel", "§cCancel purchase."));
+                player.sendMessage(ChatColor.WHITE + "Buying " + ChatColor.GREEN + buyClaimBlocks + ChatColor.WHITE + " for " + ChatColor.GREEN + priceFormat + ChatColor.WHITE + ".");
+                player.spigot().sendMessage(new ComponentBuilder("")
+                                            .append("Confirm this purchase: ").color(ChatColor.GRAY)
+                                            .append("[Confirm]").color(ChatColor.GREEN)
+                                            .event(new ClickEvent(ClickEvent.Action.RUN_COMMAND, "/claim confirm " + meta.token))
+                                            .event(new HoverEvent(HoverEvent.Action.SHOW_TEXT, TextComponent.fromLegacyText(ChatColor.GREEN + "Confirm\nBuy " + buyClaimBlocks + " for " + priceFormat + ".")))
+                                            .append("  ").reset()
+                                            .append("[Cancel]").color(ChatColor.RED)
+                                            .event(new ClickEvent(ClickEvent.Action.RUN_COMMAND, "/claim cancel"))
+                                            .event(new HoverEvent(HoverEvent.Action.SHOW_TEXT, TextComponent.fromLegacyText(ChatColor.RED + "Cancel purchase.")))
+                                            .create());
                 return true;
             }
             break;
@@ -429,15 +437,15 @@ public final class HomePlugin extends JavaPlugin implements Listener {
                         return true;
                     }
                     if (!GenericEvents.takePlayerMoney(playerId, meta.price, this, "Buy " + meta.amount + " claim blocks")) {
-                        Msg.msg(player, ChatColor.RED, "You cannot afford %s", GenericEvents.formatMoney(meta.price));
+                        player.sendMessage(ChatColor.RED + "You cannot afford " + GenericEvents.formatMoney(meta.price));
                         return true;
                     }
                     claim.setBlocks(claim.getBlocks() + meta.amount);
                     db.save(claim.toSQLRow());
                     if (claim.getSetting(Claim.Setting.AUTOGROW) == Boolean.TRUE) {
-                        Msg.msg(player, ChatColor.WHITE, "Added %d blocks to this claim. It will grow automatically.", meta.amount);
+                        player.sendMessage(ChatColor.WHITE + "Added " + meta.amount + " blocks to this claim. It will grow automatically.");
                     } else {
-                        Msg.msg(player, ChatColor.WHITE, "Added %d blocks to this claim. Grow it manually or enable \"autogrow\" in the settings.", meta.amount);
+                        player.sendMessage(ChatColor.WHITE + "Added " + meta.amount + " blocks to this claim. Grow it manually or enable \"autogrow\" in the settings.");
                     }
                 }
                 fmv = player.getMetadata(META_ABANDON).stream().filter(m -> m.getOwningPlugin() == this).findFirst().orElse(null);
@@ -468,11 +476,23 @@ public final class HomePlugin extends JavaPlugin implements Listener {
             }
             break;
         case "info":
-            if (args.length == 1) {
-                Claim claim = getClaimAt(player.getLocation());
-                if (claim == null) {
-                    Msg.msg(player, ChatColor.RED, "Stand in the claim you want info on");
-                    return true;
+            if (args.length == 1 || args.length == 2) {
+                Claim claim;
+                if (args.length == 1) {
+                    claim = getClaimAt(player.getLocation());
+                    if (claim == null) {
+                        player.sendMessage(ChatColor.RED + "Stand in the claim you want info on");
+                        return true;
+                    }
+                } else {
+                    int claimId;
+                    try {
+                        claimId = Integer.parseInt(args[1]);
+                    } catch (NumberFormatException nfe) {
+                        return true;
+                    }
+                    claim = findClaimWithId(claimId);
+                    if (claim == null) return true;
                 }
                 printClaimInfo(player, claim);
                 return true;
@@ -482,21 +502,21 @@ public final class HomePlugin extends JavaPlugin implements Listener {
             if (args.length == 2) {
                 Claim claim = getClaimAt(player.getLocation());
                 if (claim == null) {
-                    Msg.msg(player, ChatColor.RED, "Stand in the claim to which you want to add members");
+                    player.sendMessage(ChatColor.RED + "Stand in the claim to which you want to add members");
                     return true;
                 }
                 if (!claim.isOwner(playerId)) {
-                    Msg.msg(player, ChatColor.RED, "You are not the owner of this claim");
+                    player.sendMessage(ChatColor.RED + "You are not the owner of this claim");
                     return true;
                 }
                 String targetName = args[1];
                 UUID targetId = GenericEvents.cachedPlayerUuid(targetName);
                 if (targetId == null) {
-                    Msg.msg(player, ChatColor.RED, "Player not found: %s", targetName);
+                    player.sendMessage(ChatColor.RED + "Player not found: " + targetName);
                     return true;
                 }
                 if (claim.canBuild(targetId)) {
-                    Msg.msg(player, ChatColor.RED, "Player is already a member of this claim");
+                    player.sendMessage(ChatColor.RED + "Player is already a member of this claim");
                     return true;
                 }
                 ClaimTrust ct = new ClaimTrust(claim, ClaimTrust.Type.MEMBER, targetId);
@@ -506,7 +526,7 @@ public final class HomePlugin extends JavaPlugin implements Listener {
                     claim.getVisitors().remove(targetId);
                     db.find(ClaimTrust.class).eq("claim_id", claim.getId()).eq("trustee", targetId).delete();
                 }
-                Msg.msg(player, ChatColor.WHITE, "Member added: %s", targetName);
+                player.sendMessage(ChatColor.WHITE + "Member added: " + targetName);
                 return true;
             }
             break;
@@ -514,27 +534,27 @@ public final class HomePlugin extends JavaPlugin implements Listener {
             if (args.length == 2) {
                 Claim claim = getClaimAt(player.getLocation());
                 if (claim == null) {
-                    Msg.msg(player, ChatColor.RED, "Stand in the claim to which you want to invite people");
+                    player.sendMessage(ChatColor.RED + "Stand in the claim to which you want to invite people");
                     return true;
                 }
                 if (!claim.isOwner(playerId)) {
-                    Msg.msg(player, ChatColor.RED, "You are not the owner of this claim");
+                    player.sendMessage(ChatColor.RED + "You are not the owner of this claim");
                     return true;
                 }
                 String targetName = args[1];
                 UUID targetId = GenericEvents.cachedPlayerUuid(targetName);
                 if (targetId == null) {
-                    Msg.msg(player, ChatColor.RED, "Player not found: %s", targetName);
+                    player.sendMessage(ChatColor.RED + "Player not found: " + targetName);
                     return true;
                 }
                 if (claim.canVisit(targetId)) {
-                    Msg.msg(player, ChatColor.RED, "Player is already invited to this claim");
+                    player.sendMessage(ChatColor.RED + "Player is already invited to this claim");
                     return true;
                 }
                 ClaimTrust ct = new ClaimTrust(claim, ClaimTrust.Type.VISIT, targetId);
                 db.save(ct);
                 claim.getMembers().add(targetId);
-                Msg.msg(player, ChatColor.WHITE, "Player invited: %s", targetName);
+                player.sendMessage(ChatColor.WHITE + "Player invited: " + targetName);
                 return true;
             }
             break;
@@ -542,29 +562,29 @@ public final class HomePlugin extends JavaPlugin implements Listener {
             if (args.length == 2) {
                 Claim claim = getClaimAt(player.getLocation());
                 if (claim == null) {
-                    Msg.msg(player, ChatColor.RED, "Stand in the claim to which you want to invite people");
+                    player.sendMessage(ChatColor.RED + "Stand in the claim to which you want to invite people");
                     return true;
                 }
                 if (!claim.isOwner(playerId)) {
-                    Msg.msg(player, ChatColor.RED, "You are not the owner of this claim");
+                    player.sendMessage(ChatColor.RED + "You are not the owner of this claim");
                     return true;
                 }
                 String targetName = args[1];
                 UUID targetId = GenericEvents.cachedPlayerUuid(targetName);
                 if (targetId == null) {
-                    Msg.msg(player, ChatColor.RED, "Player not found: %s", targetName);
+                    player.sendMessage(ChatColor.RED + "Player not found: " + targetName);
                     return true;
                 }
                 if (claim.getMembers().contains(targetId)) {
                     claim.getMembers().remove(targetId);
                     db.find(ClaimTrust.class).eq("claim_id", claim.getId()).eq("trustee", targetId).delete();
-                    Msg.msg(player, ChatColor.YELLOW, "%s may no longer build", targetName);
+                    player.sendMessage(ChatColor.YELLOW + targetName + " may no longer build");
                 } else if (claim.getVisitors().contains(targetId)) {
                     claim.getVisitors().remove(targetId);
                     db.find(ClaimTrust.class).eq("claim_id", claim.getId()).eq("trustee", targetId).delete();
-                    Msg.msg(player, ChatColor.YELLOW, "%s may no longer visit", targetName);
+                    player.sendMessage(ChatColor.YELLOW + targetName + " may no longer visit");
                 } else {
-                    Msg.msg(player, ChatColor.RED, "%s has no permission in this claim", targetName);
+                    player.sendMessage(ChatColor.RED + targetName + " has no permission in this claim");
                     return true;
                 }
                 return true;
@@ -574,11 +594,11 @@ public final class HomePlugin extends JavaPlugin implements Listener {
             if (args.length == 1) {
                 Claim claim = getClaimAt(player.getLocation());
                 if (claim == null) {
-                    Msg.msg(player, ChatColor.RED, "Stand in the claim you wish to edit");
+                    player.sendMessage(ChatColor.RED + "Stand in the claim you wish to edit");
                     return true;
                 }
                 if (!claim.isOwner(playerId)) {
-                    Msg.msg(player, ChatColor.RED, "Only the claim owner can do this");
+                    player.sendMessage(ChatColor.RED + "Only the claim owner can do this");
                     return true;
                 }
                 showClaimSettings(claim, player);
@@ -586,18 +606,18 @@ public final class HomePlugin extends JavaPlugin implements Listener {
             } else if (args.length == 3) {
                 Claim claim = getClaimAt(player.getLocation());
                 if (claim == null) {
-                    Msg.msg(player, ChatColor.RED, "Stand in the claim you wish to edit");
+                    player.sendMessage(ChatColor.RED + "Stand in the claim you wish to edit");
                     return true;
                 }
                 if (!claim.isOwner(playerId)) {
-                    Msg.msg(player, ChatColor.RED, "Only the claim owner can do this");
+                    player.sendMessage(ChatColor.RED + "Only the claim owner can do this");
                     return true;
                 }
                 Claim.Setting setting;
                 try {
                     setting = Claim.Setting.valueOf(args[1].toUpperCase());
                 } catch (IllegalArgumentException iae) {
-                    Msg.msg(player, ChatColor.RED, "Unknown claim setting: %s", args[1]);
+                    player.sendMessage(ChatColor.RED + "Unknown claim setting: " + args[1]);
                     return true;
                 }
                 Object value;
@@ -605,7 +625,7 @@ public final class HomePlugin extends JavaPlugin implements Listener {
                 case "on": case "true": case "enabled": value = true; break;
                 case "off": case "false": case "disabled": value = false; break;
                 default:
-                    Msg.msg(player, ChatColor.RED, "Unknown settings value: %s", args[2]);
+                    player.sendMessage(ChatColor.RED + "Unknown settings value: " + args[2]);
                     return true;
                 }
                 if (!value.equals(claim.getSetting(setting))) {
@@ -626,11 +646,11 @@ public final class HomePlugin extends JavaPlugin implements Listener {
                 int z = playerLocation.getBlockZ();
                 Claim claim = findNearestOwnedClaim(player);
                 if (claim == null) {
-                    Msg.msg(player, ChatColor.RED, "You don't have a claim nearby");
+                    player.sendMessage(ChatColor.RED + "You don't have a claim nearby");
                     return true;
                 }
                 if (claim.getArea().contains(x, z)) {
-                    Msg.msg(player, ChatColor.RED, "Stand where you want the claim to grow to");
+                    player.sendMessage(ChatColor.RED + "Stand where you want the claim to grow to");
                     highlightClaim(claim, player);
                     return true;
                 }
@@ -641,20 +661,25 @@ public final class HomePlugin extends JavaPlugin implements Listener {
                 int by = Math.max(area.by, z);
                 Area newArea = new Area(ax, ay, bx, by);
                 if (claim.getBlocks() < newArea.size()) {
-                    Msg.raw(player,
-                            Msg.label(ChatColor.RED, "%s more claim blocks required. ", newArea.size() - claim.getBlocks()),
-                            Msg.button(ChatColor.GRAY, "[Buy More]", "/claim buy ", Msg.format("§7/claim buy <amount>\n§f§oBuy more claim blocks")));
+                    int needed = newArea.size() - claim.getBlocks();
+                    String formatMoney = GenericEvents.formatMoney((double)needed * claimBlockCost);
+                    player.spigot().sendMessage(new ComponentBuilder("")
+                                                .append(needed + " more claim blocks required. ").color(ChatColor.RED)
+                                                .append("[Buy More]").color(ChatColor.GRAY)
+                                                .event(new ClickEvent(ClickEvent.Action.RUN_COMMAND, "/claim buy " + needed))
+                                                .event(new HoverEvent(HoverEvent.Action.SHOW_TEXT, TextComponent.fromLegacyText(ChatColor.GRAY + "/claim buy " + ChatColor.ITALIC + needed + "\n" + ChatColor.WHITE + ChatColor.ITALIC + "Buy more " + needed + " claim blocks for " + formatMoney + ".")))
+                                                .create());
                     return true;
                 }
                 for (Claim other: claims) {
                     if (other != claim && other.isInWorld(claim.getWorld()) && other.getArea().overlaps(newArea)) {
-                        Msg.msg(player, ChatColor.RED, "Your claim would connect with another claim");
+                        player.sendMessage(ChatColor.RED + "Your claim would connect with another claim");
                         return true;
                     }
                 }
                 claim.setArea(newArea);
                 db.save(claim.toSQLRow());
-                Msg.msg(player, ChatColor.BLUE, "Grew your claim to where you are standing");
+                player.sendMessage(ChatColor.BLUE + "Grew your claim to where you are standing");
                 highlightClaim(claim, player);
                 return true;
             }
@@ -666,11 +691,11 @@ public final class HomePlugin extends JavaPlugin implements Listener {
                 int z = playerLocation.getBlockZ();
                 Claim claim = getClaimAt(playerLocation);
                 if (claim == null) {
-                    Msg.msg(player, ChatColor.RED, "Stand in the claim you wish to shrink");
+                    player.sendMessage(ChatColor.RED + "Stand in the claim you wish to shrink");
                     return true;
                 }
                 if (!claim.isOwner(playerId)) {
-                    Msg.msg(player, ChatColor.RED, "You can only shrink your own claims");
+                    player.sendMessage(ChatColor.RED + "You can only shrink your own claims");
                     return true;
                 }
                 Area area = claim.getArea();
@@ -691,7 +716,7 @@ public final class HomePlugin extends JavaPlugin implements Listener {
                 Area newArea = new Area(ax, ay, bx, by);
                 claim.setArea(newArea);
                 db.save(claim.toSQLRow());
-                Msg.msg(player, ChatColor.BLUE, "Shrunk your claim to where you are standing");
+                player.sendMessage(ChatColor.BLUE + "Shrunk your claim to where you are standing");
                 highlightClaim(claim, player);
                 return true;
             }
@@ -724,7 +749,7 @@ public final class HomePlugin extends JavaPlugin implements Listener {
                                             .append("[Confirm]").color(ChatColor.YELLOW)
                                             .event(new ClickEvent(ClickEvent.Action.RUN_COMMAND, "/claim confirm " + claim.getId()))
                                             .event(new HoverEvent(HoverEvent.Action.SHOW_TEXT, TextComponent.fromLegacyText(ChatColor.YELLOW + "Confirm claim removal.")))
-                                            .append(" ")
+                                            .append(" ").reset()
                                             .append("[Cancel]").color(ChatColor.RED)
                                             .event(new ClickEvent(ClickEvent.Action.RUN_COMMAND, "/claim cancel"))
                                             .event(new HoverEvent(HoverEvent.Action.SHOW_TEXT, TextComponent.fromLegacyText(ChatColor.RED + "Cancel claim removal.")))
@@ -739,14 +764,14 @@ public final class HomePlugin extends JavaPlugin implements Listener {
         return true;
     }
 
-    void frame(ComponentBuilder cb, String text) {
+    ComponentBuilder frame(ComponentBuilder cb, String text) {
         ChatColor fc = ChatColor.BLUE;
-        cb.append("            ").color(fc).strikethrough(true);
-        cb.append("[ ").color(fc).strikethrough(false);
-        cb.append(text).color(ChatColor.WHITE).bold(true);
-        cb.append(" ]").color(fc).bold(false);
-        cb.append("            ").color(fc).strikethrough(true);
-        cb.append("").strikethrough(false);
+        return cb.append("            ").color(fc).strikethrough(true)
+            .append("[ ").color(fc).strikethrough(false)
+            .append(text).color(ChatColor.WHITE)
+            .append(" ]").color(fc)
+            .append("            ").color(fc).strikethrough(true)
+            .append("").strikethrough(false);
     }
 
     void printClaimInfo(Player player, Claim claim) {
@@ -785,7 +810,7 @@ public final class HomePlugin extends JavaPlugin implements Listener {
             cb = new ComponentBuilder("");
             cb.append(key).color(ChatColor.GRAY);
             for (UUID id: ids) {
-                cb.append(" ");
+                cb.append(" ").reset();
                 cb.append(GenericEvents.cachedPlayerName(id)).color(ChatColor.WHITE);
             }
             player.spigot().sendMessage(cb.create());
@@ -796,7 +821,7 @@ public final class HomePlugin extends JavaPlugin implements Listener {
         for (Claim.Setting setting: Claim.Setting.values()) {
             Object value = claim.getSetting(setting);
             if (value == null) continue;
-            cb.append(" ");
+            cb.append(" ").reset();
             cb.append(setting.name().toLowerCase()).color(ChatColor.WHITE);
             cb.append("=").color(ChatColor.GRAY);
             String valueString;
@@ -884,8 +909,8 @@ public final class HomePlugin extends JavaPlugin implements Listener {
                 cb.append("  ");
                 ChatColor color = colors[ci++];
                 cb.append("[" + worldDisplayName(claim.getWorld()) + "]").color(color)
-                    .event(new ClickEvent(ClickEvent.Action.RUN_COMMAND, "/claim home " + claim.getId()))
-                    .event(new HoverEvent(HoverEvent.Action.SHOW_TEXT, TextComponent.fromLegacyText(color + "Visit your claim in " + worldDisplayName(claim.getWorld()))));
+                    .event(new ClickEvent(ClickEvent.Action.RUN_COMMAND, "/claim info " + claim.getId()))
+                    .event(new HoverEvent(HoverEvent.Action.SHOW_TEXT, TextComponent.fromLegacyText(color + "Your claim in " + worldDisplayName(claim.getWorld()))));
             }
             player.spigot().sendMessage(cb.create());
         }
@@ -900,8 +925,8 @@ public final class HomePlugin extends JavaPlugin implements Listener {
                 cb.append("  ");
                 ChatColor color = colors[ci++];
                 cb.append("[" + claim.getOwnerName() + "]").color(color)
-                    .event(new ClickEvent(ClickEvent.Action.RUN_COMMAND, "/claim home " + claim.getId()))
-                    .event(new HoverEvent(HoverEvent.Action.SHOW_TEXT, TextComponent.fromLegacyText(color + "Visit this claim owned by " + claim.getOwnerName())));
+                    .event(new ClickEvent(ClickEvent.Action.RUN_COMMAND, "/claim info " + claim.getId()))
+                    .event(new HoverEvent(HoverEvent.Action.SHOW_TEXT, TextComponent.fromLegacyText(color + claim.getOwnerName() + " invited you to this claim.")));
             }
             player.spigot().sendMessage(cb.create());
         }
@@ -925,7 +950,7 @@ public final class HomePlugin extends JavaPlugin implements Listener {
         World playerWorld = player.getWorld();
         String playerWorldName = playerWorld.getName();
         if (!homeWorlds.contains(playerWorldName)) {
-            Msg.msg(player, ChatColor.RED, "You cannot make a claim in this world");
+            player.sendMessage(ChatColor.RED + "You cannot make a claim in this world");
             return true;
         }
         if (mirrorWorlds.containsKey(playerWorldName)) playerWorldName = mirrorWorlds.get(playerWorldName);
@@ -937,12 +962,12 @@ public final class HomePlugin extends JavaPlugin implements Listener {
         for (Claim claim: claims) {
             if (claim.isInWorld(playerWorldName)) {
                 if (claim.getOwner().equals(playerId)) {
-                    Msg.msg(player, ChatColor.RED, "You already have a claim in this world");
+                    player.sendMessage(ChatColor.RED + "You already have a claim in this world");
                     return true;
                 }
                 // Check claim distance
                 if (claim.getArea().isWithin(x, y, claimMargin)) {
-                    Msg.msg(player, ChatColor.RED, "You are too close to another claim");
+                    player.sendMessage(ChatColor.RED + "You are too close to another claim");
                     return true;
                 }
             }
@@ -978,12 +1003,12 @@ public final class HomePlugin extends JavaPlugin implements Listener {
             if (home != null) {
                 Location location = home.createLocation();
                 if (location == null) {
-                    Msg.msg(player, ChatColor.RED, "Primary home could not be found");
+                    player.sendMessage(ChatColor.RED + "Primary home could not be found");
                     return true;
                 }
                 player.teleport(location);
-                Msg.msg(player, ChatColor.GREEN, "Welcome home :)");
-                Msg.title(player, "", "&aWelcome home :)");
+                player.sendMessage(ChatColor.GREEN + "Welcome home :)");
+                player.sendTitle("", ChatColor.GREEN + "Welcome home :)", 10, 20, 10);
                 return true;
             }
             // No home was found, so if the player has no claim in the
@@ -1003,7 +1028,7 @@ public final class HomePlugin extends JavaPlugin implements Listener {
                 Claim claim = getClaimAt(bedSpawn.getBlock());
                 if (claim != null && claim.canVisit(playerId)) {
                     player.teleport(bedSpawn.add(0.5, 0.0, 0.5));
-                    Msg.msg(player, ChatColor.BLUE, "Welcome to your bed. :)");
+                    player.sendMessage(ChatColor.BLUE + "Welcome to your bed. :)");
                     return true;
                 }
             }
@@ -1017,7 +1042,7 @@ public final class HomePlugin extends JavaPlugin implements Listener {
                 Area area = claim.getArea();
                 Location location = bworld.getHighestBlockAt((area.ax + area.bx) / 2, (area.ay + area.by) / 2).getLocation().add(0.5, 0.0, 0.5);
                 player.teleport(location);
-                Msg.msg(player, ChatColor.GREEN, "Welcome to your claim. :)");
+                player.sendMessage(ChatColor.GREEN + "Welcome to your claim. :)");
                 highlightClaim(claim, player);
                 return true;
             }
@@ -1032,28 +1057,28 @@ public final class HomePlugin extends JavaPlugin implements Listener {
                 String[] toks = arg.split(":", 2);
                 UUID targetId = GenericEvents.cachedPlayerUuid(toks[0]);
                 if (targetId == null) {
-                    Msg.msg(player, ChatColor.RED, "Player not found: %s", toks[0]);
+                    player.sendMessage(ChatColor.RED + "Player not found: " + toks[0]);
                     return true;
                 }
                 home = findHome(targetId, toks[1].isEmpty() ? null : toks[1]);
                 if (home == null || !home.isInvited(player.getUniqueId())) {
-                    Msg.msg(player, ChatColor.RED, "Home not found.");
+                    player.sendMessage(ChatColor.RED + "Home not found.");
                     return true;
                 }
             } else {
                 home = findHome(player.getUniqueId(), arg);
             }
             if (home == null) {
-                Msg.msg(player, ChatColor.RED, "Home not found: %s", arg);
+                player.sendMessage(ChatColor.RED + "Home not found: " + arg);
                 return true;
             }
             Location location = home.createLocation();
             if (location == null) {
-                Msg.msg(player, ChatColor.RED, "Home \"%s\" could not be found");
+                player.sendMessage(ChatColor.RED + "Home \"%s\" could not be found");
                 return true;
             }
-            Msg.msg(player, ChatColor.GREEN, "Going home.");
-            Msg.title(player, "", "&aGoing home.");
+            player.sendMessage(ChatColor.GREEN + "Going home.");
+            player.sendTitle("", ChatColor.GREEN + "Going home.", 10, 60, 10);
             player.teleport(location);
             return true;
         }
@@ -1067,15 +1092,15 @@ public final class HomePlugin extends JavaPlugin implements Listener {
         UUID playerId = player.getUniqueId();
         Claim claim = getClaimAt(player.getLocation().getBlock());
         if (!isHomeWorld(player.getWorld())) {
-            Msg.msg(player, ChatColor.RED, "You cannot set homes in this world");
+            player.sendMessage(ChatColor.RED + "You cannot set homes in this world");
             return true;
         }
         if (claim == null) {
-            Msg.msg(player, ChatColor.RED, "You can only set homes inside a claim");
+            player.sendMessage(ChatColor.RED + "You can only set homes inside a claim");
             return true;
         }
         if (!claim.canBuild(playerId)) {
-            Msg.msg(player, ChatColor.RED, "You cannot set homes in this claim");
+            player.sendMessage(ChatColor.RED + "You cannot set homes in this claim");
             return true;
         }
         String playerWorld = player.getWorld().getName();
@@ -1088,9 +1113,9 @@ public final class HomePlugin extends JavaPlugin implements Listener {
                 && Math.abs(playerX - (int)home.getX()) < homeMargin
                 && Math.abs(playerZ - (int)home.getZ()) < homeMargin) {
                 if (home.getName() == null) {
-                    Msg.msg(player, ChatColor.RED, "Your primary home is nearby", home.getName());
+                    player.sendMessage(ChatColor.RED + "Your primary home is nearby");
                 } else {
-                    Msg.msg(player, ChatColor.RED, "You have a home named \"%s\" nearby", home.getName());
+                    player.sendMessage(ChatColor.RED + "You have a home named \"" + home.getName() + "\" nearby");
                 }
                 return true;
             }
@@ -1104,9 +1129,9 @@ public final class HomePlugin extends JavaPlugin implements Listener {
         }
         db.save(home);
         if (homeName == null) {
-            Msg.msg(player, ChatColor.GREEN, "Primary home set");
+            player.sendMessage(ChatColor.GREEN + "Primary home set");
         } else {
-            Msg.msg(player, ChatColor.GREEN, "Home \"%s\" set", homeName);
+            player.sendMessage(ChatColor.GREEN + "Home \"" + homeName + "\" set");
         }
         return true;
     }
@@ -1118,34 +1143,38 @@ public final class HomePlugin extends JavaPlugin implements Listener {
         if (args.length == 0) {
             List<Home> playerHomes = findHomes(playerId);
             if (playerHomes.isEmpty()) {
-                Msg.msg(player, ChatColor.YELLOW, "No homes to show");
+                player.sendMessage(ChatColor.YELLOW + "No homes to show");
                 return true;
             }
             player.sendMessage("");
             if (playerHomes.size() == 1) {
-                Msg.msg(player, ChatColor.BLUE, "You have one home", playerHomes.size());
+                player.sendMessage(ChatColor.BLUE + "You have one home");
             } else {
-                Msg.msg(player, ChatColor.BLUE, "You have %d homes", playerHomes.size());
+                player.sendMessage(ChatColor.BLUE + "You have " + playerHomes.size() + " homes");
             }
             for (Home home: playerHomes) {
-                List<Object> json = new ArrayList<>();
-                Object nameButton;
+                ComponentBuilder cb = new ComponentBuilder("");
+                cb.append(" + ").color(ChatColor.BLUE);
                 if (home.getName() == null) {
-                    nameButton = Msg.button(ChatColor.GRAY, "§oPrimary", "/home", "§9/home\nTeleport to your primary home");
+                    cb.append("Primary").color(ChatColor.GRAY).italic(true)
+                        .event(new ClickEvent(ClickEvent.Action.RUN_COMMAND, "/home"))
+                        .event(new HoverEvent(HoverEvent.Action.SHOW_TEXT, TextComponent.fromLegacyText(ChatColor.GRAY + "/home\n" + ChatColor.WHITE + ChatColor.ITALIC + "Teleport to your primary home")))
+                        .append("").italic(false);
                 } else {
                     String cmd = "/home " + home.getName();
-                    nameButton = Msg.button(ChatColor.WHITE, home.getName(), cmd, "§9" + cmd + "\nTeleport to home \"" + home.getName() + "\"");
+                    cb.append(home.getName()).color(ChatColor.WHITE)
+                        .event(new ClickEvent(ClickEvent.Action.RUN_COMMAND, cmd))
+                        .event(new HoverEvent(HoverEvent.Action.SHOW_TEXT, TextComponent.fromLegacyText(ChatColor.GRAY + cmd + "\n" + ChatColor.WHITE + ChatColor.ITALIC + "Teleport to your home \"" + home.getName() + "\".")));
                 }
-                json.add("");
-                json.add(Msg.label(ChatColor.BLUE, " + "));
-                json.add(nameButton);
-                json.add(" ");
+                cb.append(" ");
                 String infocmd = home.getName() == null ? "/homes info" : "/homes info " + home.getName();
-                json.add(Msg.button(ChatColor.GRAY, " (i)", infocmd, "§c" + infocmd + "\n§f§oMore info."));
-                if (home.getInvites().size() == 1) json.add(Msg.label(ChatColor.GREEN, " 1 invite"));
-                if (home.getInvites().size() > 1) json.add(Msg.label(ChatColor.GREEN, " " + home.getInvites().size() + " invites"));
-                if (home.getPublicName() != null) json.add(Msg.label(ChatColor.AQUA, " public"));
-                Msg.raw(player, json);
+                cb.append("(info)").color(ChatColor.GRAY)
+                    .event(new ClickEvent(ClickEvent.Action.RUN_COMMAND, infocmd))
+                    .event(new HoverEvent(HoverEvent.Action.SHOW_TEXT, TextComponent.fromLegacyText(ChatColor.GRAY + infocmd + "\n" + ChatColor.WHITE + ChatColor.ITALIC + "Get more info on this home.")));
+                if (home.getInvites().size() == 1) cb.append(" 1 invite").color(ChatColor.GREEN);
+                if (home.getInvites().size() > 1) cb.append(home.getInvites().size() + " invites").color(ChatColor.GREEN);
+                if (home.getPublicName() != null) cb.append(" public").reset().color(ChatColor.AQUA);
+                player.spigot().sendMessage(cb.create());
             }
             int homeInvites = (int)homes.stream().filter(h -> h.isInvited(playerId)).count();
             if (homeInvites > 0) {
@@ -1157,21 +1186,42 @@ public final class HomePlugin extends JavaPlugin implements Listener {
                 }
                 cb.append("[List]").color(ChatColor.LIGHT_PURPLE)
                     .event(new ClickEvent(ClickEvent.Action.RUN_COMMAND, "/homes invites"))
-                    .event(new HoverEvent(HoverEvent.Action.SHOW_TEXT, TextComponent.fromLegacyText("§d/homes invites\n§f§oList home invites")));
+                    .event(new HoverEvent(HoverEvent.Action.SHOW_TEXT, TextComponent.fromLegacyText(ChatColor.LIGHT_PURPLE + "/homes invites\n" + ChatColor.WHITE + ChatColor.ITALIC + "List home invites")));
                 player.spigot().sendMessage(cb.create());
             }
-            Msg.raw(player, Msg.button(ChatColor.BLUE, "[Set]", "/home set ", "§9/homes set [name]\n§f§oSet a home."),
-                    "  ", Msg.button(ChatColor.GRAY, "[Info]", "/home info ", "§7/homes info §oHOME\n§f§oGet home info."),
-                    "  ", Msg.button(ChatColor.GREEN, "[Invite]", "/home invite ", "§a/homes invite §oPLAYER HOME\n§f§oSet a home."),
-                    "  ", Msg.button(ChatColor.AQUA, "[Public]", "/home public ", "§b/homes public §oHOME ALIAS\n§f§oMake home public."),
-                    "  ", Msg.button(ChatColor.DARK_AQUA, "[Visit]", "/visit", "§a/homes visit §oHOME\n§f§oVisit a public home."),
-                    "  ", Msg.button(ChatColor.RED, "[Delete]", "/home delete ", "§c/homes delete §oHOME\n§f§oDelete home."));
+            ComponentBuilder cb = new ComponentBuilder("")
+                .append("[Set]").color(ChatColor.BLUE)
+                .event(new ClickEvent(ClickEvent.Action.SUGGEST_COMMAND, "/homes set "))
+                .event(new HoverEvent(HoverEvent.Action.SHOW_TEXT, TextComponent.fromLegacyText(ChatColor.BLUE + "/homes set [name]\n" + ChatColor.WHITE + ChatColor.ITALIC + "Set a home.")))
+                .append("  ")
+                .append("[Info]").color(ChatColor.YELLOW)
+                .event(new ClickEvent(ClickEvent.Action.SUGGEST_COMMAND, "/homes info "))
+                .event(new HoverEvent(HoverEvent.Action.SHOW_TEXT, TextComponent.fromLegacyText(ChatColor.YELLOW + "/homes info " + ChatColor.ITALIC + "HOME\n" + ChatColor.WHITE + ChatColor.ITALIC + "Get home info.")))
+                .append("  ")
+                .append("[Invite]").color(ChatColor.GREEN)
+                .event(new ClickEvent(ClickEvent.Action.SUGGEST_COMMAND, "/homes invite "))
+                .event(new HoverEvent(HoverEvent.Action.SHOW_TEXT, TextComponent.fromLegacyText(ChatColor.GREEN + "/homes invite " + ChatColor.ITALIC + "PLAYER HOME\n" + ChatColor.WHITE + ChatColor.ITALIC + "Set a home.")))
+                .append("  ")
+                .append("[Public]").color(ChatColor.AQUA)
+                .event(new ClickEvent(ClickEvent.Action.SUGGEST_COMMAND, "/homes public "))
+                .event(new HoverEvent(HoverEvent.Action.SHOW_TEXT, TextComponent.fromLegacyText(ChatColor.AQUA + "/homes public " + ChatColor.ITALIC + "HOME ALIAS\n" + ChatColor.WHITE + ChatColor.ITALIC + "Make home public.")))
+                .append("  ")
+                .append("[Visit]").color(ChatColor.DARK_AQUA)
+                .event(new ClickEvent(ClickEvent.Action.RUN_COMMAND, "/homes visit"))
+                .event(new HoverEvent(HoverEvent.Action.SHOW_TEXT, TextComponent.fromLegacyText(ChatColor.GREEN + "/homes visit " + ChatColor.ITALIC + "HOME\n" + ChatColor.WHITE + ChatColor.ITALIC + "Visit a public home.")))
+                .append("  ")
+                .append("[Delete]").color(ChatColor.RED)
+                .event(new ClickEvent(ClickEvent.Action.SUGGEST_COMMAND, "/homes delete "))
+                .event(new HoverEvent(HoverEvent.Action.SHOW_TEXT, TextComponent.fromLegacyText(ChatColor.RED + "/homes delete " + ChatColor.ITALIC + "HOME\n" + ChatColor.WHITE + ChatColor.ITALIC + "Delete home.")));
+            player.spigot().sendMessage(cb.create());
             player.sendMessage("");
             return true;
         }
         switch (args[0]) {
         case "set":
             return onSethomeCommand(sender, command, alias, Arrays.copyOfRange(args, 1, args.length));
+        case "visit":
+            return onVisitCommand(sender, command, alias, Arrays.copyOfRange(args, 1, args.length));
         case "invite":
             if (args.length == 2 || args.length == 3) {
                 return onInviteHomeCommand(sender, command, alias, Arrays.copyOfRange(args, 1, args.length));
@@ -1182,28 +1232,31 @@ public final class HomePlugin extends JavaPlugin implements Listener {
                 String homeName = args[1];
                 Home home = findHome(playerId, homeName);
                 if (home == null) {
-                    Msg.msg(player, ChatColor.RED, "Home not found: %s", homeName);
+                    player.sendMessage(ChatColor.RED + "Home not found: " + homeName);
                     return true;
                 }
                 if (home.getPublicName() != null) {
-                    Msg.msg(player, ChatColor.RED, "Home is already public under the alias \"%s\"", home.getPublicName());
+                    player.sendMessage(ChatColor.RED + "Home is already public under the alias \"" + home.getPublicName() + "\"");
                     return true;
                 }
                 String publicName = args.length >= 3 ? args[2] : home.getName();
                 if (publicName == null) {
-                    Msg.msg(player, ChatColor.RED, "Please supply a public name for this home");
+                    player.sendMessage(ChatColor.RED + "Please supply a public name for this home");
                     return true;
                 }
                 if (findPublicHome(publicName) != null) {
-                    Msg.msg(player, ChatColor.RED, "A public home by that name already exists. Please supply a different alias.");
+                    player.sendMessage(ChatColor.RED + "A public home by that name already exists. Please supply a different alias.");
                     return true;
                 }
                 home.setPublicName(publicName);
                 db.save(home);
                 String cmd = "/visit " + publicName;
-                Msg.raw(player, "",
-                        Msg.label(ChatColor.WHITE, "Home made public. Players may visit via "),
-                        Msg.button(ChatColor.GREEN, cmd, cmd, "§a" + cmd + "\nCan also be found under /visit."));
+                ComponentBuilder cb = new ComponentBuilder("")
+                    .append("Home made public. Players may visit via ").color(ChatColor.WHITE)
+                    .append(cmd).color(ChatColor.GREEN)
+                    .event(new ClickEvent(ClickEvent.Action.SUGGEST_COMMAND, cmd))
+                    .event(new HoverEvent(HoverEvent.Action.SHOW_TEXT, TextComponent.fromLegacyText(ChatColor.GREEN + cmd + "\nCan also be found under /visit.")));
+                player.spigot().sendMessage(cb.create());
                 return true;
             }
             break;
@@ -1213,9 +1266,9 @@ public final class HomePlugin extends JavaPlugin implements Listener {
                 Home home = findHome(playerId, homeName);
                 if (home == null) {
                     if (homeName == null) {
-                        Msg.msg(player, ChatColor.RED, "Your primary home is not set");
+                        player.sendMessage(ChatColor.RED + "Your primary home is not set");
                     } else {
-                        Msg.msg(player, ChatColor.RED, "You do not have a home named \"%s\"", homeName);
+                        player.sendMessage(ChatColor.RED + "You do not have a home named \"" + homeName + "\"");
                     }
                     return true;
                 }
@@ -1223,9 +1276,9 @@ public final class HomePlugin extends JavaPlugin implements Listener {
                 db.delete(home);
                 homes.remove(home);
                 if (homeName == null) {
-                    Msg.msg(player, ChatColor.YELLOW, "Primary home unset. The §o/home§e command will take you to your bed spawn or primary claim.");
+                    player.sendMessage(ChatColor.YELLOW + "Primary home unset. The " + ChatColor.ITALIC + "/home" + ChatColor.YELLOW + " command will take you to your bed spawn or primary claim.");
                 } else {
-                    Msg.msg(player, ChatColor.YELLOW, "Home \"%s\" deleted", homeName);
+                    player.sendMessage(ChatColor.YELLOW + "Home \"" + homeName + "\" deleted");
                 }
                 return true;
             }
@@ -1239,22 +1292,27 @@ public final class HomePlugin extends JavaPlugin implements Listener {
                     home = findHome(playerId, args[1]);
                 }
                 if (home == null) {
-                    Msg.msg(player, ChatColor.RED, "Home not found.");
+                    player.sendMessage(ChatColor.RED + "Home not found.");
                     return true;
                 }
                 player.sendMessage("");
                 if (home.getName() == null) {
-                    Msg.msg(player, ChatColor.BLUE, "Primary Home Info");
+                    player.spigot().sendMessage(frame(new ComponentBuilder(""), "Primary Home Info").create());
                 } else {
-                    Msg.msg(player, ChatColor.BLUE, "Home Info: %s", home.getName());
+                    player.spigot().sendMessage(frame(new ComponentBuilder(""), home.getName() + " Info").create());
                 }
                 StringBuilder sb = new StringBuilder();
                 for (UUID inviteId: home.getInvites()) {
                     sb.append(" ").append(GenericEvents.cachedPlayerName(inviteId));
                 }
-                Msg.msg(player, ChatColor.WHITE, " §7Location: §f%s %d,%d,%d", worldDisplayName(home.getWorld()), (int)Math.floor(home.getX()), (int)Math.floor(home.getY()), (int)Math.floor(home.getZ()));
-                Msg.msg(player, ChatColor.WHITE, " §7Invited: §f%s", sb.toString());
-                Msg.msg(player, ChatColor.WHITE, " §7Public: §f%s", home.getPublicName() == null ? "yes" : "no");
+                player.sendMessage(ChatColor.GRAY + " Location: " + ChatColor.WHITE + String.format("%s %d,%d,%d", worldDisplayName(home.getWorld()), (int)Math.floor(home.getX()), (int)Math.floor(home.getY()), (int)Math.floor(home.getZ())));
+                ComponentBuilder cb = new ComponentBuilder("");
+                cb.append(" Invited: " + home.getInvites().size()).color(ChatColor.GRAY);
+                for (UUID invitee: home.getInvites()) {
+                    cb.append(" ").append(GenericEvents.cachedPlayerName(invitee)).color(ChatColor.WHITE);
+                }
+                player.spigot().sendMessage(cb.create());
+                player.sendMessage(ChatColor.GRAY + " Public: " + ChatColor.WHITE + (home.getPublicName() != null ? "yes" : "no"));
                 player.sendMessage("");
                 return true;
             }
@@ -1268,7 +1326,7 @@ public final class HomePlugin extends JavaPlugin implements Listener {
                         cb.append(" ");
                         cb.append(homename).color(ChatColor.GREEN)
                             .event(new ClickEvent(ClickEvent.Action.RUN_COMMAND, "/home " + homename))
-                            .event(new HoverEvent(HoverEvent.Action.SHOW_TEXT, TextComponent.fromLegacyText("§a/home " + homename + "\n§f§oUse this home invite.")));
+                            .event(new HoverEvent(HoverEvent.Action.SHOW_TEXT, TextComponent.fromLegacyText(ChatColor.GREEN + "home " + homename + "\n" + ChatColor.WHITE + ChatColor.ITALIC + "Use this home invite.")));
                     }
                 }
                 player.spigot().sendMessage(cb.create());
@@ -1289,16 +1347,16 @@ public final class HomePlugin extends JavaPlugin implements Listener {
         String targetName = args[0];
         UUID targetId = GenericEvents.cachedPlayerUuid(targetName);
         if (targetId == null) {
-            Msg.msg(player, ChatColor.RED, "Player not found: %s", targetName);
+            player.sendMessage(ChatColor.RED + "Player not found: " + targetName);
             return true;
         }
         String homeName = args.length >= 2 ? args[1] : null;
         Home home = findHome(playerId, homeName);
         if (home == null) {
             if (homeName == null) {
-                Msg.msg(player, ChatColor.RED, "Your primary home is not set");
+                player.sendMessage(ChatColor.RED + "Your primary home is not set");
             } else {
-                Msg.msg(player, ChatColor.RED, "You have no home named %s", homeName);
+                player.sendMessage(ChatColor.RED + "You have no home named " + homeName);
             }
             return true;
         }
@@ -1307,19 +1365,25 @@ public final class HomePlugin extends JavaPlugin implements Listener {
             db.save(invite);
             home.invites.add(targetId);
         }
-        Msg.msg(player, ChatColor.GREEN, "Invite sent to %s", targetName);
+        player.sendMessage(ChatColor.GREEN + "Invite sent to " + targetName);
         Player target = getServer().getPlayer(targetId);
         if (target == null) return true;
         if (home.getName() == null) {
             String cmd = "/home " + player.getName() + ":";
-            Msg.raw(target, "",
-                    Msg.label(ChatColor.WHITE, player.getName() + " invited you to their primary home: "),
-                    Msg.button(ChatColor.GREEN, "[Visit]", cmd, "§a" + cmd + "\n§f§oVisit this home"));
+            ComponentBuilder cb = new ComponentBuilder("")
+                .append(player.getName() + " invited you to their primary home: ").color(ChatColor.WHITE)
+                .append("[Visit]").color(ChatColor.GREEN)
+                .event(new ClickEvent(ClickEvent.Action.RUN_COMMAND, cmd))
+                .event(new HoverEvent(HoverEvent.Action.SHOW_TEXT, TextComponent.fromLegacyText(ChatColor.GREEN + cmd + "\n" + ChatColor.WHITE + ChatColor.ITALIC + "Visit this home")));
+            player.spigot().sendMessage(cb.create());
         } else {
             String cmd = "/home " + player.getName() + ":" + home.getName();
-            Msg.raw(target, "",
-                    Msg.label(ChatColor.WHITE, player.getName() + " invited you to their home: "),
-                    Msg.button(ChatColor.GREEN, "[" + home.getName() + "]", cmd, "§a" + cmd + "\nVisit this home"));
+            ComponentBuilder cb = new ComponentBuilder("")
+                .append(player.getName() + " invited you to their home: ").color(ChatColor.WHITE)
+                .append("[" + home.getName() + "]").color(ChatColor.GREEN)
+                .event(new ClickEvent(ClickEvent.Action.RUN_COMMAND, cmd))
+                .event(new HoverEvent(HoverEvent.Action.SHOW_TEXT, TextComponent.fromLegacyText(ChatColor.GREEN + cmd + "\n" + ChatColor.WHITE + ChatColor.ITALIC + "Visit this home")));
+            player.spigot().sendMessage(cb.create());
         }
         return true;
     }
@@ -1329,28 +1393,37 @@ public final class HomePlugin extends JavaPlugin implements Listener {
         final Player player = (Player)sender;
         if (args.length == 0) {
             List<Home> publicHomes = homes.stream().filter(h -> h.getPublicName() != null).collect(Collectors.toList());
-            Msg.msg(player, ChatColor.GREEN, "%d public homes", publicHomes.size());
+            player.sendMessage("");
+            if (publicHomes.size() == 1) {
+                player.spigot().sendMessage(frame(new ComponentBuilder(""), "One public home").create());
+            } else {
+                player.spigot().sendMessage(frame(new ComponentBuilder(""), publicHomes.size() + " public homes").create());
+            }
             for (Home home: publicHomes) {
                 String cmd = "/visit " + home.getPublicName();
-                Msg.raw(player, "",
-                        Msg.label(ChatColor.GREEN, "+ "),
-                        Msg.button(ChatColor.WHITE, home.getPublicName(), cmd, "§9" + cmd + "\nVisit this home"),
-                        Msg.label(ChatColor.GRAY, " by " + home.getOwnerName()));
+                ComponentBuilder cb = new ComponentBuilder("")
+                    .append(" + ").color(ChatColor.AQUA)
+                    .append(home.getPublicName()).color(ChatColor.WHITE)
+                    .event(new ClickEvent(ClickEvent.Action.RUN_COMMAND, cmd))
+                    .event(new HoverEvent(HoverEvent.Action.SHOW_TEXT, TextComponent.fromLegacyText(ChatColor.BLUE + cmd + "\n" + ChatColor.WHITE + ChatColor.ITALIC + "Visit this home")))
+                    .append(" by " + home.getOwnerName()).color(ChatColor.GRAY);
+                player.spigot().sendMessage(cb.create());
             }
+            player.sendMessage("");
             return true;
         }
         Home home = findPublicHome(args[0]);
         if (home == null) {
-            Msg.msg(player, ChatColor.RED, "Public home not found: %s", args[0]);
+            player.sendMessage(ChatColor.RED + "Public home not found: " + args[0]);
             return true;
         }
         Location location = home.createLocation();
         if (location == null) {
-            Msg.msg(player, ChatColor.RED, "Could not take you to this home.");
+            player.sendMessage(ChatColor.RED + "Could not take you to this home.");
             return true;
         }
         player.teleport(location);
-        Msg.msg(player, ChatColor.GREEN, "Teleported to %s's public home \"%s\"", home.getOwnerName(), home.getPublicName());
+        player.sendMessage(ChatColor.GREEN + "Teleported to " + home.getOwnerName() + "'s public home \"" + home.getPublicName() + "\"");
         return true;
     }
 
@@ -1362,7 +1435,7 @@ public final class HomePlugin extends JavaPlugin implements Listener {
         if (!player.hasMetadata(META_IGNORE)
             && !player.isOp()
             && !findClaimsInWorld(playerId, primaryHomeWorld).isEmpty()) {
-            Msg.msg(player, ChatColor.RED, "You already have a claim!");
+            player.sendMessage(ChatColor.RED + "You already have a claim!");
             return true;
         }
         findPlaceToBuild(player);
@@ -1427,7 +1500,7 @@ public final class HomePlugin extends JavaPlugin implements Listener {
     public List<String> onHomesTabComplete(CommandSender sender, Command command, String alias, String[] args) {
         String arg = args.length == 0 ? "" : args[args.length - 1];
         if (alias.equals("homes") && args.length == 1) {
-            return Arrays.asList("set", "invite", "public", "delete", "info", "invites").stream().filter(i -> i.startsWith(arg)).collect(Collectors.toList());
+            return Arrays.asList("set", "invite", "visit", "public", "delete", "info", "invites").stream().filter(i -> i.startsWith(arg)).collect(Collectors.toList());
         }
         return null;
     }
@@ -1438,7 +1511,7 @@ public final class HomePlugin extends JavaPlugin implements Listener {
         if (meta != null) {
             long remain = (meta.asLong() - System.nanoTime()) / 1000000000 - (long)buildCooldown;
             if (remain > 0) {
-                Msg.msg(player, ChatColor.RED, "Please wait %d more seconds", remain);
+                player.sendMessage(ChatColor.RED + "Please wait " + remain + " more seconds");
                 return;
             }
         }
@@ -1447,7 +1520,7 @@ public final class HomePlugin extends JavaPlugin implements Listener {
         World bworld = getServer().getWorld(worldName);
         if (bworld == null) {
             getLogger().warning("Home world not found: " + worldName);
-            Msg.msg(player, ChatColor.RED, "Something went wrong. Please contact an administrator.");
+            player.sendMessage(ChatColor.RED + "Something went wrong. Please contact an administrator.");
             return;
         }
         WorldBorder border = bworld.getWorldBorder();
@@ -1473,16 +1546,21 @@ public final class HomePlugin extends JavaPlugin implements Listener {
             location.setYaw((float)Math.random() * 360.0f - 180.0f);
         }
         if (location == null) {
-            Msg.msg(player, ChatColor.RED, "Could not find a place to build. Please try again");
+            player.sendMessage(ChatColor.RED + "Could not find a place to build. Please try again");
             return;
         }
         // Teleport, notify, and set cooldown
         player.teleport(location);
-        Msg.raw(player, "",
-                Msg.label(ChatColor.WHITE, "Found you a place to build. "),
-                Msg.button(ChatColor.GREEN, "[Claim]", "/claim new ", Msg.format("§a/claim new§f§o\nCreate a claim and set a home at this location so you can build and return any time.")),
-                Msg.label(ChatColor.WHITE, " it or "),
-                Msg.button(ChatColor.YELLOW, "[Retry]", "/home", Msg.format("§a/home§f§o\nFind another random location.")));
+        ComponentBuilder cb = new ComponentBuilder("")
+            .append("Found you a place to build. ").color(ChatColor.WHITE)
+            .append("[Claim]").color(ChatColor.GREEN)
+            .event(new ClickEvent(ClickEvent.Action.SUGGEST_COMMAND, "/claim new"))
+            .event(new HoverEvent(HoverEvent.Action.SHOW_TEXT, TextComponent.fromLegacyText(ChatColor.GREEN + "/claim new\n" + ChatColor.WHITE + ChatColor.ITALIC + "Create a claim and set a home at this location so you can build and return any time.")))
+            .append("  ", ComponentBuilder.FormatRetention.NONE)
+            .append("[Retry]").color(ChatColor.YELLOW)
+            .event(new ClickEvent(ClickEvent.Action.SUGGEST_COMMAND, "/home"))
+            .event(new HoverEvent(HoverEvent.Action.SHOW_TEXT, TextComponent.fromLegacyText(ChatColor.GREEN + "/home\n" + ChatColor.WHITE + ChatColor.ITALIC + "Find another place to build.")));
+        player.spigot().sendMessage(cb.create());
         player.setMetadata(META_COOLDOWN_WILD, new FixedMetadataValue(this, System.nanoTime()));
         player.setMetadata(META_NOFALL, new FixedMetadataValue(this, System.nanoTime()));
     }
@@ -1493,37 +1571,41 @@ public final class HomePlugin extends JavaPlugin implements Listener {
         frame(cb, "Claim Settings");
         player.spigot().sendMessage(cb.create());
         for (Claim.Setting setting: Claim.Setting.values()) {
-            List<Object> json = new ArrayList<>();
-            json.add(" ");
+            cb = new ComponentBuilder(" ");
             Object value = claim.getSetting(setting);
             String key = setting.name().toLowerCase();
             if (value == Boolean.TRUE) {
-                json.add(Msg.label(ChatColor.BLUE, "[ON]"));
-                json.add(" ");
-                json.add(Msg.button(ChatColor.GRAY, "[OFF]", "/claim set " + key + " off", "Disable " + setting.displayName));
+                cb.append("[ON]").color(ChatColor.BLUE)
+                    .append("  ", ComponentBuilder.FormatRetention.NONE)
+                    .append("[OFF]").color(ChatColor.GRAY)
+                    .event(new ClickEvent(ClickEvent.Action.RUN_COMMAND, "/claim set " + key + " off"))
+                    .event(new HoverEvent(HoverEvent.Action.SHOW_TEXT, TextComponent.fromLegacyText(ChatColor.RED + "Disable " + setting.displayName)));
             } else if (value == Boolean.FALSE) {
-                json.add(Msg.button(ChatColor.GRAY, "[ON]", "/claim set " + key + " on", "Enable " + setting.displayName));
-                json.add(" ");
-                json.add(Msg.label(ChatColor.RED, "[OFF]"));
+                cb.append("[ON]").color(ChatColor.GRAY)
+                    .event(new ClickEvent(ClickEvent.Action.RUN_COMMAND, "/claim set " + key + " on"))
+                    .event(new HoverEvent(HoverEvent.Action.SHOW_TEXT, TextComponent.fromLegacyText(ChatColor.GREEN + "Enable " + setting.displayName)))
+                    .append("  ", ComponentBuilder.FormatRetention.NONE)
+                    .append("[OFF]").color(ChatColor.RED);
             }
-            json.add(Msg.label(ChatColor.WHITE, " %s", setting.displayName));
-            Msg.raw(player, json);
+            cb.append(" " + setting.displayName).color(ChatColor.WHITE);
+            player.spigot().sendMessage(cb.create());
         }
         player.sendMessage("");
     }
 
-    void autoGrowClaim(Claim claim) {
+    boolean autoGrowClaim(Claim claim) {
         Area area = claim.getArea();
         Area newArea = new Area(area.ax - 1, area.ay - 1, area.bx + 1, area.by + 1);
-        if (newArea.size() > claim.getBlocks()) return;
+        if (newArea.size() > claim.getBlocks()) return false;
         String claimWorld = claim.getWorld();
         for (Claim other: claims) {
             if (other != claim && other.isInWorld(claimWorld) && other.getArea().overlaps(newArea)) {
-                return;
+                return false;
             }
         }
         claim.setArea(newArea);
         db.save(claim.toSQLRow());
+        return true;
     }
 
     // --- Configuration utility
@@ -1586,7 +1668,7 @@ public final class HomePlugin extends JavaPlugin implements Listener {
 
     String worldDisplayName(String worldName) {
         World world = getServer().getWorld(worldName);
-        if (world == null) return worldName;;
+        if (world == null) return worldName;
         switch (world.getEnvironment()) {
         case NORMAL: return "overworld";
         case NETHER: return "nether";

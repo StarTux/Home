@@ -72,6 +72,8 @@ import org.bukkit.event.player.PlayerInteractAtEntityEvent;
 import org.bukkit.event.player.PlayerInteractEntityEvent;
 import org.bukkit.event.player.PlayerInteractEvent;
 import org.bukkit.event.player.PlayerShearEntityEvent;
+import org.bukkit.event.server.PluginDisableEvent;
+import org.bukkit.event.server.PluginEnableEvent;
 import org.bukkit.event.vehicle.VehicleCreateEvent;
 import org.bukkit.event.vehicle.VehicleDamageEvent;
 import org.bukkit.event.vehicle.VehicleDestroyEvent;
@@ -111,6 +113,7 @@ public final class HomePlugin extends JavaPlugin implements Listener {
     private static final String META_NOCLAIM_COUNT = "home.noclaim.count";
     private static final String META_NOCLAIM_TIME = "home.noclaim.time";
     private long ticks;
+    private DynmapClaims dynmapClaims;
 
     @Override
     public void onEnable() {
@@ -137,12 +140,18 @@ public final class HomePlugin extends JavaPlugin implements Listener {
                 onTick();
             }
         }.runTaskTimer(this, 1, 1);
+        if (getServer().getPluginManager().getPlugin("dynmap") != null) {
+            dynmapClaims = new DynmapClaims(this);
+            dynmapClaims.update();
+        }
     }
 
     @Override
     public void onDisable() {
         claims.clear();
         homes.clear();
+        if (dynmapClaims != null) dynmapClaims.disable();
+        dynmapClaims = null;
     }
 
     // --- Inner classes for utility
@@ -229,6 +238,9 @@ public final class HomePlugin extends JavaPlugin implements Listener {
                     }
                 }
             }
+        }
+        if ((ticks % 200L) == 0L) {
+            if (dynmapClaims != null) dynmapClaims.update();
         }
     }
 
@@ -2403,6 +2415,24 @@ public final class HomePlugin extends JavaPlugin implements Listener {
         if (event.getEntity().getType() == EntityType.PHANTOM
             && event.getSpawnReason() != CreatureSpawnEvent.SpawnReason.CUSTOM) {
             event.setCancelled(true);
+        }
+    }
+
+    @EventHandler
+    public void onPluginEnable(PluginEnableEvent event) {
+        if (event.getPlugin().getName().equals("dynmap")) {
+            dynmapClaims = new DynmapClaims(this);
+            dynmapClaims.update();
+        }
+    }
+
+    @EventHandler
+    public void onPluginDisable(PluginDisableEvent event) {
+        if (event.getPlugin().getName().equals("dynmap")) {
+            if (dynmapClaims != null) {
+                dynmapClaims.disable();
+                dynmapClaims = null;
+            }
         }
     }
 }

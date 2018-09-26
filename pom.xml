@@ -16,6 +16,11 @@
       <id>spigot-repo</id>
       <url>https://hub.spigotmc.org/nexus/content/repositories/snapshots/</url>
     </repository>
+    <!-- Cavetale Repo -->
+    <repository>
+      <id>cavetale-repo</id>
+      <url>https://cavetale.com/jenkins/plugin/repository/everything/</url>
+    </repository>
   </repositories>
   <dependencies>
     <!-- Spigot-API -->
@@ -43,6 +48,13 @@
       <groupId>com.winthier.generic_events</groupId>
       <artifactId>generic_events</artifactId>
       <version>0.1-SNAPSHOT</version>
+      <scope>provided</scope>
+    </dependency>
+    <!-- dynmap -->
+    <dependency>
+      <groupId>us.dynmap</groupId>
+      <artifactId>dynmap</artifactId>
+      <version>2.6-beta-1</version>
       <scope>provided</scope>
     </dependency>
   </dependencies>

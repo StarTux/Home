@@ -224,7 +224,7 @@ public final class HomePlugin extends JavaPlugin implements Listener {
                             player.setGameMode(GameMode.SURVIVAL);
                         }
                     } else {
-                        if (player.getGameMode() != GameMode.ADVENTURE) {
+                        if (player.getGameMode() != GameMode.ADVENTURE && !player.hasMetadata(META_IGNORE) && !player.isOp()) {
                             player.setGameMode(GameMode.ADVENTURE);
                         }
                     }

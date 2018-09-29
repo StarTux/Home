@@ -927,7 +927,8 @@ public final class HomePlugin extends JavaPlugin implements Listener {
             cb.append("Owned").color(ChatColor.GRAY);
             for (Claim claim: playerClaims) {
                 cb.append("  ");
-                ChatColor color = colors[ci++];
+                ci = (ci + 1) % colors.length;
+                ChatColor color = colors[ci];
                 cb.append("[" + worldDisplayName(claim.getWorld()) + "]").color(color)
                     .event(new ClickEvent(ClickEvent.Action.RUN_COMMAND, "/claim info " + claim.getId()))
                     .event(new HoverEvent(HoverEvent.Action.SHOW_TEXT, TextComponent.fromLegacyText(color + "Your claim in " + worldDisplayName(claim.getWorld()))));
@@ -943,7 +944,8 @@ public final class HomePlugin extends JavaPlugin implements Listener {
             cb.append("Invited").color(ChatColor.GRAY);
             for (Claim claim: playerClaims) {
                 cb.append("  ");
-                ChatColor color = colors[ci++];
+                ci = (ci + 1) % colors.length;
+                ChatColor color = colors[ci];
                 cb.append("[" + claim.getOwnerName() + "]").color(color)
                     .event(new ClickEvent(ClickEvent.Action.RUN_COMMAND, "/claim info " + claim.getId()))
                     .event(new HoverEvent(HoverEvent.Action.SHOW_TEXT, TextComponent.fromLegacyText(color + claim.getOwnerName() + " invited you to this claim.")));

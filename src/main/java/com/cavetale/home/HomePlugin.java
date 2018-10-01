@@ -1901,6 +1901,11 @@ public final class HomePlugin extends JavaPlugin implements Listener {
                 // Forbidden actions are cancelled further down.
                 break;
             }
+        } else {
+            switch (action) {
+            case COMBAT: return true;
+            default: break;
+            }
         }
         // Action is not covered by visitor, member, or owner
         // privilege.  Therefore, nothing is allowed.

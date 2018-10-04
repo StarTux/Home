@@ -1739,21 +1739,42 @@ public final class HomePlugin extends JavaPlugin implements Listener {
         int playerY = playerLocation.getBlockY();
         int playerZ = playerLocation.getBlockZ();
         World world = player.getWorld();
-        for (int x = area.ax; x <= area.bx; x += 1) {
-            blocks.add(world.getBlockAt(x, playerY, area.ay));
-            blocks.add(world.getBlockAt(x, playerY, area.by));
+        final int maxd = 16 * 6;
+        // Upper X axies
+        if (Math.abs(area.ay - playerZ) <= maxd) {
+            for (int x = area.ax; x <= area.bx; x += 1) {
+                if (Math.abs(x - playerX) <= maxd && world.isChunkLoaded(x >> 4, area.ay >> 4)) {
+                    blocks.add(world.getBlockAt(x, playerY, area.ay));
+                }
+            }
         }
-        for (int z = area.ay; z < area.by; z += 1) {
-            blocks.add(world.getBlockAt(area.ax, playerY, z));
-            blocks.add(world.getBlockAt(area.bx, playerY, z));
+        // Lower X axis
+        if (Math.abs(area.by - playerZ) <= maxd) {
+            for (int x = area.ax; x <= area.bx; x += 1) {
+                if (Math.abs(x - playerX) <= maxd && world.isChunkLoaded(x >> 4, area.by >> 4)) {
+                    blocks.add(world.getBlockAt(x, playerY, area.by));
+                }
+            }
+        }
+        // Left Z axis
+        if (Math.abs(area.ax - playerX) <= maxd) {
+            for (int z = area.ay; z < area.by; z += 1) {
+                if (Math.abs(z - playerZ) <= maxd && world.isChunkLoaded(area.ax >> 4, z >> 4)) {
+                    blocks.add(world.getBlockAt(area.ax, playerY, z));
+                }
+            }
+        }
+        // Right Z axis
+        if (Math.abs(area.bx - playerX) <= maxd) {
+            for (int z = area.ay; z < area.by; z += 1) {
+                if (Math.abs(z - playerZ) <= maxd && world.isChunkLoaded(area.bx >> 4, z >> 4)) {
+                    blocks.add(world.getBlockAt(area.bx, playerY, z));
+                }
+            }
         }
         for (Block block: blocks) {
             while (block.isEmpty()) block = block.getRelative(0, -1, 0);
             while (!block.isEmpty()) block = block.getRelative(0, 1, 0);
-            int dx = Math.abs(block.getX() - playerX);
-            int dz = Math.abs(block.getZ() - playerZ);
-            int dist = dx * dx + dz * dz;
-            if (dist > 9216) continue; // 6 * 16, squared
             player.spawnParticle(Particle.BARRIER, block.getLocation().add(0.5, 0.5, 0.5), 1, 0.0, 0.0, 0.0, 0.0);
         }
     }

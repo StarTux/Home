@@ -2150,22 +2150,24 @@ public final class HomePlugin extends JavaPlugin implements Listener {
 
     @EventHandler(ignoreCancelled = true, priority = EventPriority.LOW)
     public void onVehicleDamage(VehicleDamageEvent event) {
-        Player player = getPlayerDamager(event.getAttacker());
-        if (player == null) return;
         Vehicle vehicle = event.getVehicle();
         if (!isHomeWorld(vehicle.getWorld())) return;
+        Player player = getPlayerDamager(event.getAttacker());
+        if (player == null) return;
         if (isOwner(player, vehicle)) return;
+        if (getClaimAt(vehicle.getLocation()) == null) return;
         checkPlayerAction(player, vehicle.getLocation().getBlock(), Action.BUILD, event);
     }
 
     @EventHandler(ignoreCancelled = true, priority = EventPriority.LOW)
     public void onVehicleDestroy(VehicleDestroyEvent event) {
+        Vehicle vehicle = event.getVehicle();
+        if (!isHomeWorld(vehicle.getWorld())) return;
         Player player = getPlayerDamager(event.getAttacker());
         if (player == null) return;
-        Vehicle vehicle = event.getVehicle();
-        if (!isHomeWorld(player.getWorld())) return;
+        if (isOwner(player, vehicle)) return;
         if (getClaimAt(vehicle.getLocation()) == null) return;
-        if (player != null) checkPlayerAction(player, vehicle.getLocation().getBlock(), Action.BUILD, event);
+        checkPlayerAction(player, vehicle.getLocation().getBlock(), Action.BUILD, event);
     }
 
     @EventHandler(ignoreCancelled = true, priority = EventPriority.LOW)

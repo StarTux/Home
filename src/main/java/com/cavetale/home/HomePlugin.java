@@ -753,7 +753,11 @@ public final class HomePlugin extends JavaPlugin implements Listener {
                     return true;
                 }
                 long life = System.currentTimeMillis() - claim.getCreated();
-                long must = 10L * 60L * 1000L;
+                long must;
+                switch (findClaims(playerId).size()) {
+                case 0: case 1: must = 10L * 60L * 1000L; break; // 10 minutes
+                default: must = 24L * 60L * 60L * 1000L; break; // 24 hours
+                }
                 if (life < must) {
                     long wait = (must - life) / (1000L * 60L);
                     if (wait <= 1) {
@@ -1771,8 +1775,8 @@ public final class HomePlugin extends JavaPlugin implements Listener {
             }
         }
         for (Block block: blocks) {
-            while (block.isEmpty()) block = block.getRelative(0, -1, 0);
-            while (!block.isEmpty()) block = block.getRelative(0, 1, 0);
+            while (block.isEmpty() && block.getY() > 0) block = block.getRelative(0, -1, 0);
+            while (!block.isEmpty() && block.getY() < 127) block = block.getRelative(0, 1, 0);
             player.spawnParticle(Particle.BARRIER, block.getLocation().add(0.5, 0.5, 0.5), 1, 0.0, 0.0, 0.0, 0.0);
         }
     }

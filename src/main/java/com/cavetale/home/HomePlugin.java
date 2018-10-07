@@ -60,7 +60,6 @@ import org.bukkit.event.entity.EntityDamageByEntityEvent;
 import org.bukkit.event.entity.EntityDamageEvent;
 import org.bukkit.event.entity.EntityExplodeEvent;
 import org.bukkit.event.entity.PlayerLeashEntityEvent;
-import org.bukkit.event.entity.ProjectileHitEvent;
 import org.bukkit.event.hanging.HangingBreakByEntityEvent;
 import org.bukkit.event.hanging.HangingBreakEvent;
 import org.bukkit.event.hanging.HangingPlaceEvent;
@@ -2392,18 +2391,6 @@ public final class HomePlugin extends JavaPlugin implements Listener {
         if (claim == null || claim.getSetting(Claim.Setting.FIRE) != Boolean.TRUE) {
             event.setCancelled(true);
             return;
-        }
-    }
-
-    @EventHandler(priority = EventPriority.LOW)
-    public void onProjectileHit(ProjectileHitEvent event) {
-        if (!isHomeWorld(event.getEntity().getWorld())) return;
-        Player player = getPlayerDamager(event.getEntity());
-        if (player == null) return;
-        if (event.getHitBlock() != null) {
-            if (!checkPlayerAction(player, event.getHitBlock(), Action.BUILD, null)) {
-                event.getEntity().remove();
-            }
         }
     }
 

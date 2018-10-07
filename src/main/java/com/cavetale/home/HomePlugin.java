@@ -108,7 +108,7 @@ public final class HomePlugin extends JavaPlugin implements Listener {
     private static final String META_NOFALL = "home.nofall";
     private static final String META_BUY = "home.buyclaimblocks";
     private static final String META_ABANDON = "home.abandonclaim";
-    private static final String META_IGNORE = "home.ignore";
+    static final String META_IGNORE = "home.ignore";
     private static final String META_NOCLAIM_WARN = "home.noclaim.warn";
     private static final String META_NOCLAIM_COUNT = "home.noclaim.count";
     private static final String META_NOCLAIM_TIME = "home.noclaim.time";
@@ -219,7 +219,7 @@ public final class HomePlugin extends JavaPlugin implements Listener {
                         }
                     }
                 } else { // (claim != null)
-                    if (claim.isOwner(playerId) || claim.canBuild(playerId)) {
+                    if (claim.canBuild(playerId) || claim.getSetting(Claim.Setting.PUBLIC) == Boolean.TRUE) {
                         if (player.getGameMode() != GameMode.SURVIVAL && !player.hasMetadata(META_IGNORE) && !player.isOp()) {
                             player.setGameMode(GameMode.SURVIVAL);
                         }
@@ -309,26 +309,8 @@ public final class HomePlugin extends JavaPlugin implements Listener {
                 int newblocks = claim.getBlocks() + blocks;
                 if (newblocks < 0) newblocks = 0;
                 claim.setBlocks(newblocks);
-                db.save(claim.toSQLRow());
+                claim.saveToDatabase();
                 player.sendMessage(ChatColor.YELLOW + "Claim owner by " + claim.getOwnerName() + " now has " + newblocks + " claim blocks.");
-                return true;
-            }
-            break;
-        case "giveallclaimblocks":
-            if (args.length == 2) {
-                final int blocks;
-                try {
-                    blocks = Integer.parseInt(args[1]);
-                } catch (NumberFormatException nfe) {
-                    player.sendMessage(ChatColor.RED + "Invalid amount: " + args[1]);
-                    return true;
-                }
-                for (Claim claim: claims) {
-                    int newblocks = Math.max(0, claim.getBlocks() + blocks);
-                    claim.setBlocks(newblocks);
-                    db.save(claim.toSQLRow());
-                }
-                sender.sendMessage(ChatColor.YELLOW + "Adjusted all existing claims by " + blocks + " claim blocks.");
                 return true;
             }
             break;
@@ -349,6 +331,57 @@ public final class HomePlugin extends JavaPlugin implements Listener {
                 return true;
             }
             break;
+        case "adminclaim": {
+            if (args.length != 1 || player == null) return false;
+            Location loc = player.getLocation();
+            Area area = new Area(loc.getBlockX() - 31, loc.getBlockZ() - 31,
+                                 loc.getBlockX() + 32, loc.getBlockZ() + 32);
+            for (Claim other: findClaimsInWorld(player.getWorld().getName())) {
+                if (other.area.contains(area)) {
+                    sender.sendMessage(ChatColor.RED + "This claim would intersect an existing claim owned by " + other.getOwnerName() + ".");
+                    return true;
+                }
+            }
+            Claim claim = new Claim(this, Claim.ADMIN_ID, player.getWorld().getName(), area);
+            claims.add(claim);
+            claim.saveToDatabase();
+            sender.sendMessage(ChatColor.YELLOW + "Admin claim created");
+            highlightClaim(claim, player);
+            return true;
+        }
+        case "transferclaim": {
+            if (args.length != 2 || player == null) return false;
+            String targetName = args[1];
+            UUID targetId;
+            if (targetName.equals("-admin")) {
+                targetId = Claim.ADMIN_ID;
+            } else {
+                targetId = GenericEvents.cachedPlayerUuid(targetName);
+                if (targetId == null) {
+                    sender.sendMessage(ChatColor.RED + "Player not found: " + targetName);
+                    return true;
+                }
+            }
+            Claim claim = getClaimAt(player.getLocation());
+            if (claim == null) {
+                sender.sendMessage(ChatColor.RED + "There is no claim here.");
+                return true;
+            }
+            claim.setOwner(targetId);
+            claim.saveToDatabase();
+            sender.sendMessage(ChatColor.YELLOW + "Claim transferred to " + claim.getOwnerName() + ".");
+            return true;
+        }
+        case "claiminfo": {
+            if (args.length != 1 || player == null) return false;
+            Claim claim = getClaimAt(player.getLocation());
+            if (claim == null) {
+                sender.sendMessage(ChatColor.RED + "No claim here.");
+                return true;
+            }
+            sender.sendMessage("" + claim);
+            return true;
+        }
         default:
             break;
         }
@@ -461,7 +494,7 @@ public final class HomePlugin extends JavaPlugin implements Listener {
                         return true;
                     }
                     claim.setBlocks(claim.getBlocks() + meta.amount);
-                    db.save(claim.toSQLRow());
+                    claim.saveToDatabase();
                     if (claim.getSetting(Claim.Setting.AUTOGROW) == Boolean.TRUE) {
                         player.sendMessage(ChatColor.WHITE + "Added " + meta.amount + " blocks to this claim. It will grow automatically.");
                     } else {
@@ -515,6 +548,7 @@ public final class HomePlugin extends JavaPlugin implements Listener {
                     if (claim == null) return true;
                 }
                 printClaimInfo(player, claim);
+                highlightClaim(claim, player);
                 return true;
             }
             break;
@@ -655,7 +689,7 @@ public final class HomePlugin extends JavaPlugin implements Listener {
                         claim.getSettings().put(setting, value);
                     }
                 }
-                db.save(claim.toSQLRow());
+                claim.saveToDatabase();
                 showClaimSettings(claim, player);
                 return true;
             }
@@ -698,7 +732,7 @@ public final class HomePlugin extends JavaPlugin implements Listener {
                     }
                 }
                 claim.setArea(newArea);
-                db.save(claim.toSQLRow());
+                claim.saveToDatabase();
                 player.sendMessage(ChatColor.BLUE + "Grew your claim to where you are standing");
                 highlightClaim(claim, player);
                 return true;
@@ -739,7 +773,7 @@ public final class HomePlugin extends JavaPlugin implements Listener {
                     return true;
                 }
                 claim.setArea(newArea);
-                db.save(claim.toSQLRow());
+                claim.saveToDatabase();
                 player.sendMessage(ChatColor.BLUE + "Shrunk your claim to where you are standing");
                 highlightClaim(claim, player);
                 return true;
@@ -1632,7 +1666,7 @@ public final class HomePlugin extends JavaPlugin implements Listener {
             }
         }
         claim.setArea(newArea);
-        db.save(claim.toSQLRow());
+        claim.saveToDatabase();
         return true;
     }
 
@@ -1913,8 +1947,8 @@ public final class HomePlugin extends JavaPlugin implements Listener {
         // We know there is a claim, so return on the player is
         // privileged here.  The owner and members can do anything.
         UUID uuid = player.getUniqueId();
-        if (claim.getOwner().equals(uuid)) return true;
-        if (claim.getMembers().contains(uuid)) return true;
+        if (claim.canBuild(uuid)) return true;
+        if (claim.getSetting(Claim.Setting.PUBLIC) == Boolean.TRUE) return true;
         // Visitors may interact and do combat.
         if (claim.canVisit(uuid)) {
             switch (action) {

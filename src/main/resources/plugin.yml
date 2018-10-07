@@ -11,15 +11,17 @@ commands:
   homeadmin:
     aliases: [ claimadmin ]
     description: Admin command
-    permisson: home.admin
+    permission: home.admin
     usage: |-
       /homeadmin claims - list claims
       /homeadmin ignore - ignore claims
       /homeadmin reload - db and config
       /homeadmin debug - debug spam
       /homeadmin giveclaimblocks - Give blocks to claim
-      /homeadmin giveallclaimblocks - Give blocks to all claims
       /homeadmin deleteclaim - Delete claim
+      /homeadmin adminclaim - Make admin claim
+      /homeadmin transferclaim <player|-admin> - Transfer claim
+      /homeadmin claiminfo - Claim info
   home:
     aliases: []
     description: Go to your primary home

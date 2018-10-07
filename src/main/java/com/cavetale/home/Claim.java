@@ -7,7 +7,6 @@ import java.util.Date;
 import java.util.EnumMap;
 import java.util.LinkedHashMap;
 import java.util.List;
-import java.util.List;
 import java.util.Map;
 import java.util.UUID;
 import javax.persistence.Column;
@@ -51,7 +50,8 @@ final class Claim {
         PVP("PvP Combat", false),
         EXPLOSIONS("Explosion Damage", false),
         FIRE("Fire Burns Blocks", false),
-        AUTOGROW("Claim Grows Automatically", true);
+        AUTOGROW("Claim Grows Automatically", true),
+        PUBLIC("Anyone can build", false);
 
         final String key;
         final String displayName;
@@ -118,13 +118,13 @@ final class Claim {
             if (value != null) settings.put(setting, value);
         }
         @SuppressWarnings("unchecked")
-        List<Integer> center = (List<Integer>)settingsMap.get("center");
+        List<Number> center = (List<Number>)settingsMap.get("center");
         if (center == null) {
             centerX = (area.ax + area.bx) / 2;
             centerY = (area.ay + area.by) / 2;
         } else {
-            centerX = center.get(0);
-            centerY = center.get(1);
+            centerX = center.get(0).intValue();
+            centerY = center.get(1).intValue();
         }
     }
 
@@ -141,11 +141,11 @@ final class Claim {
     }
 
     boolean canBuild(UUID playerId) {
-        return owner.equals(playerId) || members.contains(playerId);
+        return isOwner(playerId) || members.contains(playerId);
     }
 
     boolean canVisit(UUID playerId) {
-        return owner.equals(playerId) || members.contains(playerId) || visitors.contains(playerId);
+        return canBuild(playerId) || visitors.contains(playerId);
     }
 
     boolean isInWorld(String worldName) {

@@ -1030,7 +1030,8 @@ public final class HomePlugin extends JavaPlugin implements Listener {
                     return true;
                 }
                 // Check claim distance
-                if (claim.getArea().isWithin(x, y, claimMargin)) {
+                int margin = getConfig().getInt("Worlds." + playerWorldName + ".ClaimMargin", claimMargin);
+                if (claim.getArea().isWithin(x, y, margin)) {
                     player.sendMessage(ChatColor.RED + "You are too close to another claim");
                     return true;
                 }

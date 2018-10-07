@@ -58,9 +58,9 @@ final class DynmapClaims {
     }
 
     void disable() {
-        Plugin plugin = Bukkit.getServer().getPluginManager().getPlugin("dynmap");
-        if (plugin == null) return;
-        DynmapAPI dynmap = (DynmapAPI)plugin;
+        Plugin dplugin = Bukkit.getServer().getPluginManager().getPlugin("dynmap");
+        if (dplugin == null) return;
+        DynmapAPI dynmap = (DynmapAPI)dplugin;
         MarkerAPI dmarker = dynmap.getMarkerAPI();
         if (dmarker == null) return;
         MarkerSet markerSet = dmarker.getMarkerSet(MARKER_SET);

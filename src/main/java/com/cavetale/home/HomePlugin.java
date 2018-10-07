@@ -842,8 +842,8 @@ public final class HomePlugin extends JavaPlugin implements Listener {
         frame(cb, "Claim Info");
         player.spigot().sendMessage(cb.create());
         player.spigot().sendMessage(new ComponentBuilder("").append("Owner ").color(ChatColor.GRAY).append(claim.getOwnerName()).color(ChatColor.WHITE).create());
-        int x = claim.getArea().ax + claim.getArea().bx / 2;
-        int z = claim.getArea().ay + claim.getArea().by / 2;
+        int x = (claim.getArea().ax + claim.getArea().bx) / 2;
+        int z = (claim.getArea().ay + claim.getArea().by) / 2;
         player.spigot().sendMessage(new ComponentBuilder("").append("Location ").color(ChatColor.GRAY)
                                     .append(worldDisplayName(claim.getWorld()) + " " + x).color(ChatColor.WHITE)
                                     .append(",").color(ChatColor.GRAY)

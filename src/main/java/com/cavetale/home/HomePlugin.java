@@ -1058,13 +1058,19 @@ public final class HomePlugin extends JavaPlugin implements Listener {
     boolean onHomeCommand(CommandSender sender, Command command, String label, String[] args) {
         if (!(sender instanceof Player)) return false;
         Player player = (Player)sender;
+        UUID playerId = player.getUniqueId();
         if (args.length == 0) {
             // Try to find a set home
             Home home = findHome(player.getUniqueId(), null);
             if (home != null) {
                 Location location = home.createLocation();
+                Claim claim = getClaimAt(location);
+                if (claim == null || !claim.canVisit(playerId)) {
+                    player.sendMessage(ChatColor.RED + "This home is not claimed by you.");
+                    return true;
+                }
                 if (location == null) {
-                    player.sendMessage(ChatColor.RED + "Primary home could not be found");
+                    player.sendMessage(ChatColor.RED + "Primary home could not be found.");
                     return true;
                 }
                 player.teleport(location);
@@ -1078,7 +1084,6 @@ public final class HomePlugin extends JavaPlugin implements Listener {
             // from using /home as expected.  Either making a claim or
             // setting a home will have caused this function to exit
             // already.
-            UUID playerId = player.getUniqueId();
             if (findClaimsInWorld(playerId, primaryHomeWorld).isEmpty()) {
                 findPlaceToBuild(player);
                 return true;
@@ -1135,7 +1140,12 @@ public final class HomePlugin extends JavaPlugin implements Listener {
             }
             Location location = home.createLocation();
             if (location == null) {
-                player.sendMessage(ChatColor.RED + "Home \"%s\" could not be found");
+                player.sendMessage(ChatColor.RED + "Home \"%s\" could not be found.");
+                return true;
+            }
+            Claim claim = getClaimAt(location);
+            if (claim == null || !claim.canVisit(playerId)) {
+                player.sendMessage(ChatColor.RED + "This home is not claimed by you.");
                 return true;
             }
             player.sendMessage(ChatColor.GREEN + "Going home.");

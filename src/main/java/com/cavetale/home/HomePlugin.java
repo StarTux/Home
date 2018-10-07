@@ -764,7 +764,7 @@ public final class HomePlugin extends JavaPlugin implements Listener {
                     return true;
                 }
                 player.setMetadata(META_ABANDON, new FixedMetadataValue(this, claim.getId()));
-                player.spigot().sendMessage(new ComponentBuilder("").append("Really delete this claim?").create());
+                player.spigot().sendMessage(TextComponent.fromLegacyText("Really delete this claim? All claim blocks will be lost.", ChatColor.WHITE));
                 player.spigot().sendMessage(new ComponentBuilder("").append("This cannot be undone! ").color(ChatColor.RED)
                                             .append("[Confirm]").color(ChatColor.YELLOW)
                                             .event(new ClickEvent(ClickEvent.Action.RUN_COMMAND, "/claim confirm " + claim.getId()))
@@ -996,9 +996,7 @@ public final class HomePlugin extends JavaPlugin implements Listener {
         }
         // Create the claim
         int claimSize = initialClaimSize;
-        if (!findClaims(playerId).isEmpty() || getStoredPlayerInt(playerId, "AbandonedClaim") != 0) {
-            claimSize = secondaryClaimSize;
-        }
+        if (!findClaims(playerId).isEmpty()) claimSize = secondaryClaimSize;
         int rad = claimSize / 2;
         int tol = 0;
         if (rad * 2 == initialClaimSize) tol = 1;

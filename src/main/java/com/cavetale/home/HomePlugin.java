@@ -734,6 +734,10 @@ public final class HomePlugin extends JavaPlugin implements Listener {
                     by = z;
                 }
                 Area newArea = new Area(ax, ay, bx, by);
+                if (!newArea.contains(claim.centerX, claim.centerY)) {
+                    player.sendMessage(ChatColor.RED + "Your cannot move a claim from its origin.");
+                    return true;
+                }
                 claim.setArea(newArea);
                 db.save(claim.toSQLRow());
                 player.sendMessage(ChatColor.BLUE + "Shrunk your claim to where you are standing");

@@ -2,9 +2,11 @@ package com.cavetale.home;
 
 import com.winthier.generic_events.GenericEvents;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Date;
 import java.util.EnumMap;
 import java.util.LinkedHashMap;
+import java.util.List;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
@@ -27,6 +29,7 @@ final class Claim {
     int blocks;
     long created;
     final Map<Setting, Object> settings = new EnumMap<>(Setting.class);
+    int centerX, centerY;
     public static final UUID ADMIN_ID = new UUID(0L, 0L);
 
     Claim(HomePlugin plugin) {
@@ -40,6 +43,8 @@ final class Claim {
         this.area = area;
         this.blocks = area.size();
         this.created = System.currentTimeMillis();
+        this.centerX = (area.ax + area.bx) / 2;
+        this.centerY = (area.ay + area.by) / 2;
     }
 
     enum Setting {
@@ -48,10 +53,12 @@ final class Claim {
         FIRE("Fire Burns Blocks", false),
         AUTOGROW("Claim Grows Automatically", true);
 
+        final String key;
         final String displayName;
         final Object defaultValue;
 
         Setting(String displayName, Object defaultValue) {
+            this.key = name().toLowerCase();
             this.displayName = displayName;
             this.defaultValue = defaultValue;
         }
@@ -91,6 +98,7 @@ final class Claim {
         for (Map.Entry<Setting, Object> setting: settings.entrySet()) {
             settingsMap.put(setting.getKey().name().toLowerCase(), setting.getValue());
         }
+        settingsMap.put("center", Arrays.asList(centerX, centerY));
         row.settings = JSONValue.toJSONString(settingsMap);
         return row;
     }
@@ -105,12 +113,18 @@ final class Claim {
         @SuppressWarnings("unchecked")
         Map<String, Object> settingsMap = (Map<String, Object>)JSONValue.parse(row.getSettings());
         settings.clear();
-        for (Map.Entry<String, Object> setting: settingsMap.entrySet()) {
-            try {
-                settings.put(Setting.valueOf(setting.getKey().toUpperCase()), setting.getValue());
-            } catch (IllegalArgumentException iae) {
-                iae.printStackTrace();
-            }
+        for (Setting setting: Setting.values()) {
+            Object value = settingsMap.get(setting.key);
+            if (value != null) settings.put(setting, value);
+        }
+        @SuppressWarnings("unchecked")
+        List<Integer> center = (List<Integer>)settingsMap.get("center");
+        if (center == null) {
+            centerX = (area.ax + area.bx) / 2;
+            centerY = (area.ay + area.by) / 2;
+        } else {
+            centerX = center.get(0);
+            centerY = center.get(1);
         }
     }
 

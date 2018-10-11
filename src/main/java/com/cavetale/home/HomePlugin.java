@@ -12,6 +12,7 @@ import java.util.Map;
 import java.util.Random;
 import java.util.UUID;
 import java.util.stream.Collectors;
+import lombok.Data;
 import lombok.Getter;
 import lombok.Value;
 import net.md_5.bungee.api.ChatColor;
@@ -92,27 +93,51 @@ public final class HomePlugin extends JavaPlugin implements Listener {
     private final List<Claim> claims = new ArrayList<>();
     private final List<Home> homes = new ArrayList<>();
     private final List<String> homeWorlds = new ArrayList<>();
-    private String primaryHomeWorld;
+    private final Map<String, WorldSettings> worldSettings = new HashMap<>();
     private final Map<String, String> mirrorWorlds = new HashMap<>();
-    private int claimMargin = 1024;
-    private int homeMargin = 64;
-    private int buildCooldown = 10;
-    private double claimBlockCost = 1.0;
-    private boolean manageGameMode = true;
-    private int initialClaimSize = 128;
-    private int secondaryClaimSize = 32;
+    private String primaryHomeWorld;
     private Random random = new Random(System.nanoTime());
     private static final String META_COOLDOWN_WILD = "home.cooldown.wild";
     private static final String META_LOCATION = "home.location";
     private static final String META_NOFALL = "home.nofall";
     private static final String META_BUY = "home.buyclaimblocks";
     private static final String META_ABANDON = "home.abandonclaim";
+    private static final String META_NEWCLAIM = "home.newclaim";
     static final String META_IGNORE = "home.ignore";
     private static final String META_NOCLAIM_WARN = "home.noclaim.warn";
     private static final String META_NOCLAIM_COUNT = "home.noclaim.count";
     private static final String META_NOCLAIM_TIME = "home.noclaim.time";
     private long ticks;
     private DynmapClaims dynmapClaims;
+
+    @Data
+    private static class WorldSettings {
+        private int claimMargin = 1024;
+        private int homeMargin = 64;
+        private int wildCooldown = 10;
+        private boolean manageGameMode = true;
+        private int initialClaimSize = 128;
+        private int secondaryClaimSize = 32;
+        private double initialClaimCost = 0.0;
+        private double secondaryClaimCost = 0.0;
+        private double claimBlockCost = 0.1;
+        private int minimumClaimSize = 65536;
+        private long claimAbandonCooldown = 0;
+
+        void load(ConfigurationSection config) {
+            claimMargin = config.getInt("ClaimMargin", claimMargin);
+            homeMargin = config.getInt("HomeMargin", homeMargin);
+            wildCooldown = config.getInt("WildCooldown", wildCooldown);
+            claimBlockCost = config.getDouble("ClaimBlockCost", claimBlockCost);
+            manageGameMode = config.getBoolean("ManageGameMode", manageGameMode);
+            initialClaimSize = config.getInt("InitialClaimSize", initialClaimSize);
+            secondaryClaimSize = config.getInt("SecondaryClaimSize", secondaryClaimSize);
+            initialClaimCost = config.getDouble("InitialClaimCost", initialClaimCost);
+            secondaryClaimCost = config.getDouble("SecondaryClaimCost", secondaryClaimCost);
+            claimAbandonCooldown = config.getLong("ClaimAbandonCooldown", claimAbandonCooldown);
+            minimumClaimSize = config.getInt("MinimumClaimSize", minimumClaimSize);
+        }
+    }
 
     @Override
     public void onEnable() {
@@ -167,6 +192,15 @@ public final class HomePlugin extends JavaPlugin implements Listener {
         int amount;
         double price;
         int claimId;
+        String token;
+    }
+
+    @Value
+    private static class NewClaimMeta {
+        String world;
+        int x, z;
+        Area area;
+        double price;
         String token;
     }
 
@@ -454,13 +488,14 @@ public final class HomePlugin extends JavaPlugin implements Listener {
                     player.sendMessage(ChatColor.RED + "You don't have a claim in this world");
                     return true;
                 }
-                double price = (double)buyClaimBlocks * claimBlockCost;
+                WorldSettings settings = worldSettings.get(claim.getWorld());
+                double price = (double)buyClaimBlocks * settings.claimBlockCost;
                 String priceFormat = GenericEvents.formatMoney(price);
                 if (GenericEvents.getPlayerBalance(playerId) < price) {
                     player.sendMessage(ChatColor.RED + "You do not have " + priceFormat + " to buy " + buyClaimBlocks + " claim blocks");
                     return true;
                 }
-                BuyClaimBlocks meta = new BuyClaimBlocks(buyClaimBlocks, price, claim.getId(), "" + (random.nextInt() & 0xFFFF));
+                BuyClaimBlocks meta = new BuyClaimBlocks(buyClaimBlocks, price, claim.getId(), "" + random.nextInt(9999));
                 player.setMetadata(META_BUY, new FixedMetadataValue(this, meta));
                 player.sendMessage(ChatColor.WHITE + "Buying " + ChatColor.GREEN + buyClaimBlocks + ChatColor.WHITE + " for " + ChatColor.GREEN + priceFormat + ChatColor.WHITE + ".");
                 player.spigot().sendMessage(new ComponentBuilder("")
@@ -476,52 +511,84 @@ public final class HomePlugin extends JavaPlugin implements Listener {
                 return true;
             }
             break;
-        case "confirm":
-            if (args.length == 2) {
-                MetadataValue fmv = player.getMetadata(META_BUY).stream().filter(m -> m.getOwningPlugin() == this).findFirst().orElse(null);
-                if (fmv != null) {
-                    BuyClaimBlocks meta = (BuyClaimBlocks)fmv.value();
-                    player.removeMetadata(META_BUY, this);
-                    Claim claim = getClaimById(meta.claimId);
-                    if (claim == null) return true;
-                    if (!args[1].equals(meta.token)) {
-                        player.sendMessage(ChatColor.RED + "Purchase expired");
-                        return true;
-                    }
-                    if (!GenericEvents.takePlayerMoney(playerId, meta.price, this, "Buy " + meta.amount + " claim blocks")) {
-                        player.sendMessage(ChatColor.RED + "You cannot afford " + GenericEvents.formatMoney(meta.price));
-                        return true;
-                    }
-                    claim.setBlocks(claim.getBlocks() + meta.amount);
-                    claim.saveToDatabase();
-                    if (claim.getSetting(Claim.Setting.AUTOGROW) == Boolean.TRUE) {
-                        player.sendMessage(ChatColor.WHITE + "Added " + meta.amount + " blocks to this claim. It will grow automatically.");
-                    } else {
-                        player.sendMessage(ChatColor.WHITE + "Added " + meta.amount + " blocks to this claim. Grow it manually or enable \"autogrow\" in the settings.");
-                    }
+        case "confirm": {
+            if (args.length != 2) return true;
+            // BuyClaimBlocks confirm
+            MetadataValue fmv = player.getMetadata(META_BUY).stream().filter(m -> m.getOwningPlugin() == this).findFirst().orElse(null);
+            if (fmv != null) {
+                BuyClaimBlocks meta = (BuyClaimBlocks)fmv.value();
+                player.removeMetadata(META_BUY, this);
+                Claim claim = getClaimById(meta.claimId);
+                if (claim == null) return true;
+                if (!args[1].equals(meta.token)) {
+                    player.sendMessage(ChatColor.RED + "Purchase expired");
+                    return true;
                 }
-                fmv = player.getMetadata(META_ABANDON).stream().filter(m -> m.getOwningPlugin() == this).findFirst().orElse(null);
-                if (fmv != null) {
-                    int claimId = fmv.asInt();
-                    player.removeMetadata(META_ABANDON, this);
-                    Claim claim = findClaimWithId(claimId);
-                    if (claim == null || !claim.isOwner(playerId) || !args[1].equals("" + claimId)) {
-                        player.sendMessage(ChatColor.RED + "Claim removal expired");
-                        return true;
-                    }
-                    db.find(Claim.SQLRow.class).eq("id", claimId).delete();
-                    claims.remove(claim);
-                    player.sendMessage(ChatColor.YELLOW + "Claim removed");
-                    setStoredPlayerData(playerId, "AbandonedClaim", 1);
+                if (!GenericEvents.takePlayerMoney(playerId, meta.price, this, "Buy " + meta.amount + " claim blocks")) {
+                    player.sendMessage(ChatColor.RED + "You cannot afford " + GenericEvents.formatMoney(meta.price));
+                    return true;
                 }
-                return true;
+                claim.setBlocks(claim.getBlocks() + meta.amount);
+                claim.saveToDatabase();
+                if (claim.getSetting(Claim.Setting.AUTOGROW) == Boolean.TRUE) {
+                    player.sendMessage(ChatColor.WHITE + "Added " + meta.amount + " blocks to this claim. It will grow automatically.");
+                } else {
+                    player.sendMessage(ChatColor.WHITE + "Added " + meta.amount + " blocks to this claim. Grow it manually or enable \"autogrow\" in the settings.");
+                }
             }
-            break;
+            // AbandonClaim confirm
+            fmv = player.getMetadata(META_ABANDON).stream().filter(m -> m.getOwningPlugin() == this).findFirst().orElse(null);
+            if (fmv != null) {
+                int claimId = fmv.asInt();
+                player.removeMetadata(META_ABANDON, this);
+                Claim claim = findClaimWithId(claimId);
+                if (claim == null || !claim.isOwner(playerId) || !args[1].equals("" + claimId)) {
+                    player.sendMessage(ChatColor.RED + "Claim removal expired");
+                    return true;
+                }
+                db.find(Claim.SQLRow.class).eq("id", claimId).delete();
+                claims.remove(claim);
+                player.sendMessage(ChatColor.YELLOW + "Claim removed");
+                setStoredPlayerData(playerId, "AbandonedClaim", 1);
+            }
+            // NewClaim confirm
+            fmv = player.getMetadata(META_NEWCLAIM).stream().filter(m -> m.getOwningPlugin() == this).findFirst().orElse(null);
+            if (fmv != null) {
+                NewClaimMeta ncmeta = (NewClaimMeta)fmv.value();
+                player.removeMetadata(META_NEWCLAIM, this);
+                if (!args[1].equals(ncmeta.token)) return true;
+                if (!homeWorlds.contains(ncmeta.world)) return true;
+                WorldSettings settings = worldSettings.get(ncmeta.world);
+                for (Claim claimInWorld: findClaimsInWorld(ncmeta.world)) {
+                    if (claimInWorld.getArea().overlaps(ncmeta.area)
+                        || claimInWorld.getArea().isWithin(ncmeta.x, ncmeta.z, settings.claimMargin)) {
+                        sender.sendMessage(ChatColor.RED + "Your claim would be too close to an existing claim.");
+                        return true;
+                    }
+                }
+                if (ncmeta.price >= 0.01 && !GenericEvents.takePlayerMoney(playerId, ncmeta.price, this, "Make new claim in " + worldDisplayName(ncmeta.world))) {
+                    sender.sendMessage(ChatColor.RED + "You cannot afford " + GenericEvents.formatMoney(ncmeta.price) + "!");
+                    return true;
+                }
+                Claim claim = new Claim(this, playerId, ncmeta.world, ncmeta.area);
+                claim.saveToDatabase();
+                claims.add(claim);
+                player.spigot().sendMessage(new ComponentBuilder("")
+                                            .append("Claim created!  ").color(ChatColor.WHITE)
+                                            .append("[View]").color(ChatColor.GREEN)
+                                            .event(new ClickEvent(ClickEvent.Action.RUN_COMMAND, "/claim"))
+                                            .event(new HoverEvent(HoverEvent.Action.SHOW_TEXT, TextComponent.fromLegacyText(ChatColor.GREEN + "/claim\n" + ChatColor.WHITE + ChatColor.ITALIC + "The command to access all your claims.")))
+                                            .create());
+                highlightClaim(claim, player);
+            }
+            return true;
+        }
         case "cancel":
             if (args.length == 1) {
-                if (player.hasMetadata(META_BUY) || player.hasMetadata(META_ABANDON)) {
+                if (player.hasMetadata(META_BUY) || player.hasMetadata(META_ABANDON) || player.hasMetadata(META_NEWCLAIM)) {
                     player.removeMetadata(META_BUY, this);
                     player.removeMetadata(META_ABANDON, this);
+                    player.removeMetadata(META_NEWCLAIM, this);
                     player.sendMessage(ChatColor.GREEN + "Cancelled");
                 }
                 return true;
@@ -713,9 +780,10 @@ public final class HomePlugin extends JavaPlugin implements Listener {
                 int bx = Math.max(area.bx, x);
                 int by = Math.max(area.by, z);
                 Area newArea = new Area(ax, ay, bx, by);
+                WorldSettings settings = worldSettings.get(claim.getWorld());
                 if (claim.getBlocks() < newArea.size()) {
                     int needed = newArea.size() - claim.getBlocks();
-                    String formatMoney = GenericEvents.formatMoney((double)needed * claimBlockCost);
+                    String formatMoney = GenericEvents.formatMoney((double)needed * settings.claimBlockCost);
                     player.spigot().sendMessage(new ComponentBuilder("")
                                                 .append(needed + " more claim blocks required. ").color(ChatColor.RED)
                                                 .append("[Buy More]").color(ChatColor.GRAY)
@@ -790,13 +858,10 @@ public final class HomePlugin extends JavaPlugin implements Listener {
                     return true;
                 }
                 long life = System.currentTimeMillis() - claim.getCreated();
-                long must;
-                switch (findClaims(playerId).size()) {
-                case 0: case 1: must = 10L * 60L * 1000L; break; // 10 minutes
-                default: must = 24L * 60L * 60L * 1000L; break; // 24 hours
-                }
-                if (life < must) {
-                    long wait = (must - life) / (1000L * 60L);
+                WorldSettings settings = worldSettings.get(claim.getWorld());
+                long cooldown = settings.claimAbandonCooldown * 1000L * 60L;
+                if (life < cooldown) {
+                    long wait = (cooldown - life) / (1000L * 60L);
                     if (wait <= 1) {
                         player.sendMessage(ChatColor.RED + "You must wait one more minute to abandon this claim.");
                     } else {
@@ -917,12 +982,13 @@ public final class HomePlugin extends JavaPlugin implements Listener {
                 .event(new HoverEvent(HoverEvent.Action.SHOW_TEXT, TextComponent.fromLegacyText(ChatColor.DARK_RED + "/claim abandon\n" + ChatColor.WHITE + ChatColor.ITALIC + "Abandon this claim.")));
         }
         player.spigot().sendMessage(cb.create());
+        WorldSettings settings = worldSettings.get(claim.getWorld());
         if (claim.isOwner(playerId) && claim.contains(playerLocation)) {
             cb = new ComponentBuilder("");
             cb.append("Manage").color(ChatColor.GRAY);
             cb.append("  ").append("[Buy]").color(ChatColor.GREEN)
                 .event(new ClickEvent(ClickEvent.Action.SUGGEST_COMMAND, "/claim buy "))
-                .event(new HoverEvent(HoverEvent.Action.SHOW_TEXT, TextComponent.fromLegacyText(ChatColor.GREEN + "/claim buy " + ChatColor.ITALIC + "AMOUNT\n" + ChatColor.WHITE + ChatColor.ITALIC + "Add some claim blocks to this claim. One claim block costs " + GenericEvents.formatMoney(claimBlockCost) + ".")));
+                .event(new HoverEvent(HoverEvent.Action.SHOW_TEXT, TextComponent.fromLegacyText(ChatColor.GREEN + "/claim buy " + ChatColor.ITALIC + "AMOUNT\n" + ChatColor.WHITE + ChatColor.ITALIC + "Add some claim blocks to this claim. One claim block costs " + GenericEvents.formatMoney(settings.claimBlockCost) + ".")));
             cb.append("  ").append("[Settings]").color(ChatColor.YELLOW)
                 .event(new ClickEvent(ClickEvent.Action.RUN_COMMAND, "/claim set"))
                 .event(new HoverEvent(HoverEvent.Action.SHOW_TEXT, TextComponent.fromLegacyText(ChatColor.YELLOW + "/claim set\n" + ChatColor.WHITE + ChatColor.ITALIC + "View or change claim settings.")));
@@ -1011,7 +1077,7 @@ public final class HomePlugin extends JavaPlugin implements Listener {
         World playerWorld = player.getWorld();
         String playerWorldName = playerWorld.getName();
         if (!homeWorlds.contains(playerWorldName)) {
-            player.sendMessage(ChatColor.RED + "You cannot make a claim in this world");
+            player.sendMessage(ChatColor.RED + "You cannot make claims in this world");
             return true;
         }
         if (mirrorWorlds.containsKey(playerWorldName)) playerWorldName = mirrorWorlds.get(playerWorldName);
@@ -1020,37 +1086,66 @@ public final class HomePlugin extends JavaPlugin implements Listener {
         int x = playerLocation.getBlockX();
         int y = playerLocation.getBlockZ();
         UUID playerId = player.getUniqueId();
-        for (Claim claim: claims) {
-            if (claim.isInWorld(playerWorldName)) {
-                if (claim.getOwner().equals(playerId)) {
-                    player.sendMessage(ChatColor.RED + "You already have a claim in this world");
-                    return true;
-                }
-                // Check claim distance
-                int margin = getConfig().getInt("Worlds." + playerWorldName + ".ClaimMargin", claimMargin);
-                if (claim.getArea().isWithin(x, y, margin)) {
-                    player.sendMessage(ChatColor.RED + "You are too close to another claim");
-                    return true;
-                }
+        // Check for claim collisions
+        WorldSettings settings = worldSettings.get(playerWorldName);
+        for (Claim claim: findClaimsInWorld(playerWorldName)) {
+            // Check claim distance
+            if (claim.getArea().isWithin(x, y, settings.claimMargin)) {
+                player.sendMessage(ChatColor.RED + "You are too close to another claim");
+                return true;
             }
         }
         // Create the claim
-        int claimSize = initialClaimSize;
-        if (!findClaims(playerId).isEmpty()) claimSize = secondaryClaimSize;
+        List<Claim> playerClaims = findClaimsInWorld(playerId, playerWorldName);
+        for (Claim playerClaim: playerClaims) {
+            if (playerClaim.getBlocks() < settings.minimumClaimSize) {
+                player.sendMessage(ChatColor.RED + "One of your claims in this world has fewer than " + settings.minimumClaimSize + " claim blocks. Buy more blocks before making a new claim.");
+                return true;
+            }
+        }
+        int claimSize;
+        double claimCost;
+        if (playerClaims.isEmpty()) {
+            claimSize = settings.initialClaimSize;
+            claimCost = settings.initialClaimCost;
+        } else {
+            claimSize = settings.secondaryClaimSize;
+            claimCost = settings.secondaryClaimCost;
+        }
+        if (GenericEvents.getPlayerBalance(playerId) < claimCost) {
+            sender.sendMessage(ChatColor.RED + "You cannot afford " + GenericEvents.formatMoney(claimCost) + "!");
+            return true;
+        }
         int rad = claimSize / 2;
         int tol = 0;
-        if (rad * 2 == initialClaimSize) tol = 1;
+        if (rad * 2 == claimSize) tol = 1;
         Area area = new Area(x - rad + tol, y - rad + tol, x + rad, y + rad);
-        Claim claim = new Claim(this, playerId, playerWorldName, area);
-        claim.saveToDatabase();
-        claims.add(claim);
-        player.spigot().sendMessage(new ComponentBuilder("")
-                                    .append("Claim created! ").color(ChatColor.GREEN)
-                                    .append("[View]").color(ChatColor.YELLOW)
-                                    .event(new ClickEvent(ClickEvent.Action.SUGGEST_COMMAND, "/claim"))
-                                    .event(new HoverEvent(HoverEvent.Action.SHOW_TEXT, TextComponent.fromLegacyText(ChatColor.YELLOW + "/claim\n" + ChatColor.WHITE + ChatColor.ITALIC + "The command to access all your claims.")))
+        NewClaimMeta ncmeta = new NewClaimMeta(playerWorldName, x, y, area, claimCost, "" + random.nextInt(9999));
+        player.setMetadata(META_NEWCLAIM, new FixedMetadataValue(this, ncmeta));
+        sender.sendMessage("");
+        sender.spigot().sendMessage(frame(new ComponentBuilder(""), "New Claim").create());
+        StringBuilder sb = new StringBuilder();
+        sb.append(ChatColor.AQUA + "You are about to create a claim of " + ChatColor.WHITE + area.width() + "x" + area.height() + " blocks" + ChatColor.AQUA + " around your current location.");
+        if (claimCost >= 0.01) {
+            sb.append(" " + ChatColor.AQUA + "This will cost you " + ChatColor.WHITE + GenericEvents.formatMoney(claimCost) + ChatColor.AQUA + ".");
+        }
+        sb.append(" " + ChatColor.AQUA + "Your new claim will have " + ChatColor.WHITE + area.size() + ChatColor.AQUA + " claim blocks.");
+        if (settings.claimBlockCost >= 0.01) {
+            sb.append(" " + ChatColor.AQUA + "You can buy additional claim blocks for " + ChatColor.WHITE + GenericEvents.formatMoney(settings.claimBlockCost) + ChatColor.AQUA + " per block.");
+        }
+        sb.append(ChatColor.AQUA + " You can abandon the claim after a cooldown of " + ChatColor.WHITE + settings.claimAbandonCooldown + " minutes" + ChatColor.AQUA + ". Claim blocks will " + ChatColor.WHITE + "not" + ChatColor.AQUA + " be refunded.");
+        player.sendMessage(sb.toString());
+        sender.spigot().sendMessage(new ComponentBuilder("")
+                                    .append("Proceed?  ").color(ChatColor.WHITE)
+                                    .append("[Confirm]").color(ChatColor.GREEN)
+                                    .event(new ClickEvent(ClickEvent.Action.RUN_COMMAND, "/claim confirm " + ncmeta.token))
+                                    .event(new HoverEvent(HoverEvent.Action.SHOW_TEXT, TextComponent.fromLegacyText(ChatColor.GREEN + "Confirm this purchase")))
+                                    .append("  ").reset()
+                                    .append("[Cancel]").color(ChatColor.RED)
+                                    .event(new ClickEvent(ClickEvent.Action.RUN_COMMAND, "/claim cancel"))
+                                    .event(new HoverEvent(HoverEvent.Action.SHOW_TEXT, TextComponent.fromLegacyText(ChatColor.RED + "Cancel this purchase")))
                                     .create());
-        highlightClaim(claim, player);
+        sender.sendMessage("");
         return true;
     }
 
@@ -1177,11 +1272,12 @@ public final class HomePlugin extends JavaPlugin implements Listener {
         int playerX = player.getLocation().getBlockX();
         int playerZ = player.getLocation().getBlockZ();
         String homeName = args.length == 0 ? null : args[0];
+        WorldSettings settings = worldSettings.get(playerWorld);
         for (Home home: homes) {
             if (home.isOwner(playerId) && home.isInWorld(playerWorld)
                 && !home.isNamed(homeName)
-                && Math.abs(playerX - (int)home.getX()) < homeMargin
-                && Math.abs(playerZ - (int)home.getZ()) < homeMargin) {
+                && Math.abs(playerX - (int)home.getX()) < settings.homeMargin
+                && Math.abs(playerZ - (int)home.getZ()) < settings.homeMargin) {
                 if (home.getName() == null) {
                     player.sendMessage(ChatColor.RED + "Your primary home is nearby");
                 } else {
@@ -1576,15 +1672,6 @@ public final class HomePlugin extends JavaPlugin implements Listener {
     }
 
     void findPlaceToBuild(Player player) {
-        // Cooldown
-        MetadataValue meta = player.getMetadata(META_COOLDOWN_WILD).stream().filter(m -> m.getOwningPlugin() == this).findFirst().orElse(null);
-        if (meta != null) {
-            long remain = (meta.asLong() - System.nanoTime()) / 1000000000 - (long)buildCooldown;
-            if (remain > 0) {
-                player.sendMessage(ChatColor.RED + "Please wait " + remain + " more seconds");
-                return;
-            }
-        }
         // Determine center and border
         String worldName = primaryHomeWorld; // Set up for future expansion
         World bworld = getServer().getWorld(worldName);
@@ -1593,11 +1680,22 @@ public final class HomePlugin extends JavaPlugin implements Listener {
             player.sendMessage(ChatColor.RED + "Something went wrong. Please contact an administrator.");
             return;
         }
+        // Cooldown
+        WorldSettings settings = worldSettings.get(worldName);
+        MetadataValue meta = player.getMetadata(META_COOLDOWN_WILD).stream().filter(m -> m.getOwningPlugin() == this).findFirst().orElse(null);
+        if (meta != null) {
+            long remain = (meta.asLong() - System.nanoTime()) / 1000000000 - (long)settings.wildCooldown;
+            if (remain > 0) {
+                player.sendMessage(ChatColor.RED + "Please wait " + remain + " more seconds");
+                return;
+            }
+        }
+        // Borders
         WorldBorder border = bworld.getWorldBorder();
         Location center = border.getCenter();
         int cx = center.getBlockX();
         int cz = center.getBlockZ();
-        int size = (int)Math.min(50000.0, border.getSize()) - claimMargin * 2;
+        int size = (int)Math.min(50000.0, border.getSize()) - settings.claimMargin * 2;
         if (size < 0) return;
         Location location = null;
         // Try 100 times to find a random spot, then give up
@@ -1607,7 +1705,7 @@ public final class HomePlugin extends JavaPlugin implements Listener {
             int x = cx - size / 2 + random.nextInt(size);
             int z = cz - size / 2 + random.nextInt(size);
             for (Claim claim: worldClaims) {
-                if (claim.getArea().isWithin(x, z, claimMargin)) {
+                if (claim.getArea().isWithin(x, z, settings.claimMargin)) {
                     continue SAMPLE;
                 }
             }
@@ -1684,10 +1782,17 @@ public final class HomePlugin extends JavaPlugin implements Listener {
         reloadConfig();
         ConfigurationSection section = getConfig().getConfigurationSection("Worlds");
         homeWorlds.clear();
+        worldSettings.clear();
         for (String key: section.getKeys(false)) {
             ConfigurationSection worldSection = section.getConfigurationSection(key);
-            if (worldSection != null && worldSection.isSet("mirror")) {
-                mirrorWorlds.put(key, worldSection.getString("mirror"));
+            WorldSettings settings = new WorldSettings();
+            worldSettings.put(key, settings);
+            settings.load(getConfig());
+            if (worldSection != null) {
+                settings.load(worldSection);
+                if (worldSection.isSet("mirror")) {
+                    mirrorWorlds.put(key, worldSection.getString("mirror"));
+                }
             }
             homeWorlds.add(key);
         }
@@ -1696,13 +1801,6 @@ public final class HomePlugin extends JavaPlugin implements Listener {
         } else {
             primaryHomeWorld = getServer().getWorlds().get(0).getName();
         }
-        claimMargin = getConfig().getInt("ClaimMargin");
-        homeMargin = getConfig().getInt("HomeMargin");
-        buildCooldown = getConfig().getInt("BuildCooldown");
-        claimBlockCost = getConfig().getDouble("ClaimBlockCost");
-        manageGameMode = getConfig().getBoolean("ManageGameMode");
-        initialClaimSize = getConfig().getInt("InitialClaimSize");
-        secondaryClaimSize = getConfig().getInt("SecondaryClaimSize");
     }
 
     void loadFromDatabase() {

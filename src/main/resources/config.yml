@@ -6,11 +6,23 @@ Worlds:
   home_nether:
     mirror: home
   home_the_end:
-    ClaimMargin: 256
-ClaimMargin: 512 # Minimum distance between old and new claims
+    ClaimMargin: 400
+    ClaimBlockCost: 0.5
+    InitialClaimSize: 32
+    InitialClaimCost: 2000.0
+    SecondaryClaimSize: 32
+    SecondaryClaimCost: 2000.0
+    MinimumClaimArea: 10000
+    ClaimAbandonCooldown: 1440
+# Default World settings
+ClaimMargin: 800 # Minimum distance between old and new claims
 HomeMargin: 64 # Minimum distance between old and new homes
-BuildCooldown: 10 # In seconds
+WildCooldown: 10 # In seconds
 ClaimBlockCost: 0.1 # Cost per claim block
 ManageGameMode: true # Set survival or adventure GameMode in home world
 InitialClaimSize: 128 # Length of new claims
+InitialClaimCost: -1.0 # Flat cost for initial claim
 SecondaryClaimSize: 32 # Length of additional claims
+SecondaryClaimCost: 2000.0 # Flat cost for additional claims
+MinimumClaimSize: 40000 # Required size before a new claim is allowed
+ClaimAbandonCooldown: 10 # In Minutes

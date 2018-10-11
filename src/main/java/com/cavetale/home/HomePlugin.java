@@ -1871,10 +1871,11 @@ public final class HomePlugin extends JavaPlugin implements Listener {
     Claim findNearestOwnedClaim(Player player) {
         Location playerLocation = player.getLocation();
         String playerWorld = playerLocation.getWorld().getName();
+        final String w = mirrorWorlds.containsKey(playerWorld) ? mirrorWorlds.get(playerWorld) : playerWorld;
         int x = playerLocation.getBlockX();
         int z = playerLocation.getBlockZ();
         UUID playerId = player.getUniqueId();
-        return claims.stream().filter(c -> c.isOwner(playerId) && c.isInWorld(playerWorld)).min((a, b) -> Integer.compare(a.getArea().distanceToPoint(x, z), b.getArea().distanceToPoint(x, z))).orElse(null);
+        return claims.stream().filter(c -> c.isOwner(playerId) && c.isInWorld(w)).min((a, b) -> Integer.compare(a.getArea().distanceToPoint(x, z), b.getArea().distanceToPoint(x, z))).orElse(null);
     }
 
     void highlightClaim(Claim claim, Player player) {

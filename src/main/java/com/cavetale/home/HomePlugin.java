@@ -156,6 +156,7 @@ public final class HomePlugin extends JavaPlugin implements Listener {
         getCommand("homes").setExecutor((s, c, l, a) -> onHomesCommand(s, c, l, a));
         getCommand("homes").setTabCompleter((s, c, l, a) -> onHomesTabComplete(s, c, l, a));
         getCommand("visit").setExecutor((s, c, l, a) -> onVisitCommand(s, c, l, a));
+        getCommand("visit").setTabCompleter((s, c, l, a) -> onVisitTabComplete(s, c, l, a));
         getCommand("build").setExecutor((s, c, l, a) -> onBuildCommand(s, c, l, a));
         loadFromConfig();
         loadFromDatabase();
@@ -622,31 +623,31 @@ public final class HomePlugin extends JavaPlugin implements Listener {
             if (args.length == 2) {
                 Claim claim = getClaimAt(player.getLocation());
                 if (claim == null) {
-                    player.sendMessage(ChatColor.RED + "Stand in the claim to which you want to add members");
+                    player.sendMessage(ChatColor.RED + "Stand in the claim to which you want to add members.");
                     return true;
                 }
                 if (!claim.isOwner(playerId)) {
-                    player.sendMessage(ChatColor.RED + "You are not the owner of this claim");
+                    player.sendMessage(ChatColor.RED + "You are not the owner of this claim.");
                     return true;
                 }
                 String targetName = args[1];
                 UUID targetId = GenericEvents.cachedPlayerUuid(targetName);
                 if (targetId == null) {
-                    player.sendMessage(ChatColor.RED + "Player not found: " + targetName);
+                    player.sendMessage(ChatColor.RED + "Player not found: " + targetName + ".");
                     return true;
                 }
                 if (claim.canBuild(targetId)) {
-                    player.sendMessage(ChatColor.RED + "Player is already a member of this claim");
+                    player.sendMessage(ChatColor.RED + "Player is already a member of this claim.");
                     return true;
                 }
                 ClaimTrust ct = new ClaimTrust(claim, ClaimTrust.Type.MEMBER, targetId);
-                db.save(ct);
+                db.insertAsync(ct, null);
                 claim.getMembers().add(targetId);
                 if (claim.getVisitors().contains(targetId)) {
                     claim.getVisitors().remove(targetId);
                     db.find(ClaimTrust.class).eq("claim_id", claim.getId()).eq("trustee", targetId).delete();
                 }
-                player.sendMessage(ChatColor.WHITE + "Member added: " + targetName);
+                player.sendMessage(ChatColor.GREEN + "Member added: " + targetName + ".");
                 return true;
             }
             break;
@@ -654,27 +655,27 @@ public final class HomePlugin extends JavaPlugin implements Listener {
             if (args.length == 2) {
                 Claim claim = getClaimAt(player.getLocation());
                 if (claim == null) {
-                    player.sendMessage(ChatColor.RED + "Stand in the claim to which you want to invite people");
+                    player.sendMessage(ChatColor.RED + "Stand in the claim to which you want to invite people.");
                     return true;
                 }
                 if (!claim.isOwner(playerId)) {
-                    player.sendMessage(ChatColor.RED + "You are not the owner of this claim");
+                    player.sendMessage(ChatColor.RED + "You are not the owner of this claim.");
                     return true;
                 }
                 String targetName = args[1];
                 UUID targetId = GenericEvents.cachedPlayerUuid(targetName);
                 if (targetId == null) {
-                    player.sendMessage(ChatColor.RED + "Player not found: " + targetName);
+                    player.sendMessage(ChatColor.RED + "Player not found: " + targetName + ".");
                     return true;
                 }
                 if (claim.canVisit(targetId)) {
-                    player.sendMessage(ChatColor.RED + "Player is already invited to this claim");
+                    player.sendMessage(ChatColor.RED + "Player is already invited to this claim.");
                     return true;
                 }
                 ClaimTrust ct = new ClaimTrust(claim, ClaimTrust.Type.VISIT, targetId);
-                db.save(ct);
+                db.insertAsync(ct, null);
                 claim.getMembers().add(targetId);
-                player.sendMessage(ChatColor.WHITE + "Player invited: " + targetName);
+                player.sendMessage(ChatColor.GREEN + "Player invited: " + targetName + ".");
                 return true;
             }
             break;
@@ -1290,10 +1291,11 @@ public final class HomePlugin extends JavaPlugin implements Listener {
         if (home == null) {
             home = new Home(playerId, player.getLocation(), homeName);
             homes.add(home);
+            db.insertAsync(home, null);
         } else {
             home.setLocation(player.getLocation());
+            db.saveAsync(home, null);
         }
-        db.save(home);
         if (homeName == null) {
             player.sendMessage(ChatColor.GREEN + "Primary home set");
         } else {
@@ -1307,81 +1309,7 @@ public final class HomePlugin extends JavaPlugin implements Listener {
         final Player player = (Player)sender;
         final UUID playerId = player.getUniqueId();
         if (args.length == 0) {
-            List<Home> playerHomes = findHomes(playerId);
-            if (playerHomes.isEmpty()) {
-                player.sendMessage(ChatColor.YELLOW + "No homes to show");
-                return true;
-            }
-            player.sendMessage("");
-            if (playerHomes.size() == 1) {
-                player.sendMessage(ChatColor.BLUE + "You have one home");
-            } else {
-                player.sendMessage(ChatColor.BLUE + "You have " + playerHomes.size() + " homes");
-            }
-            for (Home home: playerHomes) {
-                ComponentBuilder cb = new ComponentBuilder("");
-                cb.append(" + ").color(ChatColor.BLUE);
-                if (home.getName() == null) {
-                    cb.append("Primary").color(ChatColor.GRAY).italic(true)
-                        .event(new ClickEvent(ClickEvent.Action.RUN_COMMAND, "/home"))
-                        .event(new HoverEvent(HoverEvent.Action.SHOW_TEXT, TextComponent.fromLegacyText(ChatColor.GRAY + "/home\n" + ChatColor.WHITE + ChatColor.ITALIC + "Teleport to your primary home")))
-                        .append("").italic(false);
-                } else {
-                    String cmd = "/home " + home.getName();
-                    cb.append(home.getName()).color(ChatColor.WHITE)
-                        .event(new ClickEvent(ClickEvent.Action.RUN_COMMAND, cmd))
-                        .event(new HoverEvent(HoverEvent.Action.SHOW_TEXT, TextComponent.fromLegacyText(ChatColor.GRAY + cmd + "\n" + ChatColor.WHITE + ChatColor.ITALIC + "Teleport to your home \"" + home.getName() + "\".")));
-                }
-                cb.append(" ");
-                String infocmd = home.getName() == null ? "/homes info" : "/homes info " + home.getName();
-                cb.append("(info)").color(ChatColor.GRAY)
-                    .event(new ClickEvent(ClickEvent.Action.RUN_COMMAND, infocmd))
-                    .event(new HoverEvent(HoverEvent.Action.SHOW_TEXT, TextComponent.fromLegacyText(ChatColor.GRAY + infocmd + "\n" + ChatColor.WHITE + ChatColor.ITALIC + "Get more info on this home.")));
-                if (home.getInvites().size() == 1) cb.append(" 1 invite").color(ChatColor.GREEN);
-                if (home.getInvites().size() > 1) cb.append(home.getInvites().size() + " invites").color(ChatColor.GREEN);
-                if (home.getPublicName() != null) cb.append(" public").reset().color(ChatColor.AQUA);
-                player.spigot().sendMessage(cb.create());
-            }
-            int homeInvites = (int)homes.stream().filter(h -> h.isInvited(playerId)).count();
-            if (homeInvites > 0) {
-                ComponentBuilder cb = new ComponentBuilder(" ");
-                if (homeInvites == 1) {
-                    cb.append("You have one home invite ").color(ChatColor.BLUE);
-                } else {
-                    cb.append("You have " + homeInvites + " home invites ").color(ChatColor.BLUE);
-                }
-                cb.append("[List]").color(ChatColor.LIGHT_PURPLE)
-                    .event(new ClickEvent(ClickEvent.Action.RUN_COMMAND, "/homes invites"))
-                    .event(new HoverEvent(HoverEvent.Action.SHOW_TEXT, TextComponent.fromLegacyText(ChatColor.LIGHT_PURPLE + "/homes invites\n" + ChatColor.WHITE + ChatColor.ITALIC + "List home invites")));
-                player.spigot().sendMessage(cb.create());
-            }
-            ComponentBuilder cb = new ComponentBuilder("")
-                .append("[Set]").color(ChatColor.BLUE)
-                .event(new ClickEvent(ClickEvent.Action.SUGGEST_COMMAND, "/homes set "))
-                .event(new HoverEvent(HoverEvent.Action.SHOW_TEXT, TextComponent.fromLegacyText(ChatColor.BLUE + "/homes set [name]\n" + ChatColor.WHITE + ChatColor.ITALIC + "Set a home.")))
-                .append("  ")
-                .append("[Info]").color(ChatColor.YELLOW)
-                .event(new ClickEvent(ClickEvent.Action.SUGGEST_COMMAND, "/homes info "))
-                .event(new HoverEvent(HoverEvent.Action.SHOW_TEXT, TextComponent.fromLegacyText(ChatColor.YELLOW + "/homes info " + ChatColor.ITALIC + "HOME\n" + ChatColor.WHITE + ChatColor.ITALIC + "Get home info.")))
-                .append("  ")
-                .append("[Invite]").color(ChatColor.GREEN)
-                .event(new ClickEvent(ClickEvent.Action.SUGGEST_COMMAND, "/homes invite "))
-                .event(new HoverEvent(HoverEvent.Action.SHOW_TEXT, TextComponent.fromLegacyText(ChatColor.GREEN + "/homes invite " + ChatColor.ITALIC + "PLAYER HOME\n" + ChatColor.WHITE + ChatColor.ITALIC + "Set a home.")))
-                .append("  ")
-                .append("[Public]").color(ChatColor.AQUA)
-                .event(new ClickEvent(ClickEvent.Action.SUGGEST_COMMAND, "/homes public "))
-                .event(new HoverEvent(HoverEvent.Action.SHOW_TEXT, TextComponent.fromLegacyText(ChatColor.AQUA + "/homes public " + ChatColor.ITALIC + "HOME ALIAS\n" + ChatColor.WHITE + ChatColor.ITALIC + "Make home public.")))
-                .append("  ")
-                .append("[Visit]").color(ChatColor.DARK_AQUA)
-                .event(new ClickEvent(ClickEvent.Action.RUN_COMMAND, "/homes visit"))
-                .event(new HoverEvent(HoverEvent.Action.SHOW_TEXT, TextComponent.fromLegacyText(ChatColor.GREEN + "/homes visit " + ChatColor.ITALIC + "HOME\n" + ChatColor.WHITE + ChatColor.ITALIC + "Visit a public home.")))
-                .append("  ")
-                .append("[Delete]").color(ChatColor.RED)
-                .event(new ClickEvent(ClickEvent.Action.SUGGEST_COMMAND, "/homes delete "))
-                .event(new HoverEvent(HoverEvent.Action.SHOW_TEXT, TextComponent.fromLegacyText(ChatColor.RED + "/homes delete " + ChatColor.ITALIC + "HOME\n" + ChatColor.WHITE + ChatColor.ITALIC + "Delete home.")));
-            player.spigot().sendMessage(cb.create());
-            player.sendMessage("");
-            return true;
+            return printHomesInfo(player);
         }
         switch (args[0]) {
         case "set":
@@ -1393,6 +1321,38 @@ public final class HomePlugin extends JavaPlugin implements Listener {
                 return onInviteHomeCommand(sender, command, alias, Arrays.copyOfRange(args, 1, args.length));
             }
             break;
+        case "uninvite": {
+            if (args.length != 2 && args.length != 3) return printHomesInfo(player);
+            final String targetName = args[1];
+            UUID target = GenericEvents.cachedPlayerUuid(targetName);
+            if (target == null) {
+                sender.sendMessage(ChatColor.RED + "Player not found: " + targetName + "!");
+                return true;
+            }
+            Home home;
+            if (args.length >= 3) {
+                String arg = args[2];
+                home = findHome(player.getUniqueId(), arg);
+                if (home == null) {
+                    sender.sendMessage(ChatColor.RED + "Home not found: " + arg + "!");
+                    return true;
+                }
+            } else {
+                home = findHome(player.getUniqueId(), null);
+                if (home == null) {
+                    sender.sendMessage(ChatColor.RED + "Default home not set.");
+                    return true;
+                }
+            }
+            if (!home.invites.contains(target)) {
+                sender.sendMessage(ChatColor.RED + "Player not invited.");
+                return true;
+            }
+            db.find(HomeInvite.class).eq("home_id", home.getId()).eq("invitee", target).deleteAsync(null);
+            home.getInvites().remove(target);
+            player.sendMessage(ChatColor.GREEN + targetName + " uninvited.");
+            return true;
+        }
         case "public":
             if (args.length == 2 || args.length == 3) {
                 String homeName = args[1];
@@ -1415,7 +1375,7 @@ public final class HomePlugin extends JavaPlugin implements Listener {
                     return true;
                 }
                 home.setPublicName(publicName);
-                db.save(home);
+                db.saveAsync(home, null, "public_name");
                 String cmd = "/visit " + publicName;
                 ComponentBuilder cb = new ComponentBuilder("")
                     .append("Home made public. Players may visit via ").color(ChatColor.WHITE)
@@ -1502,7 +1462,91 @@ public final class HomePlugin extends JavaPlugin implements Listener {
         default:
             break;
         }
-        return false;
+        return printHomesInfo(player);
+    }
+
+    boolean printHomesInfo(Player player) {
+        final UUID playerId = player.getUniqueId();
+        List<Home> playerHomes = findHomes(playerId);
+        if (playerHomes.isEmpty()) {
+            player.sendMessage(ChatColor.YELLOW + "No homes to show");
+            return true;
+        }
+        player.sendMessage("");
+        if (playerHomes.size() == 1) {
+            player.sendMessage(ChatColor.BLUE + "You have one home");
+        } else {
+            player.sendMessage(ChatColor.BLUE + "You have " + playerHomes.size() + " homes");
+        }
+        for (Home home: playerHomes) {
+            ComponentBuilder cb = new ComponentBuilder("");
+            cb.append(" + ").color(ChatColor.BLUE);
+            if (home.getName() == null) {
+                cb.append("Primary").color(ChatColor.GRAY).italic(true)
+                    .event(new ClickEvent(ClickEvent.Action.RUN_COMMAND, "/home"))
+                    .event(new HoverEvent(HoverEvent.Action.SHOW_TEXT, TextComponent.fromLegacyText(ChatColor.GRAY + "/home\n" + ChatColor.WHITE + ChatColor.ITALIC + "Teleport to your primary home")))
+                    .append("").italic(false);
+            } else {
+                String cmd = "/home " + home.getName();
+                cb.append(home.getName()).color(ChatColor.WHITE)
+                    .event(new ClickEvent(ClickEvent.Action.RUN_COMMAND, cmd))
+                    .event(new HoverEvent(HoverEvent.Action.SHOW_TEXT, TextComponent.fromLegacyText(ChatColor.GRAY + cmd + "\n" + ChatColor.WHITE + ChatColor.ITALIC + "Teleport to your home \"" + home.getName() + "\".")));
+            }
+            cb.append(" ");
+            String infocmd = home.getName() == null ? "/homes info" : "/homes info " + home.getName();
+            cb.append("(info)").color(ChatColor.GRAY)
+                .event(new ClickEvent(ClickEvent.Action.RUN_COMMAND, infocmd))
+                .event(new HoverEvent(HoverEvent.Action.SHOW_TEXT, TextComponent.fromLegacyText(ChatColor.GRAY + infocmd + "\n" + ChatColor.WHITE + ChatColor.ITALIC + "Get more info on this home.")));
+            if (home.getInvites().size() == 1) cb.append(" 1 invite").color(ChatColor.GREEN);
+            if (home.getInvites().size() > 1) cb.append(home.getInvites().size() + " invites").color(ChatColor.GREEN);
+            if (home.getPublicName() != null) cb.append(" public").reset().color(ChatColor.AQUA);
+            player.spigot().sendMessage(cb.create());
+        }
+        int homeInvites = (int)homes.stream().filter(h -> h.isInvited(playerId)).count();
+        if (homeInvites > 0) {
+            ComponentBuilder cb = new ComponentBuilder(" ");
+            if (homeInvites == 1) {
+                cb.append("You have one home invite ").color(ChatColor.BLUE);
+            } else {
+                cb.append("You have " + homeInvites + " home invites ").color(ChatColor.BLUE);
+            }
+            cb.append("[List]").color(ChatColor.LIGHT_PURPLE)
+                .event(new ClickEvent(ClickEvent.Action.RUN_COMMAND, "/homes invites"))
+                .event(new HoverEvent(HoverEvent.Action.SHOW_TEXT, TextComponent.fromLegacyText(ChatColor.LIGHT_PURPLE + "/homes invites\n" + ChatColor.WHITE + ChatColor.ITALIC + "List home invites")));
+            player.spigot().sendMessage(cb.create());
+        }
+        ComponentBuilder cb = new ComponentBuilder("")
+            .append("[Set]").color(ChatColor.BLUE)
+            .event(new ClickEvent(ClickEvent.Action.SUGGEST_COMMAND, "/homes set "))
+            .event(new HoverEvent(HoverEvent.Action.SHOW_TEXT, TextComponent.fromLegacyText(ChatColor.BLUE + "/homes set [name]\n" + ChatColor.WHITE + ChatColor.ITALIC + "Set a home.")))
+            .append("  ")
+            .append("[Info]").color(ChatColor.YELLOW)
+            .event(new ClickEvent(ClickEvent.Action.SUGGEST_COMMAND, "/homes info "))
+            .event(new HoverEvent(HoverEvent.Action.SHOW_TEXT, TextComponent.fromLegacyText(ChatColor.YELLOW + "/homes info " + ChatColor.ITALIC + "HOME\n" + ChatColor.WHITE + ChatColor.ITALIC + "Get home info.")))
+            .append("  ")
+            .append("[Delete]").color(ChatColor.RED)
+            .event(new ClickEvent(ClickEvent.Action.SUGGEST_COMMAND, "/homes delete "))
+            .event(new HoverEvent(HoverEvent.Action.SHOW_TEXT, TextComponent.fromLegacyText(ChatColor.RED + "/homes delete " + ChatColor.ITALIC + "HOME\n" + ChatColor.WHITE + ChatColor.ITALIC + "Delete home.")));
+        player.spigot().sendMessage(cb.create());
+        cb = new ComponentBuilder("")
+            .append("[Invite]").color(ChatColor.GREEN)
+            .event(new ClickEvent(ClickEvent.Action.SUGGEST_COMMAND, "/homes invite "))
+            .event(new HoverEvent(HoverEvent.Action.SHOW_TEXT, TextComponent.fromLegacyText(ChatColor.GREEN + "/homes invite " + ChatColor.ITALIC + "PLAYER HOME\n" + ChatColor.WHITE + ChatColor.ITALIC + "Set a home.")))
+            .append("  ")
+            .append("[Uninvite]").color(ChatColor.YELLOW)
+            .event(new ClickEvent(ClickEvent.Action.SUGGEST_COMMAND, "/homes uninvite "))
+            .event(new HoverEvent(HoverEvent.Action.SHOW_TEXT, TextComponent.fromLegacyText(ChatColor.GREEN + "/homes uninvite " + ChatColor.ITALIC + "PLAYER HOME\n" + ChatColor.WHITE + ChatColor.ITALIC + "Uninvite someone.")))
+            .append("  ")
+            .append("[Public]").color(ChatColor.AQUA)
+            .event(new ClickEvent(ClickEvent.Action.SUGGEST_COMMAND, "/homes public "))
+            .event(new HoverEvent(HoverEvent.Action.SHOW_TEXT, TextComponent.fromLegacyText(ChatColor.AQUA + "/homes public " + ChatColor.ITALIC + "HOME ALIAS\n" + ChatColor.WHITE + ChatColor.ITALIC + "Make home public.")))
+            .append("  ")
+            .append("[Visit]").color(ChatColor.DARK_AQUA)
+            .event(new ClickEvent(ClickEvent.Action.RUN_COMMAND, "/homes visit"))
+            .event(new HoverEvent(HoverEvent.Action.SHOW_TEXT, TextComponent.fromLegacyText(ChatColor.GREEN + "/homes visit " + ChatColor.ITALIC + "HOME\n" + ChatColor.WHITE + ChatColor.ITALIC + "Visit a public home.")));
+        player.spigot().sendMessage(cb.create());
+        player.sendMessage("");
+        return true;
     }
 
     boolean onInviteHomeCommand(CommandSender sender, Command command, String alias, String[] args) {
@@ -1528,7 +1572,7 @@ public final class HomePlugin extends JavaPlugin implements Listener {
         }
         if (!home.invites.contains(targetId)) {
             HomeInvite invite = new HomeInvite(home.getId(), targetId);
-            db.save(invite);
+            db.saveAsync(invite, null);
             home.invites.add(targetId);
         }
         player.sendMessage(ChatColor.GREEN + "Invite sent to " + targetName);
@@ -1664,9 +1708,34 @@ public final class HomePlugin extends JavaPlugin implements Listener {
     }
 
     public List<String> onHomesTabComplete(CommandSender sender, Command command, String alias, String[] args) {
+        if (!(sender instanceof Player)) return null;
+        Player player = (Player)sender;
         String arg = args.length == 0 ? "" : args[args.length - 1];
-        if (alias.equals("homes") && args.length == 1) {
-            return Arrays.asList("set", "invite", "visit", "public", "delete", "info", "invites").stream().filter(i -> i.startsWith(arg)).collect(Collectors.toList());
+        String cmd = args.length == 0 ? "" : args[0];
+        if (args.length == 1) {
+            return Arrays.asList("set", "invite", "uninvite", "visit", "public", "delete", "info", "invites").stream().filter(i -> i.startsWith(arg)).collect(Collectors.toList());
+        }
+        if (args.length == 2 && cmd.equals("set")) return Collections.emptyList();
+        if (args.length == 2 && cmd.equals("visit")) {
+            return homes.stream().filter(h -> h.getPublicName() != null && h.getPublicName().startsWith(arg)).map(Home::getPublicName).collect(Collectors.toList());
+        }
+        if (args.length == 2 && cmd.equals("public")) {
+            return homes.stream().filter(h -> h.isOwner(player.getUniqueId()) && h.getName() != null && h.getPublicName() == null).map(Home::getName).collect(Collectors.toList());
+        }
+        if (args.length == 2 && cmd.equals("info")) {
+            return homes.stream().filter(h -> h.isOwner(player.getUniqueId())).map(h -> h.getPublicName() == null ? "" : h.getPublicName()).collect(Collectors.toList());
+        }
+        if (args.length == 2 && cmd.equals("delete")) {
+            return homes.stream().filter(h -> h.isOwner(player.getUniqueId())).map(h -> h.getPublicName() == null ? "" : h.getPublicName()).collect(Collectors.toList());
+        }
+        return null;
+    }
+
+    public List<String> onVisitTabComplete(CommandSender sender, Command command, String alias, String[] args) {
+        String arg = args.length == 0 ? "" : args[args.length - 1];
+        String cmd = args.length == 0 ? "" : args[0];
+        if (args.length == 1) {
+            return homes.stream().filter(h -> h.getPublicName() != null && h.getPublicName().startsWith(arg)).map(Home::getPublicName).collect(Collectors.toList());
         }
         return null;
     }
@@ -2009,7 +2078,7 @@ public final class HomePlugin extends JavaPlugin implements Listener {
             json.put(key, value);
         }
         row.setData(JSONValue.toJSONString(json));
-        db.save(row);
+        db.saveAsync(row, null);
     }
 
     // --- Event Handling

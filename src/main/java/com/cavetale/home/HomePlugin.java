@@ -2179,6 +2179,8 @@ public final class HomePlugin extends JavaPlugin implements Listener {
         case PHANTOM:
         case MAGMA_CUBE:
         case ENDER_DRAGON:
+        case SHULKER:
+        case SHULKER_BULLET:
             return true;
         default:
             return entity instanceof Monster;
@@ -2324,7 +2326,18 @@ public final class HomePlugin extends JavaPlugin implements Listener {
             if (claim.getSetting(Claim.Setting.PVP) == Boolean.TRUE) return;
             event.setCancelled(true);
         } else if (player != null) {
-            checkPlayerAction(player, entity.getLocation().getBlock(), isHostileMob(entity) ? Action.COMBAT : Action.BUILD, event);
+            boolean claimed = getClaimAt(entity.getLocation().getBlock()) != null;
+            Action action;
+            if (claimed && entity.getType() == EntityType.SHULKER) {
+                // Some extra code for hostile, yet valuable mobs in
+                // claims.
+                action = Action.BUILD;
+            } else if (isHostileMob(entity)) {
+                action = Action.COMBAT;
+            } else {
+                action = Action.BUILD;
+            }
+            checkPlayerAction(player, entity.getLocation().getBlock(), action, event);
         } else {
             switch (event.getCause()) {
             case BLOCK_EXPLOSION:

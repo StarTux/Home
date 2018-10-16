@@ -2213,10 +2213,17 @@ public final class HomePlugin extends JavaPlugin implements Listener {
             .append("claim").color(ChatColor.YELLOW)
             .event(new ClickEvent(ClickEvent.Action.RUN_COMMAND, "/claim"))
             .event(new HoverEvent(HoverEvent.Action.SHOW_TEXT, TextComponent.fromLegacyText(ChatColor.YELLOW + "/claim\n" + ChatColor.WHITE + ChatColor.ITALIC + "Claim land and make it yours.")))
-            .append(" this area. Building is limited.", ComponentBuilder.FormatRetention.NONE).color(ChatColor.RED);
+            .append(" this area. Mining and building is limited.", ComponentBuilder.FormatRetention.NONE).color(ChatColor.RED);
+        player.spigot().sendMessage(cb.create());
+        cb = new ComponentBuilder("")
+            .append("Consider visiting the ").color(ChatColor.RED)
+            .append("mining").color(ChatColor.YELLOW)
+            .event(new ClickEvent(ClickEvent.Action.RUN_COMMAND, "/mine"))
+            .event(new HoverEvent(HoverEvent.Action.SHOW_TEXT, TextComponent.fromLegacyText(ChatColor.YELLOW + "/mine\n" + ChatColor.WHITE + ChatColor.ITALIC + "Visit the mining world which can be raided and will be reset regularly.")))
+            .append(" world.").color(ChatColor.RED);
+        player.spigot().sendMessage(cb.create());
         player.playSound(player.getEyeLocation(), Sound.ENTITY_POLAR_BEAR_WARNING, SoundCategory.MASTER, 2.0f, 1.0f);
         player.setMetadata(META_NOCLAIM_WARN, new FixedMetadataValue(this, now));
-        player.spigot().sendMessage(cb.create());
     }
 
     boolean noClaimBuild(Player player, Block block) {

@@ -1239,8 +1239,8 @@ public final class HomePlugin extends JavaPlugin implements Listener {
                 return true;
             }
             Claim claim = getClaimAt(location);
-            if (claim == null || !claim.canVisit(playerId)) {
-                player.sendMessage(ChatColor.RED + "This home is not claimed by you.");
+            if (claim == null || (home.getOwner() != null && !claim.canVisit(home.getOwner()) && !claim.canVisit(playerId))) {
+                player.sendMessage(ChatColor.RED + "This home is not claimed.");
                 return true;
             }
             player.sendMessage(ChatColor.GREEN + "Going home.");

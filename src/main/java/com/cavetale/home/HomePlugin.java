@@ -2527,11 +2527,7 @@ public final class HomePlugin extends JavaPlugin implements Listener {
 
     @EventHandler(ignoreCancelled = true, priority = EventPriority.LOW)
     public void onPlayerBucketEmpty(PlayerBucketEmptyEvent event) {
-        if (event.getBucket() == Material.WATER_BUCKET) {
-            checkPlayerAction(event.getPlayer(), event.getBlockClicked(), Action.BUCKET, event);
-        } else {
-            checkPlayerAction(event.getPlayer(), event.getBlockClicked(), Action.BUILD, event);
-        }
+        checkPlayerAction(event.getPlayer(), event.getBlockClicked(), Action.BUILD, event);
     }
 
     @EventHandler(ignoreCancelled = true, priority = EventPriority.LOW)

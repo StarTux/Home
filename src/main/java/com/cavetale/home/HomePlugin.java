@@ -1577,23 +1577,24 @@ public final class HomePlugin extends JavaPlugin implements Listener {
         }
         player.sendMessage(ChatColor.GREEN + "Invite sent to " + targetName);
         Player target = getServer().getPlayer(targetId);
-        if (target == null) return true;
-        if (home.getName() == null) {
-            String cmd = "/home " + player.getName() + ":";
-            ComponentBuilder cb = new ComponentBuilder("")
-                .append(player.getName() + " invited you to their primary home: ").color(ChatColor.WHITE)
-                .append("[Visit]").color(ChatColor.GREEN)
-                .event(new ClickEvent(ClickEvent.Action.RUN_COMMAND, cmd))
-                .event(new HoverEvent(HoverEvent.Action.SHOW_TEXT, TextComponent.fromLegacyText(ChatColor.GREEN + cmd + "\n" + ChatColor.WHITE + ChatColor.ITALIC + "Visit this home")));
-            player.spigot().sendMessage(cb.create());
-        } else {
-            String cmd = "/home " + player.getName() + ":" + home.getName();
-            ComponentBuilder cb = new ComponentBuilder("")
-                .append(player.getName() + " invited you to their home: ").color(ChatColor.WHITE)
-                .append("[" + home.getName() + "]").color(ChatColor.GREEN)
-                .event(new ClickEvent(ClickEvent.Action.RUN_COMMAND, cmd))
-                .event(new HoverEvent(HoverEvent.Action.SHOW_TEXT, TextComponent.fromLegacyText(ChatColor.GREEN + cmd + "\n" + ChatColor.WHITE + ChatColor.ITALIC + "Visit this home")));
-            player.spigot().sendMessage(cb.create());
+        if (target != null) {
+            if (home.getName() == null) {
+                String cmd = "/home " + player.getName() + ":";
+                ComponentBuilder cb = new ComponentBuilder("")
+                    .append(player.getName() + " invited you to their primary home: ").color(ChatColor.WHITE)
+                    .append("[Visit]").color(ChatColor.GREEN)
+                    .event(new ClickEvent(ClickEvent.Action.RUN_COMMAND, cmd))
+                    .event(new HoverEvent(HoverEvent.Action.SHOW_TEXT, TextComponent.fromLegacyText(ChatColor.GREEN + cmd + "\n" + ChatColor.WHITE + ChatColor.ITALIC + "Visit this home")));
+                target.spigot().sendMessage(cb.create());
+            } else {
+                String cmd = "/home " + player.getName() + ":" + home.getName();
+                ComponentBuilder cb = new ComponentBuilder("")
+                    .append(player.getName() + " invited you to their home: ").color(ChatColor.WHITE)
+                    .append("[" + home.getName() + "]").color(ChatColor.GREEN)
+                    .event(new ClickEvent(ClickEvent.Action.RUN_COMMAND, cmd))
+                    .event(new HoverEvent(HoverEvent.Action.SHOW_TEXT, TextComponent.fromLegacyText(ChatColor.GREEN + cmd + "\n" + ChatColor.WHITE + ChatColor.ITALIC + "Visit this home")));
+                target.spigot().sendMessage(cb.create());
+            }
         }
         return true;
     }

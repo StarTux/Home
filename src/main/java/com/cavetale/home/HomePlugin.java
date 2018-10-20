@@ -2424,7 +2424,7 @@ public final class HomePlugin extends JavaPlugin implements Listener {
         if (player.isOp() || player.hasMetadata(META_IGNORE)) return;
         final Entity entity = event.getRightClicked();
         if (isOwner(player, entity)) return;
-        checkPlayerAction(player, entity.getLocation().getBlock(), Action.INTERACT, event);
+        checkPlayerAction(player, entity.getLocation().getBlock(), Action.BUILD, event);
     }
 
     // Should this just be the same as onPlayerInteractEntity() ?
@@ -2434,7 +2434,7 @@ public final class HomePlugin extends JavaPlugin implements Listener {
         if (player.isOp() || player.hasMetadata(META_IGNORE)) return;
         final Entity entity = event.getRightClicked();
         if (isOwner(player, entity)) return;
-        checkPlayerAction(player, entity.getLocation().getBlock(), Action.INTERACT, event);
+        checkPlayerAction(player, entity.getLocation().getBlock(), Action.BUILD, event);
     }
 
     @EventHandler(ignoreCancelled = true, priority = EventPriority.LOW)

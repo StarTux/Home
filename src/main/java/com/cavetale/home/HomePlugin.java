@@ -2127,7 +2127,7 @@ public final class HomePlugin extends JavaPlugin implements Listener {
         if (claim.canBuild(uuid)) return true;
         if (claim.getSetting(Claim.Setting.PUBLIC) == Boolean.TRUE) return true;
         // Visitors may interact and do combat.
-        if (claim.canVisit(uuid)) {
+        if (claim.canVisit(uuid) || claim.getSetting(Claim.Setting.PUBLIC_INVITE) == Boolean.TRUE) {
             switch (action) {
             case COMBAT:
             case INTERACT:
@@ -2275,6 +2275,8 @@ public final class HomePlugin extends JavaPlugin implements Listener {
             case GOLD_ORE:
             case EMERALD_ORE:
             case COAL_ORE:
+            case DRAGON_EGG:
+            case DRAGON_HEAD:
                 event.setCancelled(true);
                 return;
             default:

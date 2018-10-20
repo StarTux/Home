@@ -51,7 +51,8 @@ final class Claim {
         EXPLOSIONS("Explosion Damage", false),
         FIRE("Fire Burns Blocks", false),
         AUTOGROW("Claim Grows Automatically", true),
-        PUBLIC("Anyone can build", false);
+        PUBLIC("Anyone can build", false),
+        PUBLIC_INVITE("Anyone can interact with blocks such as doors", false);
 
         final String key;
         final String displayName;

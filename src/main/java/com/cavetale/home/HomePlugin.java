@@ -2488,7 +2488,10 @@ public final class HomePlugin extends JavaPlugin implements Listener {
             }
             return;
         case RIGHT_CLICK_BLOCK:
-            checkPlayerAction(player, block, Action.INTERACT, event);
+            switch (block.getType()) {
+            case ANVIL: checkPlayerAction(player, block, Action.BUILD, event); break;
+            default: checkPlayerAction(player, block, Action.INTERACT, event); break;
+            }
             return;
         case LEFT_CLICK_BLOCK:
             checkPlayerAction(player, block, Action.INTERACT, event);

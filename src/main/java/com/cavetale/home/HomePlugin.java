@@ -31,6 +31,7 @@ import org.bukkit.World;
 import org.bukkit.WorldBorder;
 import org.bukkit.block.Block;
 import org.bukkit.block.BlockState;
+import org.bukkit.block.DoubleChest;
 import org.bukkit.command.Command;
 import org.bukkit.command.CommandSender;
 import org.bukkit.configuration.ConfigurationSection;
@@ -2609,6 +2610,8 @@ public final class HomePlugin extends JavaPlugin implements Listener {
             checkPlayerAction(player, ((Entity)holder).getLocation().getBlock(), Action.BUILD, event);
         } else if (holder instanceof BlockState) {
             checkPlayerAction(player, ((BlockState)holder).getBlock(), Action.BUILD, event);
+        } else if (holder instanceof DoubleChest) {
+            checkPlayerAction(player, ((DoubleChest)holder).getLocation().getBlock(), Action.BUILD, event);
         }
     }
 

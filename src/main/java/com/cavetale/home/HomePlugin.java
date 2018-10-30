@@ -2675,6 +2675,10 @@ public final class HomePlugin extends JavaPlugin implements Listener {
             && event.getSpawnReason() != CreatureSpawnEvent.SpawnReason.CUSTOM) {
             event.setCancelled(true);
         }
+        if (event.getEntity().getType() == EntityType.WITHER
+            && event.getSpawnReason() != CreatureSpawnEvent.SpawnReason.CUSTOM) {
+            event.setCancelled(true);
+        }
     }
 
     @EventHandler

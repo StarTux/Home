@@ -12,14 +12,13 @@ public final class BuildCommand extends PlayerCommand {
     private final HomePlugin plugin;
 
     @Override
-    public boolean onCommand(Player player, String[] args) {
+    public boolean onCommand(Player player, String[] args) throws CommandException {
         if (args.length != 0) return false;
         final UUID playerId = player.getUniqueId();
         if (!player.hasMetadata(plugin.META_IGNORE)
             && !player.isOp()
             && !plugin.findClaimsInWorld(playerId, plugin.getPrimaryHomeWorld()).isEmpty()) {
-            player.sendMessage(ChatColor.RED + "You already have a claim!");
-            return true;
+            throw new CommandException("You already have a claim!");
         }
         plugin.findPlaceToBuild(player);
         return true;

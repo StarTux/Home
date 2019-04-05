@@ -12,21 +12,18 @@ public final class SetHomeCommand extends PlayerCommand {
     private final HomePlugin plugin;
 
     @Override
-    public boolean onCommand(Player player, String[] args) {
+    public boolean onCommand(Player player, String[] args) throws CommandException {
         if (args.length > 1) return false;
         UUID playerId = player.getUniqueId();
         Claim claim = plugin.getClaimAt(player.getLocation().getBlock());
         if (!plugin.isHomeWorld(player.getWorld())) {
-            player.sendMessage(ChatColor.RED + "You cannot set homes in this world");
-            return true;
+            throw new CommandException("You cannot set homes in this world");
         }
         if (claim == null) {
-            player.sendMessage(ChatColor.RED + "You can only set homes inside a claim");
-            return true;
+            throw new CommandException("You can only set homes inside a claim");
         }
         if (!claim.canBuild(playerId)) {
-            player.sendMessage(ChatColor.RED + "You cannot set homes in this claim");
-            return true;
+            throw new CommandException("You cannot set homes in this claim");
         }
         String playerWorld = player.getWorld().getName();
         int playerX = player.getLocation().getBlockX();
@@ -39,11 +36,10 @@ public final class SetHomeCommand extends PlayerCommand {
                 && Math.abs(playerX - (int)home.getX()) < settings.homeMargin
                 && Math.abs(playerZ - (int)home.getZ()) < settings.homeMargin) {
                 if (home.getName() == null) {
-                    player.sendMessage(ChatColor.RED + "Your primary home is nearby");
+                    throw new CommandException("Your primary home is nearby");
                 } else {
-                    player.sendMessage(ChatColor.RED + "You have a home named \"" + home.getName() + "\" nearby");
+                    throw new CommandException("You have a home named \"" + home.getName() + "\" nearby");
                 }
-                return true;
             }
         }
         Home home = plugin.findHome(playerId, homeName);

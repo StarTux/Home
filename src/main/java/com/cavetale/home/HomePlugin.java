@@ -185,14 +185,13 @@ public final class HomePlugin extends JavaPlugin {
 
     // --- Player interactivity
 
-    void findPlaceToBuild(Player player) {
+    void findPlaceToBuild(Player player) throws PlayerCommand.CommandException {
         // Determine center and border
         String worldName = primaryHomeWorld; // Set up for future expansion
         World bworld = getServer().getWorld(worldName);
         if (bworld == null) {
             getLogger().warning("Home world not found: " + worldName);
-            player.sendMessage(ChatColor.RED + "Something went wrong. Please contact an administrator.");
-            return;
+            throw new PlayerCommand.CommandException("Something went wrong. Please contact an administrator.");
         }
         // Cooldown
         WorldSettings settings = worldSettings.get(worldName);
@@ -200,8 +199,7 @@ public final class HomePlugin extends JavaPlugin {
         if (wildCooldown >= 0) {
             long remain = (wildCooldown - System.nanoTime()) / 1000000000 - (long)settings.wildCooldown;
             if (remain > 0) {
-                player.sendMessage(ChatColor.RED + "Please wait " + remain + " more seconds");
-                return;
+                throw new PlayerCommand.CommandException("Please wait " + remain + " more seconds");
             }
         }
         // Borders
@@ -228,8 +226,7 @@ public final class HomePlugin extends JavaPlugin {
             location.setYaw((float)Math.random() * 360.0f - 180.0f);
         }
         if (location == null) {
-            player.sendMessage(ChatColor.RED + "Could not find a place to build. Please try again");
-            return;
+            throw new PlayerCommand.CommandException("Could not find a place to build. Please try again");
         }
         // Teleport, notify, and set cooldown
         player.teleport(location);

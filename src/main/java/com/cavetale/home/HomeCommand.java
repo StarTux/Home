@@ -23,7 +23,7 @@ public final class HomeCommand extends PlayerCommand {
             if (home != null) {
                 Location location = home.createLocation();
                 Claim claim = plugin.getClaimAt(location);
-                if (claim == null || !claim.canVisit(playerId)) {
+                if (claim != null && !claim.canVisit(playerId)) {
                     throw new CommandException("This home is not claimed by you.");
                 }
                 if (location == null) {

@@ -15,14 +15,11 @@ public final class SetHomeCommand extends PlayerCommand {
     public boolean onCommand(Player player, String[] args) throws CommandException {
         if (args.length > 1) return false;
         UUID playerId = player.getUniqueId();
-        Claim claim = plugin.getClaimAt(player.getLocation().getBlock());
         if (!plugin.isHomeWorld(player.getWorld())) {
             throw new CommandException("You cannot set homes in this world");
         }
-        if (claim == null) {
-            throw new CommandException("You can only set homes inside a claim");
-        }
-        if (!claim.canBuild(playerId)) {
+        Claim claim = plugin.getClaimAt(player.getLocation().getBlock());
+        if (claim != null && !claim.canBuild(playerId)) {
             throw new CommandException("You cannot set homes in this claim");
         }
         String playerWorld = player.getWorld().getName();

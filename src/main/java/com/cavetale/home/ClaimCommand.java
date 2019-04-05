@@ -20,7 +20,7 @@ import org.bukkit.entity.Player;
 @RequiredArgsConstructor
 public final class ClaimCommand extends PlayerCommand {
     private final HomePlugin plugin;
-    static final List<String> COMMANDS = Arrays.asList("new", "info", "list", "port", "buy", "add", "invite", "remove", "set", "grow", "shrink", "merge");
+    static final List<String> COMMANDS = Arrays.asList("new", "info", "list", "port", "buy", "add", "invite", "remove", "set", "grow", "shrink");
 
     @Value
     private static class BuyClaimBlocks {

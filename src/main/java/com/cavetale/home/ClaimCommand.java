@@ -571,17 +571,18 @@ public final class ClaimCommand extends PlayerCommand {
         UUID playerId = player.getUniqueId();
         cb = new ComponentBuilder("");
         cb.append("General").color(ChatColor.GRAY);
-        cb.append("  ").append("[Info]").color(ChatColor.YELLOW)
+        final ChatColor buttonColor = ChatColor.GREEN;
+        cb.append("  ").append("[Info]").color(buttonColor)
             .event(new ClickEvent(ClickEvent.Action.RUN_COMMAND, "/claim info"))
-            .event(new HoverEvent(HoverEvent.Action.SHOW_TEXT, TextComponent.fromLegacyText(ChatColor.YELLOW + "/claim info\n" + ChatColor.WHITE + ChatColor.ITALIC + "Get claim info.")));
+            .event(new HoverEvent(HoverEvent.Action.SHOW_TEXT, TextComponent.fromLegacyText(buttonColor + "/claim info\n" + ChatColor.WHITE + ChatColor.ITALIC + "Get claim info.")));
         if (claim.canVisit(playerId)) {
-            cb.append("  ").append("[Home]").color(ChatColor.BLUE)
+            cb.append("  ").append("[Home]").color(buttonColor)
                 .event(new ClickEvent(ClickEvent.Action.RUN_COMMAND, "/claim home " + claim.getId()))
-                .event(new HoverEvent(HoverEvent.Action.SHOW_TEXT, TextComponent.fromLegacyText(ChatColor.BLUE + "Teleport to this claim.")));
+                .event(new HoverEvent(HoverEvent.Action.SHOW_TEXT, TextComponent.fromLegacyText(buttonColor + "Teleport to this claim.")));
         }
-        cb.append("  ").append("[List]").color(ChatColor.GOLD)
+        cb.append("  ").append("[List]").color(buttonColor)
             .event(new ClickEvent(ClickEvent.Action.RUN_COMMAND, "/claim list" + claim.getId()))
-            .event(new HoverEvent(HoverEvent.Action.SHOW_TEXT, TextComponent.fromLegacyText(ChatColor.GOLD + "/claim list\n" + ChatColor.WHITE + ChatColor.ITALIC + "List all your claims.")));
+            .event(new HoverEvent(HoverEvent.Action.SHOW_TEXT, TextComponent.fromLegacyText(buttonColor + "/claim list\n" + ChatColor.WHITE + ChatColor.ITALIC + "List all your claims.")));
         if (claim.isOwner(playerId)) {
             cb.append("  ").append("[Abandon]").color(ChatColor.DARK_RED)
                 .event(new ClickEvent(ClickEvent.Action.RUN_COMMAND, "/claim abandon"))
@@ -592,30 +593,30 @@ public final class ClaimCommand extends PlayerCommand {
         if (claim.isOwner(playerId) && claim.contains(playerLocation)) {
             cb = new ComponentBuilder("");
             cb.append("Manage").color(ChatColor.GRAY);
-            cb.append("  ").append("[Buy]").color(ChatColor.GREEN)
+            cb.append("  ").append("[Buy]").color(buttonColor)
                 .event(new ClickEvent(ClickEvent.Action.SUGGEST_COMMAND, "/claim buy "))
-                .event(new HoverEvent(HoverEvent.Action.SHOW_TEXT, TextComponent.fromLegacyText(ChatColor.GREEN + "/claim buy " + ChatColor.ITALIC + "AMOUNT\n" + ChatColor.WHITE + ChatColor.ITALIC + "Add some claim blocks to this claim. One claim block costs " + GenericEvents.formatMoney(settings.claimBlockCost) + ".")));
-            cb.append("  ").append("[Settings]").color(ChatColor.YELLOW)
+                .event(new HoverEvent(HoverEvent.Action.SHOW_TEXT, TextComponent.fromLegacyText(buttonColor + "/claim buy " + ChatColor.ITALIC + "<amount>\n" + ChatColor.WHITE + ChatColor.ITALIC + "Add some claim blocks to this claim. One claim block costs " + GenericEvents.formatMoney(settings.claimBlockCost) + ".")));
+            cb.append("  ").append("[Settings]").color(buttonColor)
                 .event(new ClickEvent(ClickEvent.Action.RUN_COMMAND, "/claim set"))
-                .event(new HoverEvent(HoverEvent.Action.SHOW_TEXT, TextComponent.fromLegacyText(ChatColor.YELLOW + "/claim set\n" + ChatColor.WHITE + ChatColor.ITALIC + "View or change claim settings.")));
-            cb.append("  ").append("[Grow]").color(ChatColor.GRAY)
+                .event(new HoverEvent(HoverEvent.Action.SHOW_TEXT, TextComponent.fromLegacyText(buttonColor + "/claim set\n" + ChatColor.WHITE + ChatColor.ITALIC + "View or change claim settings.")));
+            cb.append("  ").append("[Grow]").color(buttonColor)
                 .event(new ClickEvent(ClickEvent.Action.RUN_COMMAND, "/claim grow"))
-                .event(new HoverEvent(HoverEvent.Action.SHOW_TEXT, TextComponent.fromLegacyText(ChatColor.GRAY + "/claim grow\n" + ChatColor.WHITE + ChatColor.ITALIC + "Grow this claim to your current location.")));
-            cb.append("  ").append("[Shrink]").color(ChatColor.DARK_GRAY)
+                .event(new HoverEvent(HoverEvent.Action.SHOW_TEXT, TextComponent.fromLegacyText(buttonColor + "/claim grow\n" + ChatColor.WHITE + ChatColor.ITALIC + "Grow this claim to your current location.")));
+            cb.append("  ").append("[Shrink]").color(buttonColor)
                 .event(new ClickEvent(ClickEvent.Action.RUN_COMMAND, "/claim shrink"))
-                .event(new HoverEvent(HoverEvent.Action.SHOW_TEXT, TextComponent.fromLegacyText(ChatColor.DARK_GRAY + "/claim shrink\n" + ChatColor.WHITE + ChatColor.ITALIC + "Reduce this claim's size so that the nearest corner snaps to your current location.")));
+                .event(new HoverEvent(HoverEvent.Action.SHOW_TEXT, TextComponent.fromLegacyText(buttonColor + "/claim shrink\n" + ChatColor.WHITE + ChatColor.ITALIC + "Reduce this claim's size so that the nearest corner snaps to your current location.")));
             player.spigot().sendMessage(cb.create());
             cb = new ComponentBuilder("");
             cb.append("Friends").color(ChatColor.GRAY);
-            cb.append("  ").append("[Add]").color(ChatColor.BLUE)
+            cb.append("  ").append("[Add]").color(buttonColor)
                 .event(new ClickEvent(ClickEvent.Action.SUGGEST_COMMAND, "/claim add "))
-                .event(new HoverEvent(HoverEvent.Action.SHOW_TEXT, TextComponent.fromLegacyText(ChatColor.BLUE + "/claim add " + ChatColor.ITALIC + "PLAYER\n" + ChatColor.WHITE + ChatColor.ITALIC + "Trust some player to build in this claim.")));
-            cb.append("  ").append("[Invite]").color(ChatColor.AQUA)
+                .event(new HoverEvent(HoverEvent.Action.SHOW_TEXT, TextComponent.fromLegacyText(buttonColor + "/claim add " + ChatColor.ITALIC + "<player>\n" + ChatColor.WHITE + ChatColor.ITALIC + "Trust some player to build in this claim.")));
+            cb.append("  ").append("[Invite]").color(buttonColor)
                 .event(new ClickEvent(ClickEvent.Action.SUGGEST_COMMAND, "/claim invite "))
-                .event(new HoverEvent(HoverEvent.Action.SHOW_TEXT, TextComponent.fromLegacyText(ChatColor.AQUA + "/claim invite " + ChatColor.ITALIC + "PLAYER\n" + ChatColor.WHITE + ChatColor.ITALIC + "Trust some player to visit your claim. They will be able to open doors and such.")));
-            cb.append("  ").append("[Remove]").color(ChatColor.RED)
+                .event(new HoverEvent(HoverEvent.Action.SHOW_TEXT, TextComponent.fromLegacyText(buttonColor + "/claim invite " + ChatColor.ITALIC + "<player>\n" + ChatColor.WHITE + ChatColor.ITALIC + "Trust some player to visit your claim. They will be able to open doors and such.")));
+            cb.append("  ").append("[Remove]").color(buttonColor)
                 .event(new ClickEvent(ClickEvent.Action.SUGGEST_COMMAND, "/claim remove "))
-                .event(new HoverEvent(HoverEvent.Action.SHOW_TEXT, TextComponent.fromLegacyText(ChatColor.RED + "/claim remove " + ChatColor.ITALIC + "PLAYER\n" + ChatColor.WHITE + ChatColor.ITALIC + "Remove someone's trust from this claim.")));
+                .event(new HoverEvent(HoverEvent.Action.SHOW_TEXT, TextComponent.fromLegacyText(buttonColor + "/claim remove " + ChatColor.ITALIC + "<player>\n" + ChatColor.WHITE + ChatColor.ITALIC + "Remove someone's trust from this claim.")));
             player.spigot().sendMessage(cb.create());
         }
         player.sendMessage("");

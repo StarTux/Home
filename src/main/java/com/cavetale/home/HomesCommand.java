@@ -200,35 +200,36 @@ public final class HomesCommand extends PlayerCommand {
                 .event(new HoverEvent(HoverEvent.Action.SHOW_TEXT, TextComponent.fromLegacyText(ChatColor.LIGHT_PURPLE + "/homes invites\n" + ChatColor.WHITE + ChatColor.ITALIC + "List home invites")));
             player.spigot().sendMessage(cb.create());
         }
+        final ChatColor buttonColor = ChatColor.GREEN;
         ComponentBuilder cb = new ComponentBuilder("")
-            .append("[Set]").color(ChatColor.BLUE)
-            .event(new ClickEvent(ClickEvent.Action.SUGGEST_COMMAND, "/homes set "))
-            .event(new HoverEvent(HoverEvent.Action.SHOW_TEXT, TextComponent.fromLegacyText(ChatColor.BLUE + "/homes set [name]\n" + ChatColor.WHITE + ChatColor.ITALIC + "Set a home.")))
+            .append("[Set]").color(buttonColor)
+            .event(new ClickEvent(ClickEvent.Action.SUGGEST_COMMAND, "/sethome "))
+            .event(new HoverEvent(HoverEvent.Action.SHOW_TEXT, TextComponent.fromLegacyText(buttonColor + "/sethome [name]\n" + ChatColor.WHITE + ChatColor.ITALIC + "Set a home.")))
             .append("  ")
-            .append("[Info]").color(ChatColor.YELLOW)
+            .append("[Info]").color(buttonColor)
             .event(new ClickEvent(ClickEvent.Action.SUGGEST_COMMAND, "/homes info "))
-            .event(new HoverEvent(HoverEvent.Action.SHOW_TEXT, TextComponent.fromLegacyText(ChatColor.YELLOW + "/homes info " + ChatColor.ITALIC + "HOME\n" + ChatColor.WHITE + ChatColor.ITALIC + "Get home info.")))
+            .event(new HoverEvent(HoverEvent.Action.SHOW_TEXT, TextComponent.fromLegacyText(buttonColor + "/homes info " + ChatColor.ITALIC + "<home>\n" + ChatColor.WHITE + ChatColor.ITALIC + "Get home info.")))
             .append("  ")
-            .append("[Delete]").color(ChatColor.RED)
+            .append("[Delete]").color(ChatColor.DARK_RED)
             .event(new ClickEvent(ClickEvent.Action.SUGGEST_COMMAND, "/homes delete "))
-            .event(new HoverEvent(HoverEvent.Action.SHOW_TEXT, TextComponent.fromLegacyText(ChatColor.RED + "/homes delete " + ChatColor.ITALIC + "HOME\n" + ChatColor.WHITE + ChatColor.ITALIC + "Delete home.")));
+            .event(new HoverEvent(HoverEvent.Action.SHOW_TEXT, TextComponent.fromLegacyText(ChatColor.DARK_RED + "/homes delete " + ChatColor.ITALIC + "<home>\n" + ChatColor.WHITE + ChatColor.ITALIC + "Delete home.")));
         player.spigot().sendMessage(cb.create());
         cb = new ComponentBuilder("")
-            .append("[Invite]").color(ChatColor.GREEN)
+            .append("[Invite]").color(buttonColor)
             .event(new ClickEvent(ClickEvent.Action.SUGGEST_COMMAND, "/homes invite "))
-            .event(new HoverEvent(HoverEvent.Action.SHOW_TEXT, TextComponent.fromLegacyText(ChatColor.GREEN + "/homes invite " + ChatColor.ITALIC + "PLAYER HOME\n" + ChatColor.WHITE + ChatColor.ITALIC + "Set a home.")))
+            .event(new HoverEvent(HoverEvent.Action.SHOW_TEXT, TextComponent.fromLegacyText(buttonColor + "/homes invite " + ChatColor.ITALIC + "<player> [home]\n" + ChatColor.WHITE + ChatColor.ITALIC + "Set a home.")))
             .append("  ")
-            .append("[Uninvite]").color(ChatColor.YELLOW)
+            .append("[Uninvite]").color(buttonColor)
             .event(new ClickEvent(ClickEvent.Action.SUGGEST_COMMAND, "/homes uninvite "))
-            .event(new HoverEvent(HoverEvent.Action.SHOW_TEXT, TextComponent.fromLegacyText(ChatColor.GREEN + "/homes uninvite " + ChatColor.ITALIC + "PLAYER HOME\n" + ChatColor.WHITE + ChatColor.ITALIC + "Uninvite someone.")))
+            .event(new HoverEvent(HoverEvent.Action.SHOW_TEXT, TextComponent.fromLegacyText(buttonColor + "/homes uninvite " + ChatColor.ITALIC + "<player> [home]\n" + ChatColor.WHITE + ChatColor.ITALIC + "Uninvite someone.")))
             .append("  ")
-            .append("[Public]").color(ChatColor.AQUA)
+            .append("[Public]").color(buttonColor)
             .event(new ClickEvent(ClickEvent.Action.SUGGEST_COMMAND, "/homes public "))
-            .event(new HoverEvent(HoverEvent.Action.SHOW_TEXT, TextComponent.fromLegacyText(ChatColor.AQUA + "/homes public " + ChatColor.ITALIC + "HOME ALIAS\n" + ChatColor.WHITE + ChatColor.ITALIC + "Make home public.")))
+            .event(new HoverEvent(HoverEvent.Action.SHOW_TEXT, TextComponent.fromLegacyText(buttonColor + "/homes public " + ChatColor.ITALIC + "<home> [alias]\n" + ChatColor.WHITE + ChatColor.ITALIC + "Make home public.")))
             .append("  ")
-            .append("[Visit]").color(ChatColor.DARK_AQUA)
-            .event(new ClickEvent(ClickEvent.Action.RUN_COMMAND, "/homes visit"))
-            .event(new HoverEvent(HoverEvent.Action.SHOW_TEXT, TextComponent.fromLegacyText(ChatColor.GREEN + "/homes visit " + ChatColor.ITALIC + "HOME\n" + ChatColor.WHITE + ChatColor.ITALIC + "Visit a public home.")));
+            .append("[Visit]").color(buttonColor)
+            .event(new ClickEvent(ClickEvent.Action.RUN_COMMAND, "/visit"))
+            .event(new HoverEvent(HoverEvent.Action.SHOW_TEXT, TextComponent.fromLegacyText(buttonColor + "/visit " + ChatColor.ITALIC + "[home]\n" + ChatColor.WHITE + ChatColor.ITALIC + "Visit a public home.")));
         player.spigot().sendMessage(cb.create());
         player.sendMessage("");
         return true;
@@ -247,6 +248,9 @@ public final class HomesCommand extends PlayerCommand {
         }
         if (args.length == 2 && cmd.equals("public")) {
             return plugin.getHomes().stream().filter(h -> h.isOwner(player.getUniqueId()) && h.getName() != null && h.getPublicName() == null).map(Home::getName).collect(Collectors.toList());
+        }
+        if (args.length == 3 && cmd.equals("public")) {
+            return Collections.emptyList();
         }
         if (args.length == 2 && cmd.equals("info")) {
             return plugin.getHomes().stream().filter(h -> h.isOwner(player.getUniqueId())).map(h -> h.getPublicName() == null ? "" : h.getPublicName()).collect(Collectors.toList());

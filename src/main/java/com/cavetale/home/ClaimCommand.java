@@ -150,8 +150,7 @@ public final class ClaimCommand extends PlayerCommand {
                 if (claim == null || !claim.isOwner(playerId) || !args[1].equals("" + claimId)) {
                     throw new CommandException("Claim removal expired");
                 }
-                plugin.getDb().find(Claim.SQLRow.class).eq("id", claimId).delete();
-                plugin.getClaims().remove(claim);
+                plugin.deleteClaim(claim);
                 player.sendMessage(ChatColor.YELLOW + "Claim removed");
                 plugin.setStoredPlayerData(playerId, "AbandonedClaim", 1);
             }

@@ -447,6 +447,13 @@ public final class HomePlugin extends JavaPlugin {
         return null;
     }
 
+    public void deleteClaim(Claim claim) {
+        int claimId = claim.getId();
+        db.find(Claim.SQLRow.class).eq("id", claimId).delete();
+        db.find(ClaimTrust.class).eq("claimId", claimId).delete();
+        claims.remove(claim);
+    }
+
     // --- Player stored data
 
     Object getStoredPlayerData(UUID playerId, String key) {

@@ -99,8 +99,7 @@ public final class HomeAdminCommand implements TabExecutor {
                     player.sendMessage(ChatColor.RED + "No claim here.");
                     return true;
                 }
-                plugin.getClaims().remove(claim);
-                plugin.getDb().find(Claim.SQLRow.class).eq("id", claim.getId()).delete();
+                plugin.deleteClaim(claim);
                 player.sendMessage(ChatColor.YELLOW + "Deleted claim owned by " + claim.getOwnerName() + ".");
                 return true;
             }

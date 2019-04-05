@@ -113,11 +113,6 @@ public final class HomePlugin extends JavaPlugin {
     void onTick() {
         ticks += 1;
         for (Player player : getServer().getOnlinePlayers()) {
-            if (player.hasMetadata(META_NOFALL)) {
-                if (player.isOnGround() || player.getLocation().getBlock().isLiquid()) {
-                    player.removeMetadata(META_NOFALL, this);
-                }
-            }
             if (!isHomeWorld(player.getWorld())) {
                 player.removeMetadata(META_LOCATION, this);
                 continue;
@@ -237,7 +232,7 @@ public final class HomePlugin extends JavaPlugin {
             .event(new HoverEvent(HoverEvent.Action.SHOW_TEXT, TextComponent.fromLegacyText(ChatColor.GREEN + "/home\n" + ChatColor.WHITE + ChatColor.ITALIC + "Find another place to build.")));
         player.spigot().sendMessage(cb.create());
         setMetadata(player, META_COOLDOWN_WILD, System.nanoTime());
-        setMetadata(player, META_NOFALL, System.nanoTime());
+        setMetadata(player, META_NOFALL, (long)location.getBlockX() + ((long)location.getBlockZ() << 32));
     }
 
     boolean autoGrowClaim(Claim claim) {

@@ -55,10 +55,8 @@ public final class HomeAdminCommand implements TabExecutor {
             break;
         case "debug":
             if (args.length == 1) {
-                sender.sendMessage("Nofall: " + player.hasMetadata(plugin.META_NOFALL));
-                sender.sendMessage("Nofall sz: " + player.getMetadata(plugin.META_NOFALL).size());
-                sender.sendMessage("OnGround: " + player.isOnGround());
-                sender.sendMessage("Liquid: " + player.getLocation().getBlock().isLiquid());
+                long meta = plugin.getMetadata(player, plugin.META_NOFALL, Long.class).orElse(0L);
+                sender.sendMessage("Nofall: " + (int)(meta & 0xFFFFFFFF) + "," + (int)(meta >> 32));
                 return true;
             }
             break;

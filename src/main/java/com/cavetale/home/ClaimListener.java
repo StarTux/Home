@@ -8,6 +8,7 @@ import net.md_5.bungee.api.chat.ClickEvent;
 import net.md_5.bungee.api.chat.ComponentBuilder;
 import net.md_5.bungee.api.chat.HoverEvent;
 import net.md_5.bungee.api.chat.TextComponent;
+import org.bukkit.Location;
 import org.bukkit.Material;
 import org.bukkit.Sound;
 import org.bukkit.SoundCategory;
@@ -629,8 +630,15 @@ final class ClaimListener implements Listener {
             // findPlaceToBuild().
             Player player = (Player)event.getEntity();
             if (player.hasMetadata(plugin.META_NOFALL)) {
+                long meta = plugin.getMetadata(player, plugin.META_NOFALL, Long.class).orElse(0L);
                 player.removeMetadata(plugin.META_NOFALL, plugin);
-                event.setCancelled(true);
+                int x = (int)(meta & 0xFFFFFFFF);
+                int z = (int)(meta >> 32);
+                Location loc = player.getLocation();
+                if (Math.abs(loc.getBlockX() - x) < 32
+                    && Math.abs(loc.getBlockZ() - z) < 32) {
+                    event.setCancelled(true);
+                }
             }
         }
     }

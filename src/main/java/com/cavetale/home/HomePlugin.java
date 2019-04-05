@@ -29,8 +29,6 @@ import org.bukkit.metadata.FixedMetadataValue;
 import org.bukkit.metadata.MetadataValue;
 import org.bukkit.metadata.Metadatable;
 import org.bukkit.plugin.java.JavaPlugin;
-import org.bukkit.potion.PotionEffect;
-import org.bukkit.potion.PotionEffectType;
 import org.json.simple.JSONValue;
 
 @Getter
@@ -118,8 +116,6 @@ public final class HomePlugin extends JavaPlugin {
             if (player.hasMetadata(META_NOFALL)) {
                 if (player.isOnGround() || player.getLocation().getBlock().isLiquid()) {
                     player.removeMetadata(META_NOFALL, this);
-                } else {
-                    player.addPotionEffect(new PotionEffect(PotionEffectType.SLOW_FALLING, 100, 0));
                 }
             }
             if (!isHomeWorld(player.getWorld())) {

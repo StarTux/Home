@@ -12,7 +12,6 @@ Worlds:
     InitialClaimCost: 2000.0
     SecondaryClaimSize: 32
     SecondaryClaimCost: 2000.0
-    MinimumClaimArea: 10000
     ClaimAbandonCooldown: 1440
 # Default World settings
 ClaimMargin: 800 # Minimum distance between old and new claims
@@ -24,5 +23,4 @@ InitialClaimSize: 128 # Length of new claims
 InitialClaimCost: -1.0 # Flat cost for initial claim
 SecondaryClaimSize: 32 # Length of additional claims
 SecondaryClaimCost: 2000.0 # Flat cost for additional claims
-MinimumClaimSize: 40000 # Required size before a new claim is allowed
 ClaimAbandonCooldown: 10 # In Minutes

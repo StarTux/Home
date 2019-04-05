@@ -20,7 +20,7 @@ import org.bukkit.entity.Player;
 @RequiredArgsConstructor
 public final class ClaimCommand extends PlayerCommand {
     private final HomePlugin plugin;
-    static final List<String> COMMANDS = Arrays.asList("new", "info", "list", "home", "buy", "add", "invite", "remove", "set", "grow", "shrink");
+    static final List<String> COMMANDS = Arrays.asList("new", "info", "list", "port", "buy", "add", "invite", "remove", "set", "grow", "shrink", "merge");
 
     @Value
     private static class BuyClaimBlocks {
@@ -55,73 +55,71 @@ public final class ClaimCommand extends PlayerCommand {
         switch (args[0]) {
         case "new":
             if (args.length == 1) return onNewclaimCommand(player);
-            break;
-        case "home":
-            if (args.length == 1 || args.length == 2) {
-                Claim claim;
-                if (args.length == 2) {
-                    int claimId;
-                    try {
-                        claimId = Integer.parseInt(args[1]);
-                    } catch (NumberFormatException nfe) {
-                        return true;
-                    }
-                    claim = plugin.findClaimWithId(claimId);
-                    if (claim == null) return true;
-                } else {
-                    claim = plugin.findPrimaryClaim(playerId);
-                    if (claim == null) {
-                        throw new CommandException("You don't have a claim yet.");
-                    }
-                }
-                if (!claim.canVisit(playerId)) return true;
-                World world = plugin.getServer().getWorld(claim.getWorld());
-                if (world == null) return true;
-                int x = (claim.getArea().ax + claim.getArea().bx) / 2;
-                int z = (claim.getArea().ay + claim.getArea().by) / 2;
-                Location target = world.getHighestBlockAt(x, z).getLocation().add(0.5, 0.0, 0.5);
-                player.teleport(target);
-                player.sendMessage(ChatColor.BLUE + "Teleported to claim.");
-                return true;
-            }
-            break;
-        case "buy":
+            return false;
+        case "port": {
+            if (args.length > 2) return false;
+            Claim claim;
             if (args.length == 2) {
-                int buyClaimBlocks;
+                int claimId;
                 try {
-                    buyClaimBlocks = Integer.parseInt(args[1]);
+                    claimId = Integer.parseInt(args[1]);
                 } catch (NumberFormatException nfe) {
-                    buyClaimBlocks = -1;
+                    return true;
                 }
-                if (buyClaimBlocks <= 0) {
-                    throw new CommandException("Invalid claim blocks amount: " + args[1]);
-                }
-                Claim claim = plugin.findNearestOwnedClaim(player);
+                claim = plugin.findClaimWithId(claimId);
+                if (claim == null) return true;
+            } else {
+                claim = plugin.findPrimaryClaim(playerId);
                 if (claim == null) {
-                    throw new CommandException("You don't have a claim in this world");
+                    throw new CommandException("You don't have a claim yet.");
                 }
-                WorldSettings settings = plugin.getWorldSettings().get(claim.getWorld());
-                double price = (double)buyClaimBlocks * settings.claimBlockCost;
-                String priceFormat = GenericEvents.formatMoney(price);
-                if (GenericEvents.getPlayerBalance(playerId) < price) {
-                    throw new CommandException("You do not have " + priceFormat + " to buy " + buyClaimBlocks + " claim blocks");
-                }
-                BuyClaimBlocks meta = new BuyClaimBlocks(buyClaimBlocks, price, claim.getId(), "" + ThreadLocalRandom.current().nextInt(9999));
-                plugin.setMetadata(player, plugin.META_BUY, meta);
-                player.sendMessage(ChatColor.WHITE + "Buying " + ChatColor.GREEN + buyClaimBlocks + ChatColor.WHITE + " for " + ChatColor.GREEN + priceFormat + ChatColor.WHITE + ".");
-                player.spigot().sendMessage(new ComponentBuilder("")
-                                            .append("Confirm this purchase: ").color(ChatColor.GRAY)
-                                            .append("[Confirm]").color(ChatColor.GREEN)
-                                            .event(new ClickEvent(ClickEvent.Action.RUN_COMMAND, "/claim confirm " + meta.token))
-                                            .event(new HoverEvent(HoverEvent.Action.SHOW_TEXT, TextComponent.fromLegacyText(ChatColor.GREEN + "Confirm\nBuy " + buyClaimBlocks + " for " + priceFormat + ".")))
-                                            .append("  ").reset()
-                                            .append("[Cancel]").color(ChatColor.RED)
-                                            .event(new ClickEvent(ClickEvent.Action.RUN_COMMAND, "/claim cancel"))
-                                            .event(new HoverEvent(HoverEvent.Action.SHOW_TEXT, TextComponent.fromLegacyText(ChatColor.RED + "Cancel purchase.")))
-                                            .create());
-                return true;
             }
-            break;
+            if (!claim.canVisit(playerId)) return true;
+            World world = plugin.getServer().getWorld(claim.getWorld());
+            if (world == null) return true;
+            int x = (claim.getArea().ax + claim.getArea().bx) / 2;
+            int z = (claim.getArea().ay + claim.getArea().by) / 2;
+            Location target = world.getHighestBlockAt(x, z).getLocation().add(0.5, 0.0, 0.5);
+            player.teleport(target);
+            player.sendMessage(ChatColor.BLUE + "Teleported to claim.");
+            return true;
+        }
+        case "buy": {
+            if (args.length != 2) return false;
+            int buyClaimBlocks;
+            try {
+                buyClaimBlocks = Integer.parseInt(args[1]);
+            } catch (NumberFormatException nfe) {
+                buyClaimBlocks = -1;
+            }
+            if (buyClaimBlocks <= 0) {
+                throw new CommandException("Invalid claim blocks amount: " + args[1]);
+            }
+            Claim claim = plugin.findNearestOwnedClaim(player);
+            if (claim == null) {
+                throw new CommandException("You don't have a claim in this world");
+            }
+            WorldSettings settings = plugin.getWorldSettings().get(claim.getWorld());
+            double price = (double)buyClaimBlocks * settings.claimBlockCost;
+            String priceFormat = GenericEvents.formatMoney(price);
+            if (GenericEvents.getPlayerBalance(playerId) < price) {
+                throw new CommandException("You do not have " + priceFormat + " to buy " + buyClaimBlocks + " claim blocks");
+            }
+            BuyClaimBlocks meta = new BuyClaimBlocks(buyClaimBlocks, price, claim.getId(), "" + ThreadLocalRandom.current().nextInt(9999));
+            plugin.setMetadata(player, plugin.META_BUY, meta);
+            player.sendMessage(ChatColor.WHITE + "Buying " + ChatColor.GREEN + buyClaimBlocks + ChatColor.WHITE + " for " + ChatColor.GREEN + priceFormat + ChatColor.WHITE + ".");
+            player.spigot().sendMessage(new ComponentBuilder("")
+                                        .append("Confirm this purchase: ").color(ChatColor.GRAY)
+                                        .append("[Confirm]").color(ChatColor.GREEN)
+                                        .event(new ClickEvent(ClickEvent.Action.RUN_COMMAND, "/claim confirm " + meta.token))
+                                        .event(new HoverEvent(HoverEvent.Action.SHOW_TEXT, TextComponent.fromLegacyText(ChatColor.GREEN + "Confirm\nBuy " + buyClaimBlocks + " for " + priceFormat + ".")))
+                                        .append("  ").reset()
+                                        .append("[Cancel]").color(ChatColor.RED)
+                                        .event(new ClickEvent(ClickEvent.Action.RUN_COMMAND, "/claim cancel"))
+                                        .event(new HoverEvent(HoverEvent.Action.SHOW_TEXT, TextComponent.fromLegacyText(ChatColor.RED + "Cancel purchase.")))
+                                        .create());
+            return true;
+        }
         case "confirm": {
             if (args.length != 2) return true;
             // BuyClaimBlocks confirm
@@ -165,8 +163,12 @@ public final class ClaimCommand extends PlayerCommand {
                 if (!plugin.getHomeWorlds().contains(ncmeta.world)) return true;
                 WorldSettings settings = plugin.getWorldSettings().get(ncmeta.world);
                 for (Claim claimInWorld : plugin.findClaimsInWorld(ncmeta.world)) {
-                    if (claimInWorld.getArea().overlaps(ncmeta.area)
-                        || claimInWorld.getArea().isWithin(ncmeta.x, ncmeta.z, settings.claimMargin)) {
+                    // This whole check is a repeat from the new claim command.
+                    if (claimInWorld.getArea().overlaps(ncmeta.area)) {
+                        throw new CommandException("Your claim would overlap an existing claim.");
+                    }
+                    if (!claimInWorld.canBuild(playerId)
+                        && claimInWorld.getArea().isWithin(ncmeta.x, ncmeta.z, settings.claimMargin)) {
                         throw new CommandException("Your claim would be too close to an existing claim.");
                     }
                 }
@@ -186,121 +188,116 @@ public final class ClaimCommand extends PlayerCommand {
             }
             return true;
         }
-        case "cancel":
+        case "cancel": {
+            if (args.length != 1) return false;
+            if (player.hasMetadata(plugin.META_BUY) || player.hasMetadata(plugin.META_ABANDON) || player.hasMetadata(plugin.META_NEWCLAIM)) {
+                plugin.removeMetadata(player, plugin.META_BUY);
+                plugin.removeMetadata(player, plugin.META_ABANDON);
+                plugin.removeMetadata(player, plugin.META_NEWCLAIM);
+                player.sendMessage(ChatColor.GREEN + "Cancelled");
+            }
+            return true;
+        }
+        case "info": {
+            if (args.length > 2) return false;
+            Claim claim;
             if (args.length == 1) {
-                if (player.hasMetadata(plugin.META_BUY) || player.hasMetadata(plugin.META_ABANDON) || player.hasMetadata(plugin.META_NEWCLAIM)) {
-                    plugin.removeMetadata(player, plugin.META_BUY);
-                    plugin.removeMetadata(player, plugin.META_ABANDON);
-                    plugin.removeMetadata(player, plugin.META_NEWCLAIM);
-                    player.sendMessage(ChatColor.GREEN + "Cancelled");
-                }
-                return true;
-            }
-            break;
-        case "info":
-            if (args.length == 1 || args.length == 2) {
-                Claim claim;
-                if (args.length == 1) {
-                    claim = plugin.getClaimAt(player.getLocation());
-                    if (claim == null) {
-                        throw new CommandException("Stand in the claim you want info on");
-                    }
-                } else {
-                    int claimId;
-                    try {
-                        claimId = Integer.parseInt(args[1]);
-                    } catch (NumberFormatException nfe) {
-                        return true;
-                    }
-                    claim = plugin.findClaimWithId(claimId);
-                    if (claim == null) return true;
-                }
-                printClaimInfo(player, claim);
-                plugin.highlightClaim(claim, player);
-                return true;
-            }
-            break;
-        case "add":
-            if (args.length == 2) {
-                Claim claim = plugin.getClaimAt(player.getLocation());
+                claim = plugin.getClaimAt(player.getLocation());
                 if (claim == null) {
-                    throw new CommandException("Stand in the claim to which you want to add members.");
+                    throw new CommandException("Stand in the claim you want info on");
                 }
-                if (!claim.isOwner(playerId)) {
-                    throw new CommandException("You are not the owner of this claim.");
+            } else {
+                int claimId;
+                try {
+                    claimId = Integer.parseInt(args[1]);
+                } catch (NumberFormatException nfe) {
+                    return true;
                 }
-                String targetName = args[1];
-                UUID targetId = GenericEvents.cachedPlayerUuid(targetName);
-                if (targetId == null) {
-                    throw new CommandException("Player not found: " + targetName + ".");
-                }
-                if (claim.canBuild(targetId)) {
-                    throw new CommandException("Player is already a member of this claim.");
-                }
-                ClaimTrust ct = new ClaimTrust(claim, ClaimTrust.Type.MEMBER, targetId);
-                plugin.getDb().insertAsync(ct, null);
-                claim.getMembers().add(targetId);
-                if (claim.getVisitors().contains(targetId)) {
-                    claim.getVisitors().remove(targetId);
-                    plugin.getDb().find(ClaimTrust.class).eq("claim_id", claim.getId()).eq("trustee", targetId).delete();
-                }
-                player.sendMessage(ChatColor.GREEN + "Member added: " + targetName + ".");
-                return true;
+                claim = plugin.findClaimWithId(claimId);
+                if (claim == null) return true;
             }
-            break;
-        case "invite":
-            if (args.length == 2) {
-                Claim claim = plugin.getClaimAt(player.getLocation());
-                if (claim == null) {
-                    throw new CommandException("Stand in the claim to which you want to invite people.");
-                }
-                if (!claim.isOwner(playerId)) {
-                    throw new CommandException("You are not the owner of this claim.");
-                }
-                String targetName = args[1];
-                UUID targetId = GenericEvents.cachedPlayerUuid(targetName);
-                if (targetId == null) {
-                    throw new CommandException("Player not found: " + targetName + ".");
-                }
-                if (claim.canVisit(targetId)) {
-                    throw new CommandException("Player is already invited to this claim.");
-                }
-                ClaimTrust ct = new ClaimTrust(claim, ClaimTrust.Type.VISIT, targetId);
-                plugin.getDb().insertAsync(ct, null);
-                claim.getMembers().add(targetId);
-                player.sendMessage(ChatColor.GREEN + "Player invited: " + targetName + ".");
-                return true;
+            printClaimInfo(player, claim);
+            plugin.highlightClaim(claim, player);
+            return true;
+        }
+        case "add": {
+            if (args.length != 2) return false;
+            Claim claim = plugin.getClaimAt(player.getLocation());
+            if (claim == null) {
+                throw new CommandException("Stand in the claim to which you want to add members.");
             }
-            break;
-        case "remove":
-            if (args.length == 2) {
-                Claim claim = plugin.getClaimAt(player.getLocation());
-                if (claim == null) {
-                    throw new CommandException("Stand in the claim to which you want to invite people");
-                }
-                if (!claim.isOwner(playerId)) {
-                    throw new CommandException("You are not the owner of this claim");
-                }
-                String targetName = args[1];
-                UUID targetId = GenericEvents.cachedPlayerUuid(targetName);
-                if (targetId == null) {
-                    throw new CommandException("Player not found: " + targetName);
-                }
-                if (claim.getMembers().contains(targetId)) {
-                    claim.getMembers().remove(targetId);
-                    plugin.getDb().find(ClaimTrust.class).eq("claim_id", claim.getId()).eq("trustee", targetId).delete();
-                    player.sendMessage(ChatColor.YELLOW + targetName + " may no longer build");
-                } else if (claim.getVisitors().contains(targetId)) {
-                    claim.getVisitors().remove(targetId);
-                    plugin.getDb().find(ClaimTrust.class).eq("claim_id", claim.getId()).eq("trustee", targetId).delete();
-                    player.sendMessage(ChatColor.YELLOW + targetName + " may no longer visit");
-                } else {
-                    throw new CommandException(targetName + " has no permission in this claim");
-                }
-                return true;
+            if (!claim.isOwner(playerId)) {
+                throw new CommandException("You are not the owner of this claim.");
             }
-            break;
-        case "set":
+            String targetName = args[1];
+            UUID targetId = GenericEvents.cachedPlayerUuid(targetName);
+            if (targetId == null) {
+                throw new CommandException("Player not found: " + targetName + ".");
+            }
+            if (claim.canBuild(targetId)) {
+                throw new CommandException("Player is already a member of this claim.");
+            }
+            ClaimTrust ct = new ClaimTrust(claim, ClaimTrust.Type.MEMBER, targetId);
+            plugin.getDb().insertAsync(ct, null);
+            claim.getMembers().add(targetId);
+            if (claim.getVisitors().contains(targetId)) {
+                claim.getVisitors().remove(targetId);
+                plugin.getDb().find(ClaimTrust.class).eq("claim_id", claim.getId()).eq("trustee", targetId).delete();
+            }
+            player.sendMessage(ChatColor.GREEN + "Member added: " + targetName + ".");
+            return true;
+        }
+        case "invite": {
+            if (args.length != 2) return false;
+            Claim claim = plugin.getClaimAt(player.getLocation());
+            if (claim == null) {
+                throw new CommandException("Stand in the claim to which you want to invite people.");
+            }
+            if (!claim.isOwner(playerId)) {
+                throw new CommandException("You are not the owner of this claim.");
+            }
+            String targetName = args[1];
+            UUID targetId = GenericEvents.cachedPlayerUuid(targetName);
+            if (targetId == null) {
+                throw new CommandException("Player not found: " + targetName + ".");
+            }
+            if (claim.canVisit(targetId)) {
+                throw new CommandException("Player is already invited to this claim.");
+            }
+            ClaimTrust ct = new ClaimTrust(claim, ClaimTrust.Type.VISIT, targetId);
+            plugin.getDb().insertAsync(ct, null);
+            claim.getMembers().add(targetId);
+            player.sendMessage(ChatColor.GREEN + "Player invited: " + targetName + ".");
+            return true;
+        }
+        case "remove": {
+            if (args.length != 2) return false;
+            Claim claim = plugin.getClaimAt(player.getLocation());
+            if (claim == null) {
+                throw new CommandException("Stand in the claim to which you want to invite people");
+            }
+            if (!claim.isOwner(playerId)) {
+                throw new CommandException("You are not the owner of this claim");
+            }
+            String targetName = args[1];
+            UUID targetId = GenericEvents.cachedPlayerUuid(targetName);
+            if (targetId == null) {
+                throw new CommandException("Player not found: " + targetName);
+            }
+            if (claim.getMembers().contains(targetId)) {
+                claim.getMembers().remove(targetId);
+                plugin.getDb().find(ClaimTrust.class).eq("claim_id", claim.getId()).eq("trustee", targetId).delete();
+                player.sendMessage(ChatColor.YELLOW + targetName + " may no longer build");
+            } else if (claim.getVisitors().contains(targetId)) {
+                claim.getVisitors().remove(targetId);
+                plugin.getDb().find(ClaimTrust.class).eq("claim_id", claim.getId()).eq("trustee", targetId).delete();
+                player.sendMessage(ChatColor.YELLOW + targetName + " may no longer visit");
+            } else {
+                throw new CommandException(targetName + " has no permission in this claim");
+            }
+            return true;
+        }
+        case "set": {
             if (args.length == 1) {
                 Claim claim = plugin.getClaimAt(player.getLocation());
                 if (claim == null) {
@@ -342,127 +339,125 @@ public final class ClaimCommand extends PlayerCommand {
                 claim.saveToDatabase();
                 showClaimSettings(claim, player);
                 return true;
+            } else {
+                return false;
             }
-        case "grow":
-            if (args.length == 1) {
-                Location playerLocation = player.getLocation();
-                int x = playerLocation.getBlockX();
-                int z = playerLocation.getBlockZ();
-                Claim claim = plugin.findNearestOwnedClaim(player);
-                if (claim == null) {
-                    throw new CommandException("You don't have a claim nearby");
-                }
-                if (claim.getArea().contains(x, z)) {
-                    plugin.highlightClaim(claim, player);
-                    throw new CommandException("Stand where you want the claim to grow to");
-                }
-                Area area = claim.getArea();
-                int ax = Math.min(area.ax, x);
-                int ay = Math.min(area.ay, z);
-                int bx = Math.max(area.bx, x);
-                int by = Math.max(area.by, z);
-                Area newArea = new Area(ax, ay, bx, by);
-                WorldSettings settings = plugin.getWorldSettings().get(claim.getWorld());
-                if (claim.getBlocks() < newArea.size()) {
-                    int needed = newArea.size() - claim.getBlocks();
-                    String formatMoney = GenericEvents.formatMoney((double)needed * settings.claimBlockCost);
-                    player.spigot().sendMessage(new ComponentBuilder("")
-                                                .append(needed + " more claim blocks required. ").color(ChatColor.RED)
-                                                .append("[Buy More]").color(ChatColor.GRAY)
-                                                .event(new ClickEvent(ClickEvent.Action.RUN_COMMAND, "/claim buy " + needed))
-                                                .event(new HoverEvent(HoverEvent.Action.SHOW_TEXT, TextComponent.fromLegacyText(ChatColor.GRAY + "/claim buy " + ChatColor.ITALIC + needed + "\n" + ChatColor.WHITE + ChatColor.ITALIC + "Buy more " + needed + " claim blocks for " + formatMoney + ".")))
-                                                .create());
-                    return true;
-                }
-                for (Claim other : plugin.getClaims()) {
-                    if (other != claim && other.isInWorld(claim.getWorld()) && other.getArea().overlaps(newArea)) {
-                        throw new CommandException("Your claim would connect with another claim");
-                    }
-                }
-                claim.setArea(newArea);
-                claim.saveToDatabase();
-                player.sendMessage(ChatColor.BLUE + "Grew your claim to where you are standing");
+        }
+        case "grow": {
+            if (args.length != 1) return false;
+            Location playerLocation = player.getLocation();
+            int x = playerLocation.getBlockX();
+            int z = playerLocation.getBlockZ();
+            Claim claim = plugin.findNearestOwnedClaim(player);
+            if (claim == null) {
+                throw new CommandException("You don't have a claim nearby");
+            }
+            if (claim.getArea().contains(x, z)) {
                 plugin.highlightClaim(claim, player);
-                return true;
+                throw new CommandException("Stand where you want the claim to grow to");
             }
-            break;
-        case "shrink":
-            if (args.length == 1) {
-                Location playerLocation = player.getLocation();
-                int x = playerLocation.getBlockX();
-                int z = playerLocation.getBlockZ();
-                Claim claim = plugin.getClaimAt(playerLocation);
-                if (claim == null) {
-                    throw new CommandException("Stand in the claim you wish to shrink");
-                }
-                if (!claim.isOwner(playerId)) {
-                    throw new CommandException("You can only shrink your own claims");
-                }
-                Area area = claim.getArea();
-                int ax = area.ax;
-                int ay = area.ay;
-                int bx = area.bx;
-                int by = area.by;
-                if (Math.abs(ax - x) < Math.abs(bx - x)) { // Closer to western edge
-                    ax = x;
-                } else {
-                    bx = x;
-                }
-                if (Math.abs(ay - z) < Math.abs(by - z)) {
-                    ay = z;
-                } else {
-                    by = z;
-                }
-                Area newArea = new Area(ax, ay, bx, by);
-                if (!newArea.contains(claim.centerX, claim.centerY)) {
-                    throw new CommandException("Your cannot move a claim from its origin.");
-                }
-                claim.setArea(newArea);
-                claim.saveToDatabase();
-                player.sendMessage(ChatColor.BLUE + "Shrunk your claim to where you are standing");
-                plugin.highlightClaim(claim, player);
-                return true;
-            }
-            break;
-        case "abandon":
-            if (args.length == 1) {
-                Claim claim = plugin.getClaimAt(player.getLocation());
-                if (claim == null) {
-                    throw new CommandException("There is no claim here.");
-                }
-                if (!claim.isOwner(playerId)) {
-                    throw new CommandException("This claim does not belong to you.");
-                }
-                long life = System.currentTimeMillis() - claim.getCreated();
-                WorldSettings settings = plugin.getWorldSettings().get(claim.getWorld());
-                long cooldown = settings.claimAbandonCooldown * 1000L * 60L;
-                if (life < cooldown) {
-                    long wait = (cooldown - life) / (1000L * 60L);
-                    if (wait <= 1) {
-                        throw new CommandException("You must wait one more minute to abandon this claim.");
-                    } else {
-                        throw new CommandException("You must wait " + wait + " more minutes to abandon this claim.");
-                    }
-                }
-                plugin.setMetadata(player, plugin.META_ABANDON, claim.getId());
-                player.spigot().sendMessage(TextComponent.fromLegacyText("Really delete this claim? All claim blocks will be lost.", ChatColor.WHITE));
-                player.spigot().sendMessage(new ComponentBuilder("").append("This cannot be undone! ").color(ChatColor.RED)
-                                            .append("[Confirm]").color(ChatColor.YELLOW)
-                                            .event(new ClickEvent(ClickEvent.Action.RUN_COMMAND, "/claim confirm " + claim.getId()))
-                                            .event(new HoverEvent(HoverEvent.Action.SHOW_TEXT, TextComponent.fromLegacyText(ChatColor.YELLOW + "Confirm claim removal.")))
-                                            .append(" ").reset()
-                                            .append("[Cancel]").color(ChatColor.RED)
-                                            .event(new ClickEvent(ClickEvent.Action.RUN_COMMAND, "/claim cancel"))
-                                            .event(new HoverEvent(HoverEvent.Action.SHOW_TEXT, TextComponent.fromLegacyText(ChatColor.RED + "Cancel claim removal.")))
+            Area area = claim.getArea();
+            int ax = Math.min(area.ax, x);
+            int ay = Math.min(area.ay, z);
+            int bx = Math.max(area.bx, x);
+            int by = Math.max(area.by, z);
+            Area newArea = new Area(ax, ay, bx, by);
+            WorldSettings settings = plugin.getWorldSettings().get(claim.getWorld());
+            if (claim.getBlocks() < newArea.size()) {
+                int needed = newArea.size() - claim.getBlocks();
+                String formatMoney = GenericEvents.formatMoney((double)needed * settings.claimBlockCost);
+                player.spigot().sendMessage(new ComponentBuilder("")
+                                            .append(needed + " more claim blocks required. ").color(ChatColor.RED)
+                                            .append("[Buy More]").color(ChatColor.GRAY)
+                                            .event(new ClickEvent(ClickEvent.Action.RUN_COMMAND, "/claim buy " + needed))
+                                            .event(new HoverEvent(HoverEvent.Action.SHOW_TEXT, TextComponent.fromLegacyText(ChatColor.GRAY + "/claim buy " + ChatColor.ITALIC + needed + "\n" + ChatColor.WHITE + ChatColor.ITALIC + "Buy more " + needed + " claim blocks for " + formatMoney + ".")))
                                             .create());
                 return true;
             }
-            break;
-        default:
-            break;
+            for (Claim other : plugin.getClaims()) {
+                if (other != claim && other.isInWorld(claim.getWorld()) && other.getArea().overlaps(newArea)) {
+                    throw new CommandException("Your claim would connect with another claim");
+                }
+            }
+            claim.setArea(newArea);
+            claim.saveToDatabase();
+            player.sendMessage(ChatColor.BLUE + "Grew your claim to where you are standing");
+            plugin.highlightClaim(claim, player);
+            return true;
         }
-        listClaims(player);
-        return true;
+        case "shrink": {
+            if (args.length != 1) return false;
+            Location playerLocation = player.getLocation();
+            int x = playerLocation.getBlockX();
+            int z = playerLocation.getBlockZ();
+            Claim claim = plugin.getClaimAt(playerLocation);
+            if (claim == null) {
+                throw new CommandException("Stand in the claim you wish to shrink");
+            }
+            if (!claim.isOwner(playerId)) {
+                throw new CommandException("You can only shrink your own claims");
+            }
+            Area area = claim.getArea();
+            int ax = area.ax;
+            int ay = area.ay;
+            int bx = area.bx;
+            int by = area.by;
+            if (Math.abs(ax - x) < Math.abs(bx - x)) { // Closer to western edge
+                ax = x;
+            } else {
+                bx = x;
+            }
+            if (Math.abs(ay - z) < Math.abs(by - z)) {
+                ay = z;
+            } else {
+                by = z;
+            }
+            Area newArea = new Area(ax, ay, bx, by);
+            if (!newArea.contains(claim.centerX, claim.centerY)) {
+                throw new CommandException("Your cannot move a claim from its origin.");
+            }
+            claim.setArea(newArea);
+            claim.saveToDatabase();
+            player.sendMessage(ChatColor.BLUE + "Shrunk your claim to where you are standing");
+            plugin.highlightClaim(claim, player);
+            return true;
+        }
+        case "abandon": {
+            if (args.length != 1) return false;
+            Claim claim = plugin.getClaimAt(player.getLocation());
+            if (claim == null) {
+                throw new CommandException("There is no claim here.");
+            }
+            if (!claim.isOwner(playerId)) {
+                throw new CommandException("This claim does not belong to you.");
+            }
+            long life = System.currentTimeMillis() - claim.getCreated();
+            WorldSettings settings = plugin.getWorldSettings().get(claim.getWorld());
+            long cooldown = settings.claimAbandonCooldown * 1000L * 60L;
+            if (life < cooldown) {
+                long wait = (cooldown - life) / (1000L * 60L);
+                if (wait <= 1) {
+                    throw new CommandException("You must wait one more minute to abandon this claim.");
+                } else {
+                    throw new CommandException("You must wait " + wait + " more minutes to abandon this claim.");
+                }
+            }
+            plugin.setMetadata(player, plugin.META_ABANDON, claim.getId());
+            player.spigot().sendMessage(TextComponent.fromLegacyText("Really delete this claim? All claim blocks will be lost.", ChatColor.WHITE));
+            player.spigot().sendMessage(new ComponentBuilder("").append("This cannot be undone! ").color(ChatColor.RED)
+                                        .append("[Confirm]").color(ChatColor.YELLOW)
+                                        .event(new ClickEvent(ClickEvent.Action.RUN_COMMAND, "/claim confirm " + claim.getId()))
+                                        .event(new HoverEvent(HoverEvent.Action.SHOW_TEXT, TextComponent.fromLegacyText(ChatColor.YELLOW + "Confirm claim removal.")))
+                                        .append(" ").reset()
+                                        .append("[Cancel]").color(ChatColor.RED)
+                                        .event(new ClickEvent(ClickEvent.Action.RUN_COMMAND, "/claim cancel"))
+                                        .event(new HoverEvent(HoverEvent.Action.SHOW_TEXT, TextComponent.fromLegacyText(ChatColor.RED + "Cancel claim removal.")))
+                                        .create());
+            return true;
+        }
+        default:
+            return false;
+        }
     }
 
     @Override
@@ -474,7 +469,7 @@ public final class ClaimCommand extends PlayerCommand {
             return complete(args[0], COMMANDS.stream());
         } else if (args.length > 1) {
             switch (cmd) {
-            case "new": case "home": case "set": case "grow": case "shrink":
+            case "new": case "port": case "set": case "grow": case "shrink":
                 return Collections.emptyList();
             case "buy":
                 if (arg.isEmpty()) return Arrays.asList("10", "100", "1000", "10000");
@@ -496,7 +491,7 @@ public final class ClaimCommand extends PlayerCommand {
         commandHelp(player, "/claim", new String[]{}, "View your claim options.");
         commandHelp(player, "/claim new", new String[]{}, "Make a claim here.");
         commandHelp(player, "/claim info", new String[]{}, "View claim info.");
-        commandHelp(player, "/claim home", new String[]{"<id>"}, "Teleport to claim.");
+        commandHelp(player, "/claim port", new String[]{"<id>"}, "Teleport to claim.");
         commandHelp(player, "/claim buy", new String[]{}, "Buy new claim blocks.");
         commandHelp(player, "/claim add", new String[]{"<player>"}, "Add a member.");
         commandHelp(player, "/claim invite", new String[]{"<player>"}, "Add visitor.");
@@ -640,21 +635,9 @@ public final class ClaimCommand extends PlayerCommand {
         UUID playerId = player.getUniqueId();
         // Check for claim collisions
         WorldSettings settings = plugin.getWorldSettings().get(playerWorldName);
-        for (Claim claim : plugin.findClaimsInWorld(playerWorldName)) {
-            // Check claim distance
-            if (claim.getArea().isWithin(x, y, settings.claimMargin)) {
-                throw new CommandException("You are too close to another claim");
-            }
-        }
-        // Create the claim
-        List<Claim> playerClaims = plugin.findClaimsInWorld(playerId, playerWorldName);
-        for (Claim playerClaim : playerClaims) {
-            if (playerClaim.getBlocks() < settings.minimumClaimSize) {
-                throw new CommandException("One of your claims in this world has fewer than " + settings.minimumClaimSize + " claim blocks. Buy more blocks before making a new claim.");
-            }
-        }
         int claimSize;
         double claimCost;
+        List<Claim> playerClaims = plugin.findClaimsInWorld(playerId, playerWorldName);
         if (playerClaims.isEmpty()) {
             claimSize = settings.initialClaimSize;
             claimCost = settings.initialClaimCost;
@@ -665,10 +648,19 @@ public final class ClaimCommand extends PlayerCommand {
         if (GenericEvents.getPlayerBalance(playerId) < claimCost) {
             throw new CommandException("You cannot afford " + GenericEvents.formatMoney(claimCost) + "!");
         }
-        int rad = claimSize / 2;
-        int tol = 0;
-        if (rad * 2 == claimSize) tol = 1;
+        final int rad = claimSize / 2;
+        final int tol = (rad * 2 == claimSize) ? 1 : 0;
         Area area = new Area(x - rad + tol, y - rad + tol, x + rad, y + rad);
+        for (Claim claimInWorld : plugin.findClaimsInWorld(playerWorldName)) {
+            // This whole check is repeated in the confirm command
+            if (claimInWorld.getArea().overlaps(area)) {
+                throw new CommandException("Your claim would overlap an existing claim.");
+            }
+            if (!claimInWorld.canBuild(playerId)
+                && claimInWorld.getArea().isWithin(x, y, settings.claimMargin)) {
+                throw new CommandException("Your claim would be too close to an existing claim.");
+            }
+        }
         NewClaimMeta ncmeta = new NewClaimMeta(playerWorldName, x, y, area, claimCost, "" + ThreadLocalRandom.current().nextInt(9999));
         plugin.setMetadata(player, plugin.META_NEWCLAIM, ncmeta);
         player.sendMessage("");

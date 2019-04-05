@@ -14,7 +14,6 @@ final class WorldSettings {
     double initialClaimCost = 0.0;
     double secondaryClaimCost = 0.0;
     double claimBlockCost = 0.1;
-    int minimumClaimSize = 65536;
     long claimAbandonCooldown = 0;
 
     void load(ConfigurationSection config) {
@@ -28,6 +27,5 @@ final class WorldSettings {
         initialClaimCost = config.getDouble("InitialClaimCost", initialClaimCost);
         secondaryClaimCost = config.getDouble("SecondaryClaimCost", secondaryClaimCost);
         claimAbandonCooldown = config.getLong("ClaimAbandonCooldown", claimAbandonCooldown);
-        minimumClaimSize = config.getInt("MinimumClaimSize", minimumClaimSize);
     }
 }

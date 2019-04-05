@@ -68,7 +68,7 @@ commands:
       /claim - View your claim options
       /claim new - Make a claim here
       /claim info - View claim info
-      /claim home [id] - Teleport to claim
+      /claim port [id] - Teleport to claim
       /claim buy - Buy new claim blocks
       /claim add <player> - Add a member
       /claim invite <player> - Add visitor

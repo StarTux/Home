@@ -571,8 +571,8 @@ public final class ClaimCommand extends PlayerCommand {
             .event(new ClickEvent(ClickEvent.Action.RUN_COMMAND, "/claim info"))
             .event(new HoverEvent(HoverEvent.Action.SHOW_TEXT, TextComponent.fromLegacyText(buttonColor + "/claim info\n" + ChatColor.WHITE + ChatColor.ITALIC + "Get claim info.")));
         if (claim.canVisit(playerId)) {
-            cb.append("  ").append("[Home]").color(buttonColor)
-                .event(new ClickEvent(ClickEvent.Action.RUN_COMMAND, "/claim home " + claim.getId()))
+            cb.append("  ").append("[Port]").color(buttonColor)
+                .event(new ClickEvent(ClickEvent.Action.RUN_COMMAND, "/claim port " + claim.getId()))
                 .event(new HoverEvent(HoverEvent.Action.SHOW_TEXT, TextComponent.fromLegacyText(buttonColor + "Teleport to this claim.")));
         }
         cb.append("  ").append("[List]").color(buttonColor)

@@ -96,7 +96,7 @@ final class Claim {
         row.blocks = this.blocks;
         row.created = new Date(created);
         Map<String, Object> settingsMap = new LinkedHashMap<>();
-        for (Map.Entry<Setting, Object> setting: settings.entrySet()) {
+        for (Map.Entry<Setting, Object> setting : settings.entrySet()) {
             settingsMap.put(setting.getKey().name().toLowerCase(), setting.getValue());
         }
         settingsMap.put("center", Arrays.asList(centerX, centerY));
@@ -114,7 +114,7 @@ final class Claim {
         @SuppressWarnings("unchecked")
         Map<String, Object> settingsMap = (Map<String, Object>)JSONValue.parse(row.getSettings());
         settings.clear();
-        for (Setting setting: Setting.values()) {
+        for (Setting setting : Setting.values()) {
             Object value = settingsMap.get(setting.key);
             if (value != null) settings.put(setting, value);
         }

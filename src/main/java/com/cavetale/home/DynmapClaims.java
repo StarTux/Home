@@ -28,7 +28,7 @@ final class DynmapClaims {
         markerSet.setMinZoom(0);
         markerSet.setLayerPriority(10);
         markerSet.setHideByDefault(false);
-        for (Claim claim: plugin.getClaims()) {
+        for (Claim claim : plugin.getClaims()) {
             double[] x = new double[4];
             double[] z = new double[4];
             x[0] = x[1] = (double)claim.getArea().ax;
@@ -44,7 +44,7 @@ final class DynmapClaims {
             marker.setBoostFlag(true);
             marker.setFillStyle(0.0, 0);
         }
-        for (AreaMarker marker: markerSet.getAreaMarkers()) {
+        for (AreaMarker marker : markerSet.getAreaMarkers()) {
             int id;
             try {
                 id = Integer.parseInt(marker.getMarkerID());

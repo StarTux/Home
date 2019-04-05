@@ -9,7 +9,7 @@ depend: [SQL, GenericEvents]
 softdepend: [dynmap]
 commands:
   homeadmin:
-    aliases: [ claimadmin ]
+    aliases: [claimadmin]
     description: Admin command
     permission: home.admin
     usage: |-
@@ -57,9 +57,11 @@ commands:
     aliases: []
     description: Visit a public home
     permission: home.visit
-    usage: |
+    usage: |-
+      /visit - Public home menu.
+      /visit [name] - Visit public home.
   claim:
-    aliases: [ c, cl, claims ]
+    aliases: [c, cl, claims]
     description: Manage your claims.
     permission: home.claim
     usage: |-
@@ -76,7 +78,7 @@ commands:
       /claim shrink - Grow claim to your location
       /claim abandon - Abandon your claim
   build:
-    aliases: [ wild ]
+    aliases: [wild]
     description: Find a place to build.
     permission: home.build
     usage: /build - Find a place to build.

@@ -19,6 +19,7 @@ public final class InviteHomeCommand extends PlayerCommand {
     @Override
     public boolean onCommand(Player player, String[] args) throws CommandException {
         if (args.length < 1 || args.length > 2) return false;
+        if (args.length == 1 && args[0].equals("help")) return false;
         final UUID playerId = player.getUniqueId();
         String targetName = args[0];
         UUID targetId = GenericEvents.cachedPlayerUuid(targetName);
@@ -68,7 +69,7 @@ public final class InviteHomeCommand extends PlayerCommand {
 
     @Override
     public void commandHelp(Player player) {
-        commandHelp(player, "/invitehome ", new String[]{"<player>"}, "Invite to primary home.");
-        commandHelp(player, "/invitehome ", new String[]{"<player>", "<name>"}, "Invite to named home.");
+        commandHelp(player, "/invitehome", new String[]{"<player>"}, "Invite to primary home.");
+        commandHelp(player, "/invitehome", new String[]{"<player>", "<name>"}, "Invite to named home.");
     }
 }

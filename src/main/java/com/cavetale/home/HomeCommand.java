@@ -16,6 +16,7 @@ public final class HomeCommand extends PlayerCommand {
 
     @Override
     public boolean onCommand(Player player, String[] args) throws CommandException {
+        if (args.length == 1 && args[0].equals("help")) return false;
         UUID playerId = player.getUniqueId();
         if (args.length == 0) {
             // Try to find a set home
@@ -136,7 +137,7 @@ public final class HomeCommand extends PlayerCommand {
 
     @Override
     public void commandHelp(Player player) {
-        player.sendMessage(C_CMD + "/home" + C_DASH + C_DESC + "Visit your primary home.");
-        player.sendMessage(C_CMD + "/home " + C_ARG + "NAME" + C_DASH + C_DESC + "Visit a named home.");
+        commandHelp(player, "/home", new String[]{}, "Visit your primary home.");
+        commandHelp(player, "/home", new String[]{"<name>"}, "Visit a named home.");
     }
 }

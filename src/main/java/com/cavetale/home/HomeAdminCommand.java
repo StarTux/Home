@@ -21,6 +21,7 @@ public final class HomeAdminCommand implements TabExecutor {
     @Override
     public boolean onCommand(CommandSender sender, Command command, String alias, String[] args) {
         if (args.length == 0) return false;
+        if (args.length == 1 && args[0].equals("help")) return false;
         Player player = sender instanceof Player ? (Player)sender : null;
         switch (args[0]) {
         case "claims":

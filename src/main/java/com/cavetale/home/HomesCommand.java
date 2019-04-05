@@ -20,10 +20,9 @@ public final class HomesCommand extends PlayerCommand {
 
     @Override
     public boolean onCommand(Player player, String[] args) throws CommandException {
+        if (args.length == 1 && args[0].equals("help")) return false;
         final UUID playerId = player.getUniqueId();
-        if (args.length == 0) {
-            return printHomesInfo(player);
-        }
+        if (args.length == 0) return printHomesInfo(player);
         switch (args[0]) {
         case "set":
             return plugin.getSetHomeCommand().onCommand(player, Arrays.copyOfRange(args, 1, args.length));

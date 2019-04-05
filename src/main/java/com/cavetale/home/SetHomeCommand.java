@@ -14,6 +14,7 @@ public final class SetHomeCommand extends PlayerCommand {
     @Override
     public boolean onCommand(Player player, String[] args) throws CommandException {
         if (args.length > 1) return false;
+        if (args.length == 1 && args[0].equals("help")) return false;
         UUID playerId = player.getUniqueId();
         if (!plugin.isHomeWorld(player.getWorld())) {
             throw new CommandException("You cannot set homes in this world");

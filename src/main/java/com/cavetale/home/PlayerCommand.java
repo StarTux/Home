@@ -72,8 +72,10 @@ abstract class PlayerCommand implements TabExecutor {
     }
 
     protected void commandHelp(Player player, String cmd, String[] args, String desc) {
-        player.sendMessage(C_CMD + cmd + " " + C_ARG
-                           + Arrays.stream(args).collect(Collectors.joining(C_R + " " + C_ARG))
+        String argc = args == null || args.length == 0
+            ? ""
+            : " " + C_ARG + Arrays.stream(args).collect(Collectors.joining(C_R + " " + C_ARG));
+        player.sendMessage(C_CMD + cmd + argc
                            + C_DASH + C_DESC + desc);
     }
 }

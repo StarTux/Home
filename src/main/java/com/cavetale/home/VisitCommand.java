@@ -17,6 +17,7 @@ public final class VisitCommand extends PlayerCommand {
 
     @Override
     public boolean onCommand(Player player, String[] args) throws CommandException {
+        if (args.length == 1 && args[0].equals("help")) return false;
         if (args.length == 0) {
             List<Home> publicHomes = plugin.getHomes().stream().filter(h -> h.getPublicName() != null).collect(Collectors.toList());
             player.sendMessage("");

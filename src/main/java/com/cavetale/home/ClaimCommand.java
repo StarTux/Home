@@ -50,6 +50,7 @@ public final class ClaimCommand extends PlayerCommand {
             }
             return true;
         }
+        if (args.length == 1 && args[0].equals("help")) return false;
         final UUID playerId = player.getUniqueId();
         switch (args[0]) {
         case "new":

@@ -17,7 +17,6 @@ import net.md_5.bungee.api.chat.ClickEvent;
 import net.md_5.bungee.api.chat.ComponentBuilder;
 import net.md_5.bungee.api.chat.HoverEvent;
 import net.md_5.bungee.api.chat.TextComponent;
-import org.bukkit.GameMode;
 import org.bukkit.Location;
 import org.bukkit.Particle;
 import org.bukkit.World;
@@ -134,9 +133,6 @@ public final class HomePlugin extends JavaPlugin {
                 if (cl1 == null) cl1 = cl2; // Taking the easy way out
                 player.setMetadata(META_LOCATION, new FixedMetadataValue(this, cl2));
                 if (claim == null) {
-                    if (player.getGameMode() != GameMode.SURVIVAL && !player.hasMetadata(META_IGNORE) && !player.isOp()) {
-                        player.setGameMode(GameMode.SURVIVAL);
-                    }
                     if (cl1.claimId != cl2.claimId) {
                         Claim oldClaim = getClaimById(cl1.claimId);
                         if (oldClaim != null) {
@@ -149,15 +145,6 @@ public final class HomePlugin extends JavaPlugin {
                         }
                     }
                 } else { // (claim != null)
-                    if (claim.canBuild(playerId) || claim.getSetting(Claim.Setting.PUBLIC) == Boolean.TRUE) {
-                        if (player.getGameMode() != GameMode.SURVIVAL && !player.hasMetadata(META_IGNORE) && !player.isOp()) {
-                            player.setGameMode(GameMode.SURVIVAL);
-                        }
-                    } else {
-                        if (player.getGameMode() != GameMode.ADVENTURE && !player.hasMetadata(META_IGNORE) && !player.isOp()) {
-                            player.setGameMode(GameMode.ADVENTURE);
-                        }
-                    }
                     if (cl1.claimId != cl2.claimId) {
                         if (claim.isOwner(player.getUniqueId())) {
                             player.spigot().sendMessage(ChatMessageType.ACTION_BAR, TextComponent.fromLegacyText(ChatColor.GRAY + "Entering your claim"));

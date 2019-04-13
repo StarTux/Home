@@ -183,8 +183,7 @@ final class ClaimListener implements Listener {
         return null;
     }
 
-    void noClaimWarning(Player player) {
-        long now = System.nanoTime();
+    void noClaimWarning(Player player, long now) {
         long time = plugin.getMetadata(player, plugin.META_NOCLAIM_WARN, Long.class).orElse(0L);
         if (now - time < 10000000000L) return;
         ComponentBuilder cb = new ComponentBuilder("")
@@ -207,7 +206,9 @@ final class ClaimListener implements Listener {
 
     boolean noClaimBuild(Player player, Block block) {
         long now = System.nanoTime();
+        noClaimWarning(player, now);
         long noClaimCount = 0L;
+        if (plugin.findNearbyBuildClaim(player, 48) != null) return true;
         long noClaimTime = plugin.getMetadata(player, plugin.META_NOCLAIM_TIME, Long.class).orElse(0L);
         if (now - noClaimTime > 30000000000L) {
             noClaimTime = now;
@@ -215,10 +216,7 @@ final class ClaimListener implements Listener {
         } else {
             noClaimCount = plugin.getMetadata(player, plugin.META_NOCLAIM_COUNT, Long.class).orElse(0L);
             noClaimCount += 1L;
-            if (noClaimCount > 4L) {
-                noClaimWarning(player);
-                return false;
-            }
+            if (noClaimCount > 10L) return false;
         }
         plugin.setMetadata(player, plugin.META_NOCLAIM_TIME, noClaimTime);
         plugin.setMetadata(player, plugin.META_NOCLAIM_COUNT, noClaimCount);

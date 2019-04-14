@@ -580,7 +580,7 @@ public final class ClaimCommand extends PlayerCommand {
                 .event(new HoverEvent(HoverEvent.Action.SHOW_TEXT, TextComponent.fromLegacyText(buttonColor + "Teleport to this claim.")));
         }
         cb.append("  ").append("[List]").color(buttonColor)
-            .event(new ClickEvent(ClickEvent.Action.RUN_COMMAND, "/claim list" + claim.getId()))
+            .event(new ClickEvent(ClickEvent.Action.RUN_COMMAND, "/claim list"))
             .event(new HoverEvent(HoverEvent.Action.SHOW_TEXT, TextComponent.fromLegacyText(buttonColor + "/claim list\n" + ChatColor.WHITE + ChatColor.ITALIC + "List all your claims.")));
         if (claim.isOwner(playerId)) {
             cb.append("  ").append("[Abandon]").color(ChatColor.DARK_RED)

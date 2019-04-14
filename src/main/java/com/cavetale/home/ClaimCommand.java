@@ -492,6 +492,7 @@ public final class ClaimCommand extends PlayerCommand {
     public void commandHelp(Player player) {
         commandHelp(player, "/claim", new String[]{}, "View your claim options.");
         commandHelp(player, "/claim new", new String[]{}, "Make a claim here.");
+        commandHelp(player, "/claim list", new String[]{}, "List your claims.");
         commandHelp(player, "/claim info", new String[]{}, "View claim info.");
         commandHelp(player, "/claim port", new String[]{"<id>"}, "Teleport to claim.");
         commandHelp(player, "/claim buy", new String[]{}, "Buy new claim blocks.");

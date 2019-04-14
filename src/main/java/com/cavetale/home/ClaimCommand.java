@@ -54,8 +54,11 @@ public final class ClaimCommand extends PlayerCommand {
         final UUID playerId = player.getUniqueId();
         switch (args[0]) {
         case "new":
-            if (args.length == 1) return onNewclaimCommand(player);
-            return false;
+            if (args.length != 1) return false;
+            return onNewclaimCommand(player);
+        case "list":
+            listClaims(player);
+            return true;
         case "port": {
             if (args.length > 2) return false;
             Claim claim;

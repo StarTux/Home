@@ -86,7 +86,7 @@ public final class HomePlugin extends JavaPlugin {
         loadFromConfig();
         loadFromDatabase();
         getServer().getScheduler().runTaskTimer(this, this::onTick, 1, 1);
-        if (getServer().getPluginManager().getPlugin("dynmap") != null) {
+        if (getServer().getPluginManager().isPluginEnabled("dynmap")) {
             enableDynmap();
         }
     }

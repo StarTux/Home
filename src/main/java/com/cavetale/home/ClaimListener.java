@@ -39,7 +39,6 @@ import org.bukkit.event.entity.CreatureSpawnEvent;
 import org.bukkit.event.entity.EntityChangeBlockEvent;
 import org.bukkit.event.entity.EntityCombustByEntityEvent;
 import org.bukkit.event.entity.EntityDamageByEntityEvent;
-import org.bukkit.event.entity.EntityDamageEvent;
 import org.bukkit.event.entity.EntityExplodeEvent;
 import org.bukkit.event.entity.PlayerLeashEntityEvent;
 import org.bukkit.event.hanging.HangingBreakByEntityEvent;
@@ -617,26 +616,6 @@ final class ClaimListener implements Listener {
             if (claim != claim2) {
                 event.setCancelled(true);
                 return;
-            }
-        }
-    }
-
-    @EventHandler(ignoreCancelled = true, priority = EventPriority.LOW)
-    public void onEntityDamage(EntityDamageEvent event) {
-        if (event.getEntity() instanceof Player && event.getCause() == EntityDamageEvent.DamageCause.FALL) {
-            // Cancel fall damage once if it happens because of
-            // findPlaceToBuild().
-            Player player = (Player)event.getEntity();
-            if (player.hasMetadata(plugin.META_NOFALL)) {
-                long meta = plugin.getMetadata(player, plugin.META_NOFALL, Long.class).orElse(0L);
-                player.removeMetadata(plugin.META_NOFALL, plugin);
-                int x = (int)(meta & 0xFFFFFFFF);
-                int z = (int)(meta >> 32);
-                Location loc = player.getLocation();
-                if (Math.abs(loc.getBlockX() - x) < 32
-                    && Math.abs(loc.getBlockZ() - z) < 32) {
-                    event.setCancelled(true);
-                }
             }
         }
     }

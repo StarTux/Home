@@ -35,7 +35,6 @@ public final class HomePlugin extends JavaPlugin {
     // Globals
     static final String META_COOLDOWN_WILD = "home.cooldown.wild";
     static final String META_LOCATION = "home.location";
-    static final String META_NOFALL = "home.nofall";
     static final String META_BUY = "home.buyclaimblocks";
     static final String META_ABANDON = "home.abandonclaim";
     static final String META_NEWCLAIM = "home.newclaim";
@@ -190,6 +189,7 @@ public final class HomePlugin extends JavaPlugin {
         Location location = null;
         // Try 100 times to find a random spot, then give up
         List<Claim> worldClaims = findClaimsInWorld(worldName);
+        Location ploc = player.getLocation();
         SAMPLE:
         for (int i = 0; i < 100; i += 1) {
             int x = cx - size / 2 + ThreadLocalRandom.current().nextInt(size);
@@ -199,9 +199,12 @@ public final class HomePlugin extends JavaPlugin {
                     continue SAMPLE;
                 }
             }
-            location = bworld.getBlockAt(x, 255, z).getLocation().add(0.5, 0.5, 0.5);
-            location.setPitch(90.0f);
-            location.setYaw((float)Math.random() * 360.0f - 180.0f);
+            Block block = bworld.getHighestBlockAt(x, z);
+            Block below = block.getRelative(0, -1, 0);
+            if (!below.getType().isSolid()) continue SAMPLE;
+            location = block.getLocation().add(0.5, 0.5, 0.5);
+            location.setPitch(ploc.getPitch());
+            location.setYaw(ploc.getYaw());
         }
         if (location == null) {
             throw new PlayerCommand.CommandException("Could not find a place to build. Please try again");
@@ -215,11 +218,10 @@ public final class HomePlugin extends JavaPlugin {
             .event(new HoverEvent(HoverEvent.Action.SHOW_TEXT, TextComponent.fromLegacyText(ChatColor.GREEN + "/claim new\n" + ChatColor.WHITE + ChatColor.ITALIC + "Create a claim and set a home at this location so you can build and return any time.")))
             .append("  ", ComponentBuilder.FormatRetention.NONE)
             .append("[Retry]").color(ChatColor.YELLOW)
-            .event(new ClickEvent(ClickEvent.Action.SUGGEST_COMMAND, "/home"))
-            .event(new HoverEvent(HoverEvent.Action.SHOW_TEXT, TextComponent.fromLegacyText(ChatColor.GREEN + "/home\n" + ChatColor.WHITE + ChatColor.ITALIC + "Find another place to build.")));
+            .event(new ClickEvent(ClickEvent.Action.SUGGEST_COMMAND, "/wild"))
+            .event(new HoverEvent(HoverEvent.Action.SHOW_TEXT, TextComponent.fromLegacyText(ChatColor.GREEN + "/wild\n" + ChatColor.WHITE + ChatColor.ITALIC + "Find another place to build.")));
         player.spigot().sendMessage(cb.create());
         setMetadata(player, META_COOLDOWN_WILD, System.nanoTime());
-        setMetadata(player, META_NOFALL, (long)location.getBlockX() + ((long)location.getBlockZ() << 32));
     }
 
     boolean autoGrowClaim(Claim claim) {

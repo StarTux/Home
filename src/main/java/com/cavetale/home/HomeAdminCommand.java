@@ -54,12 +54,7 @@ public final class HomeAdminCommand implements TabExecutor {
             }
             break;
         case "debug":
-            if (args.length == 1) {
-                long meta = plugin.getMetadata(player, plugin.META_NOFALL, Long.class).orElse(0L);
-                sender.sendMessage("Nofall: " + (int)(meta & 0xFFFFFFFF) + "," + (int)(meta >> 32));
-                return true;
-            }
-            break;
+            return false;
         case "giveclaimblocks":
             if (args.length == 2) {
                 if (player == null) {

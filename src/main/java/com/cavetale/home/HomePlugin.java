@@ -512,8 +512,14 @@ public final class HomePlugin extends JavaPlugin {
     // --- Dynmap
 
     void enableDynmap() {
-        dynmapClaims = new DynmapClaims(this);
-        dynmapClaims.update();
+        try {
+            dynmapClaims = new DynmapClaims(this);
+            dynmapClaims.update();
+        } catch (Exception e) {
+            getLogger().warning("Cancelling connection with dynmap.");
+            e.printStackTrace();
+            dynmapClaims = null;
+        }
     }
 
     void disableDynmap() {

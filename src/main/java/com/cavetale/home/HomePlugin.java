@@ -39,9 +39,6 @@ public final class HomePlugin extends JavaPlugin {
     static final String META_ABANDON = "home.abandonclaim";
     static final String META_NEWCLAIM = "home.newclaim";
     static final String META_IGNORE = "home.ignore";
-    static final String META_NOCLAIM_WARN = "home.noclaim.warn";
-    static final String META_NOCLAIM_COUNT = "home.noclaim.count";
-    static final String META_NOCLAIM_TIME = "home.noclaim.time";
     // Database
     private SQLDatabase db;
     // Worlds

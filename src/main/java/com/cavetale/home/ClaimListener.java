@@ -96,21 +96,7 @@ final class ClaimListener implements Listener {
             .filter(c -> c.isInWorld(world)
                     && c.getArea().contains(block.getX(), block.getZ()))
             .findFirst().orElse(null);
-        if (claim == null) {
-            // Action is not in a claim.  Apply default permissions.
-            // Building is not allowed, combat is.
-            switch (action) {
-            case BUILD:
-                if (cancellable != null) cancellable.setCancelled(true);
-                return false;
-            case COMBAT:
-            case INTERACT:
-            case VEHICLE:
-            case BUCKET:
-            default:
-                return true;
-            }
-        }
+        if (claim == null) return true;
         // We know there is a claim, so return on the player is
         // privileged here.  The owner and members can do anything.
         UUID uuid = player.getUniqueId();
@@ -138,7 +124,8 @@ final class ClaimListener implements Listener {
         // Action is not covered by visitor, member, or owner
         // privilege.  Therefore, nothing is allowed.
         if (cancellable instanceof PlayerInteractEvent) {
-            event.setUseInteractedBlock(Event.Result.DENY);
+            PlayerInteractEvent pis = (PlayerInteractEvent) cancellable;
+            pis.setUseInteractedBlock(Event.Result.DENY);
         } else if (cancellable != null) {
             cancellable.setCancelled(true);
         }
@@ -194,110 +181,19 @@ final class ClaimListener implements Listener {
         return null;
     }
 
-    void noClaimWarning(Player player, long now) {
-        long time = plugin.getMetadata(player, plugin.META_NOCLAIM_WARN, Long.class).orElse(0L);
-        if (now - time < 10000000000L) return;
-        ComponentBuilder cb = new ComponentBuilder("");
-        cb.append("You did not ").color(ChatColor.RED);
-        cb.append("claim").color(ChatColor.YELLOW);
-        cb.event(new ClickEvent(ClickEvent.Action.RUN_COMMAND, "/claim"));
-        BaseComponent[] tooltip = TextComponent
-            .fromLegacyText(ChatColor.YELLOW + "/claim\n"
-                            + ChatColor.WHITE + ChatColor.ITALIC
-                            + "Claim land and make it yours.");
-        cb.event(new HoverEvent(HoverEvent.Action.SHOW_TEXT, tooltip));
-        cb.append(" this area. Mining and building is limited.", FormatRetention.NONE)
-            .color(ChatColor.RED);
-        player.spigot().sendMessage(cb.create());
-        cb = new ComponentBuilder("");
-        cb.append("Consider visiting the ").color(ChatColor.RED);
-        cb.append("mining").color(ChatColor.YELLOW);
-        cb.event(new ClickEvent(ClickEvent.Action.RUN_COMMAND, "/mine"));
-        tooltip = TextComponent
-            .fromLegacyText(ChatColor.YELLOW + "/mine\n" + ChatColor.WHITE + ChatColor.ITALIC
-                            + "Visit the mining world which can be raided"
-                            + " and will be reset regularly.");
-        cb.event(new HoverEvent(HoverEvent.Action.SHOW_TEXT, tooltip));
-        cb.append(" world.").color(ChatColor.RED);
-        player.spigot().sendMessage(cb.create());
-        player.playSound(player.getEyeLocation(), Sound.ENTITY_POLAR_BEAR_WARNING,
-                         SoundCategory.MASTER, 2.0f, 1.0f);
-        plugin.setMetadata(player, plugin.META_NOCLAIM_WARN, now);
-    }
-
-    boolean noClaimBuild(Player player, Block block) {
-        long now = System.nanoTime();
-        noClaimWarning(player, now);
-        long noClaimCount = 0L;
-        if (plugin.findNearbyBuildClaim(player, 48) != null) return true;
-        long noClaimTime = plugin.getMetadata(player, plugin.META_NOCLAIM_TIME, Long.class)
-            .orElse(0L);
-        if (now - noClaimTime > 30000000000L) {
-            noClaimTime = now;
-            noClaimCount = 1L;
-        } else {
-            noClaimCount = plugin.getMetadata(player, plugin.META_NOCLAIM_COUNT, Long.class)
-                .orElse(0L);
-            noClaimCount += 1L;
-            if (noClaimCount > 10L) return false;
-        }
-        plugin.setMetadata(player, plugin.META_NOCLAIM_TIME, noClaimTime);
-        plugin.setMetadata(player, plugin.META_NOCLAIM_COUNT, noClaimCount);
-        return true;
-    }
-
     // Events
 
     @EventHandler(ignoreCancelled = true, priority = EventPriority.LOW)
     public void onBlockBreak(BlockBreakEvent event) {
         Block block = event.getBlock();
-        if (!plugin.isHomeWorld(block.getWorld())) return;
-        Claim claim = plugin.getClaimAt(block);
         Player player = event.getPlayer();
-        if (player.isOp() || player.hasMetadata(plugin.META_IGNORE)) return;
-        if (claim == null) {
-            switch (block.getType()) {
-            case CHEST:
-            case SPAWNER:
-            case TRAPPED_CHEST:
-            case IRON_ORE:
-            case DIAMOND_ORE:
-            case GOLD_ORE:
-            case EMERALD_ORE:
-            case COAL_ORE:
-            case DRAGON_EGG:
-            case DRAGON_HEAD:
-                event.setCancelled(true);
-                return;
-            default:
-                break;
-            }
-            if (!noClaimBuild(player, block)) event.setCancelled(true);
-            return;
-        }
         checkPlayerAction(player, block, Action.BUILD, event);
     }
 
     @EventHandler(ignoreCancelled = true, priority = EventPriority.LOW)
     public void onBlockPlace(BlockPlaceEvent event) {
         Block block = event.getBlock();
-        if (!plugin.isHomeWorld(block.getWorld())) return;
-        Claim claim = plugin.getClaimAt(block);
         Player player = event.getPlayer();
-        if (player.isOp() || player.hasMetadata(plugin.META_IGNORE)) return;
-        if (claim == null) {
-            switch (block.getType()) {
-            case FIRE:
-            case LAVA:
-            case TNT:
-                event.setCancelled(true);
-                return;
-            default:
-                break;
-            }
-            if (!noClaimBuild(player, block)) event.setCancelled(true);
-            return;
-        }
         checkPlayerAction(event.getPlayer(), event.getBlock(), Action.BUILD, event);
     }
 

@@ -161,10 +161,6 @@ public final class ClaimCommand extends PlayerCommand {
                     if (claimInWorld.getArea().overlaps(ncmeta.area)) {
                         throw new CommandException("Your claim would overlap an existing claim.");
                     }
-                    if (!claimInWorld.canBuild(playerId)
-                        && claimInWorld.getArea().isWithin(ncmeta.x, ncmeta.z, settings.claimMargin)) {
-                        throw new CommandException("Your claim would be too close to an existing claim.");
-                    }
                 }
                 if (ncmeta.price >= 0.01 && !GenericEvents.takePlayerMoney(playerId, ncmeta.price, plugin, "Make new claim in " + plugin.worldDisplayName(ncmeta.world))) {
                     throw new CommandException("You cannot afford " + GenericEvents.formatMoney(ncmeta.price) + "!");
@@ -650,10 +646,6 @@ public final class ClaimCommand extends PlayerCommand {
             // This whole check is repeated in the confirm command
             if (claimInWorld.getArea().overlaps(area)) {
                 throw new CommandException("Your claim would overlap an existing claim.");
-            }
-            if (!claimInWorld.canBuild(playerId)
-                && claimInWorld.getArea().isWithin(x, y, settings.claimMargin)) {
-                throw new CommandException("Your claim would be too close to an existing claim.");
             }
         }
         NewClaimMeta ncmeta = new NewClaimMeta(playerWorldName, x, y, area, claimCost, "" + ThreadLocalRandom.current().nextInt(9999));

@@ -27,6 +27,7 @@ import org.bukkit.entity.Projectile;
 import org.bukkit.entity.Tameable;
 import org.bukkit.entity.Vehicle;
 import org.bukkit.event.Cancellable;
+import org.bukkit.event.Event;
 import org.bukkit.event.EventHandler;
 import org.bukkit.event.EventPriority;
 import org.bukkit.event.Listener;
@@ -136,7 +137,11 @@ final class ClaimListener implements Listener {
         }
         // Action is not covered by visitor, member, or owner
         // privilege.  Therefore, nothing is allowed.
-        if (cancellable != null) cancellable.setCancelled(true);
+        if (cancellable instanceof PlayerInteractEvent) {
+            event.setUseInteractedBlock(Event.Result.DENY);
+        } else if (cancellable != null) {
+            cancellable.setCancelled(true);
+        }
         return false;
     }
 

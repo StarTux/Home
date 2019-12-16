@@ -5,10 +5,10 @@ import java.util.UUID;
 import lombok.RequiredArgsConstructor;
 import net.md_5.bungee.api.ChatColor;
 import net.md_5.bungee.api.chat.ClickEvent;
+import net.md_5.bungee.api.chat.ComponentBuilder.FormatRetention;
 import net.md_5.bungee.api.chat.ComponentBuilder;
 import net.md_5.bungee.api.chat.HoverEvent;
 import net.md_5.bungee.api.chat.TextComponent;
-import org.bukkit.Location;
 import org.bukkit.Material;
 import org.bukkit.Sound;
 import org.bukkit.SoundCategory;
@@ -19,6 +19,7 @@ import org.bukkit.entity.AnimalTamer;
 import org.bukkit.entity.Entity;
 import org.bukkit.entity.EntityType;
 import org.bukkit.entity.LivingEntity;
+import org.bukkit.entity.Mob;
 import org.bukkit.entity.Monster;
 import org.bukkit.entity.Player;
 import org.bukkit.entity.Projectile;
@@ -81,13 +82,18 @@ final class ClaimListener implements Listener {
      *
      * @return True if the event is permitted, false otherwise.
      */
-    private boolean checkPlayerAction(Player player, Block block, Action action, Cancellable cancellable) {
+    private boolean checkPlayerAction(Player player, Block block,
+                                      Action action, Cancellable cancellable) {
         if (player.hasMetadata(plugin.META_IGNORE) || player.isOp()) return true;
         String w = block.getWorld().getName();
         if (!plugin.getHomeWorlds().contains(w)) return true;
-        final String world = plugin.getMirrorWorlds().containsKey(w) ? plugin.getMirrorWorlds().get(w) : w;
+        final String world = plugin.getMirrorWorlds().containsKey(w)
+            ? plugin.getMirrorWorlds().get(w) : w;
         // Find claim
-        Claim claim = plugin.getClaims().stream().filter(c -> c.isInWorld(world) && c.getArea().contains(block.getX(), block.getZ())).findFirst().orElse(null);
+        Claim claim = plugin.getClaims().stream()
+            .filter(c -> c.isInWorld(world)
+                    && c.getArea().contains(block.getX(), block.getZ()))
+            .findFirst().orElse(null);
         if (claim == null) {
             // Action is not in a claim.  Apply default permissions.
             // Building is not allowed, combat is.
@@ -146,7 +152,7 @@ final class ClaimListener implements Listener {
      */
     static boolean isOwner(Player player, Entity entity) {
         if (entity instanceof Tameable) {
-            Tameable tameable = (Tameable)entity;
+            Tameable tameable = (Tameable) entity;
             if (!tameable.isTamed()) return false;
             AnimalTamer owner = tameable.getOwner();
             if (owner == null) return false;
@@ -172,11 +178,11 @@ final class ClaimListener implements Listener {
 
     private Player getPlayerDamager(Entity damager) {
         if (damager instanceof Player) {
-            return (Player)damager;
+            return (Player) damager;
         } else if (damager instanceof Projectile) {
-            Projectile projectile = (Projectile)damager;
+            Projectile projectile = (Projectile) damager;
             if (projectile.getShooter() instanceof Player) {
-                return (Player)projectile.getShooter();
+                return (Player) projectile.getShooter();
             }
         }
         return null;
@@ -185,21 +191,31 @@ final class ClaimListener implements Listener {
     void noClaimWarning(Player player, long now) {
         long time = plugin.getMetadata(player, plugin.META_NOCLAIM_WARN, Long.class).orElse(0L);
         if (now - time < 10000000000L) return;
-        ComponentBuilder cb = new ComponentBuilder("")
-            .append("You did not ").color(ChatColor.RED)
-            .append("claim").color(ChatColor.YELLOW)
-            .event(new ClickEvent(ClickEvent.Action.RUN_COMMAND, "/claim"))
-            .event(new HoverEvent(HoverEvent.Action.SHOW_TEXT, TextComponent.fromLegacyText(ChatColor.YELLOW + "/claim\n" + ChatColor.WHITE + ChatColor.ITALIC + "Claim land and make it yours.")))
-            .append(" this area. Mining and building is limited.", ComponentBuilder.FormatRetention.NONE).color(ChatColor.RED);
+        ComponentBuilder cb = new ComponentBuilder("");
+        cb.append("You did not ").color(ChatColor.RED);
+        cb.append("claim").color(ChatColor.YELLOW);
+        cb.event(new ClickEvent(ClickEvent.Action.RUN_COMMAND, "/claim"));
+        BaseComponent[] tooltip = TextComponent
+            .fromLegacyText(ChatColor.YELLOW + "/claim\n"
+                            + ChatColor.WHITE + ChatColor.ITALIC
+                            + "Claim land and make it yours.");
+        cb.event(new HoverEvent(HoverEvent.Action.SHOW_TEXT, tooltip));
+        cb.append(" this area. Mining and building is limited.", FormatRetention.NONE)
+            .color(ChatColor.RED);
         player.spigot().sendMessage(cb.create());
-        cb = new ComponentBuilder("")
-            .append("Consider visiting the ").color(ChatColor.RED)
-            .append("mining").color(ChatColor.YELLOW)
-            .event(new ClickEvent(ClickEvent.Action.RUN_COMMAND, "/mine"))
-            .event(new HoverEvent(HoverEvent.Action.SHOW_TEXT, TextComponent.fromLegacyText(ChatColor.YELLOW + "/mine\n" + ChatColor.WHITE + ChatColor.ITALIC + "Visit the mining world which can be raided and will be reset regularly.")))
-            .append(" world.").color(ChatColor.RED);
+        cb = new ComponentBuilder("");
+        cb.append("Consider visiting the ").color(ChatColor.RED);
+        cb.append("mining").color(ChatColor.YELLOW);
+        cb.event(new ClickEvent(ClickEvent.Action.RUN_COMMAND, "/mine"));
+        BaseComponent[] tooltip = TextComponent
+            .fromLegacyText(ChatColor.YELLOW + "/mine\n" + ChatColor.WHITE + ChatColor.ITALIC
+                            + "Visit the mining world which can be raided"
+                            + " and will be reset regularly.");
+        cb.event(new HoverEvent(HoverEvent.Action.SHOW_TEXT, tooltip));
+        cb.append(" world.").color(ChatColor.RED);
         player.spigot().sendMessage(cb.create());
-        player.playSound(player.getEyeLocation(), Sound.ENTITY_POLAR_BEAR_WARNING, SoundCategory.MASTER, 2.0f, 1.0f);
+        player.playSound(player.getEyeLocation(), Sound.ENTITY_POLAR_BEAR_WARNING,
+                         SoundCategory.MASTER, 2.0f, 1.0f);
         plugin.setMetadata(player, plugin.META_NOCLAIM_WARN, now);
     }
 
@@ -208,12 +224,14 @@ final class ClaimListener implements Listener {
         noClaimWarning(player, now);
         long noClaimCount = 0L;
         if (plugin.findNearbyBuildClaim(player, 48) != null) return true;
-        long noClaimTime = plugin.getMetadata(player, plugin.META_NOCLAIM_TIME, Long.class).orElse(0L);
+        long noClaimTime = plugin.getMetadata(player, plugin.META_NOCLAIM_TIME, Long.class)
+            .orElse(0L);
         if (now - noClaimTime > 30000000000L) {
             noClaimTime = now;
             noClaimCount = 1L;
         } else {
-            noClaimCount = plugin.getMetadata(player, plugin.META_NOCLAIM_COUNT, Long.class).orElse(0L);
+            noClaimCount = plugin.getMetadata(player, plugin.META_NOCLAIM_COUNT, Long.class)
+                .orElse(0L);
             noClaimCount += 1L;
             if (noClaimCount > 10L) return false;
         }
@@ -281,7 +299,7 @@ final class ClaimListener implements Listener {
     @EventHandler(ignoreCancelled = true, priority = EventPriority.LOW)
     public void onEntityBlockForm(EntityBlockFormEvent event) {
         if (!(event.getEntity() instanceof Player)) return;
-        checkPlayerAction((Player)event.getEntity(), event.getBlock(), Action.BUILD, event);
+        checkPlayerAction((Player) event.getEntity(), event.getBlock(), Action.BUILD, event);
     }
 
     @EventHandler(ignoreCancelled = true, priority = EventPriority.LOW)
@@ -320,12 +338,11 @@ final class ClaimListener implements Listener {
             case ENTITY_EXPLOSION:
                 Claim claim = plugin.getClaimAt(entity.getLocation().getBlock());
                 if (claim == null) {
-                    // Explosion damage is disabled in claim worlds,
-                    // outside of claims
-                    event.setCancelled(true);
                     return;
                 }
                 if (claim.getSetting(Claim.Setting.EXPLOSIONS) == Boolean.TRUE) return;
+                if (entity instanceof Player) return;
+                if (entity instanceof Mob) return;
                 event.setCancelled(true);
                 break;
             default:
@@ -379,7 +396,8 @@ final class ClaimListener implements Listener {
     public void onVehicleCreate(VehicleCreateEvent event) {
         Vehicle vehicle = event.getVehicle();
         if (!plugin.isHomeWorld(vehicle.getWorld())) return;
-        if (!(vehicle instanceof LivingEntity) && plugin.getClaimAt(vehicle.getLocation()) == null) {
+        if (!(vehicle instanceof LivingEntity)
+            && plugin.getClaimAt(vehicle.getLocation()) == null) {
             vehicle.setPersistent(false);
         }
     }
@@ -422,7 +440,7 @@ final class ClaimListener implements Listener {
     @EventHandler(ignoreCancelled = true, priority = EventPriority.LOW)
     public void onEntityMount(EntityMountEvent event) {
         if (!(event.getEntity() instanceof Player)) return;
-        final Player player = (Player)event.getEntity();
+        final Player player = (Player) event.getEntity();
         if (player.isOp() || player.hasMetadata(plugin.META_IGNORE)) return;
         final Entity mount = event.getMount();
         if (isOwner(player, mount)) return;
@@ -448,9 +466,9 @@ final class ClaimListener implements Listener {
         switch (event.getAction()) {
         case PHYSICAL:
             if (block.getType() == Material.FARMLAND) {
-                checkPlayerAction(event.getPlayer(), event.getClickedBlock(), Action.BUILD, event);
+                checkPlayerAction(event.getPlayer(), block, Action.BUILD, event);
             } else {
-                checkPlayerAction(event.getPlayer(), event.getClickedBlock(), Action.INTERACT, event);
+                checkPlayerAction(event.getPlayer(), block, Action.INTERACT, event);
             }
             return;
         case RIGHT_CLICK_BLOCK:
@@ -480,14 +498,16 @@ final class ClaimListener implements Listener {
 
     @EventHandler(ignoreCancelled = true, priority = EventPriority.LOW)
     public void onHangingPlace(HangingPlaceEvent event) {
-        checkPlayerAction(event.getPlayer(), event.getEntity().getLocation().getBlock(), Action.BUILD, event);
+        Block block = event.getEntity().getLocation().getBlock();
+        checkPlayerAction(event.getPlayer(), block, Action.BUILD, event);
     }
 
     @EventHandler(ignoreCancelled = true, priority = EventPriority.LOW)
     public void onHangingBreakByEntity(HangingBreakByEntityEvent event) {
         if (event.getRemover() instanceof Player) {
-            final Player player = (Player)event.getRemover();
-            checkPlayerAction(player, event.getEntity().getLocation().getBlock(), Action.BUILD, event);
+            final Player player = (Player) event.getRemover();
+            Block block = event.getEntity().getLocation().getBlock();
+            checkPlayerAction(player, block, Action.BUILD, event);
         }
         if (event.getCause() == HangingBreakEvent.RemoveCause.EXPLOSION) {
             Claim claim = plugin.getClaimAt(event.getEntity().getLocation().getBlock());
@@ -564,19 +584,22 @@ final class ClaimListener implements Listener {
     @EventHandler(ignoreCancelled = true, priority = EventPriority.LOW)
     public void onInventoryOpen(InventoryOpenEvent event) {
         if (!(event.getPlayer() instanceof Player)) return;
-        Player player = (Player)event.getPlayer();
+        Player player = (Player) event.getPlayer();
         if (player.isOp() || player.hasMetadata(plugin.META_IGNORE)) return;
         if (!plugin.isHomeWorld(player.getWorld())) return;
         InventoryHolder holder = event.getInventory().getHolder();
         if (holder == null) return;
         if (holder instanceof Entity) {
             if (holder.equals(player)) return;
-            if (isOwner(player, (Entity)holder)) return;
-            checkPlayerAction(player, ((Entity)holder).getLocation().getBlock(), Action.BUILD, event);
+            if (isOwner(player, (Entity) holder)) return;
+            Block block = ((Entity) holder).getLocation().getBlock();
+            checkPlayerAction(player, block, Action.BUILD, event);
         } else if (holder instanceof BlockState) {
-            checkPlayerAction(player, ((BlockState)holder).getBlock(), Action.BUILD, event);
+            Block block = ((BlockState) holder).getBlock();
+            checkPlayerAction(player, block, Action.BUILD, event);
         } else if (holder instanceof DoubleChest) {
-            checkPlayerAction(player, ((DoubleChest)holder).getLocation().getBlock(), Action.BUILD, event);
+            Block block = ((DoubleChest) holder).getLocation().getBlock();
+            checkPlayerAction(player, block, Action.BUILD, event);
         }
     }
 

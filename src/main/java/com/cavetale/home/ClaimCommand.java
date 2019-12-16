@@ -41,15 +41,7 @@ public final class ClaimCommand extends PlayerCommand {
 
     @Override
     public boolean onCommand(Player player, String[] args) throws CommandException {
-        if (args.length == 0) {
-            Claim claim = plugin.getClaimAt(player.getLocation());
-            if (claim != null) {
-                printClaimInfo(player, claim);
-            } else {
-                listClaims(player);
-            }
-            return true;
-        }
+        if (args.length == 0) return false;
         if (args.length == 1 && args[0].equals("help")) return false;
         final UUID playerId = player.getUniqueId();
         switch (args[0]) {
@@ -602,7 +594,7 @@ public final class ClaimCommand extends PlayerCommand {
                 .event(new ClickEvent(ClickEvent.Action.RUN_COMMAND, "/claim grow"))
                 .event(new HoverEvent(HoverEvent.Action.SHOW_TEXT, TextComponent.fromLegacyText(buttonColor + "/claim grow\n" + ChatColor.WHITE + ChatColor.ITALIC + "Grow this claim to your current location.")));
             cb.append("  ").append("[Shrink]").color(buttonColor)
-                .event(new ClickEvent(ClickEvent.Action.RUN_COMMAND, "/claim shrink"))
+                .event(new ClickEvent(ClickEvent.Action.SUGGEST_COMMAND, "/claim shrink"))
                 .event(new HoverEvent(HoverEvent.Action.SHOW_TEXT, TextComponent.fromLegacyText(buttonColor + "/claim shrink\n" + ChatColor.WHITE + ChatColor.ITALIC + "Reduce this claim's size so that the nearest corner snaps to your current location.")));
             player.spigot().sendMessage(cb.create());
             cb = new ComponentBuilder("");

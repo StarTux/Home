@@ -4,6 +4,7 @@ import java.util.Iterator;
 import java.util.UUID;
 import lombok.RequiredArgsConstructor;
 import net.md_5.bungee.api.ChatColor;
+import net.md_5.bungee.api.chat.BaseComponent;
 import net.md_5.bungee.api.chat.ClickEvent;
 import net.md_5.bungee.api.chat.ComponentBuilder.FormatRetention;
 import net.md_5.bungee.api.chat.ComponentBuilder;
@@ -207,7 +208,7 @@ final class ClaimListener implements Listener {
         cb.append("Consider visiting the ").color(ChatColor.RED);
         cb.append("mining").color(ChatColor.YELLOW);
         cb.event(new ClickEvent(ClickEvent.Action.RUN_COMMAND, "/mine"));
-        BaseComponent[] tooltip = TextComponent
+        tooltip = TextComponent
             .fromLegacyText(ChatColor.YELLOW + "/mine\n" + ChatColor.WHITE + ChatColor.ITALIC
                             + "Visit the mining world which can be raided"
                             + " and will be reset regularly.");

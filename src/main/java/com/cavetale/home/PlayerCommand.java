@@ -5,18 +5,16 @@ import java.util.List;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 import net.md_5.bungee.api.ChatColor;
+import net.md_5.bungee.api.chat.ClickEvent;
 import net.md_5.bungee.api.chat.ComponentBuilder;
+import net.md_5.bungee.api.chat.HoverEvent;
+import net.md_5.bungee.api.chat.TextComponent;
 import org.bukkit.command.Command;
 import org.bukkit.command.CommandSender;
 import org.bukkit.command.TabExecutor;
 import org.bukkit.entity.Player;
 
 abstract class PlayerCommand implements TabExecutor {
-    protected static final String C_CMD = "" + ChatColor.YELLOW;
-    protected static final String C_ARG = "" + ChatColor.GRAY + ChatColor.UNDERLINE;
-    protected static final String C_DASH = "" + ChatColor.DARK_GRAY + " - ";
-    protected static final String C_DESC = "" + ChatColor.WHITE + ChatColor.ITALIC;
-    protected static final String C_R = "" + ChatColor.RESET;
 
     static final class CommandException extends Exception {
         CommandException(String msg) {
@@ -72,10 +70,21 @@ abstract class PlayerCommand implements TabExecutor {
     }
 
     protected void commandHelp(Player player, String cmd, String[] args, String desc) {
+        final String carg = " " + ChatColor.GRAY + ChatColor.UNDERLINE;
         String argc = args == null || args.length == 0
             ? ""
-            : " " + C_ARG + Arrays.stream(args).collect(Collectors.joining(C_R + " " + C_ARG));
-        player.sendMessage(C_CMD + cmd + argc
-                           + C_DASH + C_DESC + desc);
+            : carg + Arrays.stream(args)
+            .collect(Collectors.joining(ChatColor.RESET + carg));
+        ComponentBuilder cb = new ComponentBuilder("");
+        cb.append(cmd).color(ChatColor.YELLOW);
+        cb.event(new ClickEvent(ClickEvent.Action.SUGGEST_COMMAND, cmd));
+        cb.event(new HoverEvent(HoverEvent.Action.SHOW_TEXT,
+                                TextComponent.fromLegacyText(ChatColor.YELLOW
+                                                             + cmd + "\n"
+                                                             + ChatColor.WHITE
+                                                             + desc)));
+        cb.append(argc).append(" - ").color(ChatColor.GRAY);
+        cb.append(desc).color(ChatColor.WHITE);
+        player.spigot().sendMessage(cb.create());
     }
 }

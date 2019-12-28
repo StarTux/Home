@@ -83,7 +83,11 @@ public final class HomeCommand extends PlayerCommand {
                     throw new CommandException("Player not found: " + toks[0]);
                 }
                 home = plugin.findHome(targetId, toks[1].isEmpty() ? null : toks[1]);
-                if (home == null || !home.isInvited(player.getUniqueId())) {
+                if (home == null) {
+                    throw new CommandException("Home not found.");
+                }
+                if (!player.hasMetadata(plugin.META_IGNORE)
+                    && !home.isInvited(player.getUniqueId())) {
                     throw new CommandException("Home not found.");
                 }
             } else {
@@ -95,10 +99,6 @@ public final class HomeCommand extends PlayerCommand {
             Location location = home.createLocation();
             if (location == null) {
                 throw new CommandException("Home \"%s\" could not be found.");
-            }
-            Claim claim = plugin.getClaimAt(location);
-            if (claim == null || (home.getOwner() != null && !claim.canVisit(home.getOwner()) && !claim.canVisit(playerId))) {
-                throw new CommandException("This home is not claimed.");
             }
             player.sendMessage(ChatColor.GREEN + "Going home.");
             player.sendTitle("", ChatColor.GREEN + "Going home.", 10, 60, 10);
@@ -120,7 +120,7 @@ public final class HomeCommand extends PlayerCommand {
                         result.add(home.getName());
                     }
                 } else {
-                    if (home.isInvited(playerId)) {
+                    if (player.hasMetadata(plugin.META_IGNORE) || home.isInvited(playerId)) {
                         String name;
                         if (home.getName() == null) {
                             name = home.getOwnerName() + ":";

@@ -137,7 +137,9 @@ public final class HomePlugin extends JavaPlugin {
                             } else {
                                 player.spigot().sendMessage(ChatMessageType.ACTION_BAR, TextComponent.fromLegacyText(ChatColor.GRAY + "Leaving " + oldClaim.getOwnerName() + "'s claim"));
                             }
-                            highlightClaim(oldClaim, player);
+                            if (oldClaim.getSetting(Claim.Setting.SHOW_BORDERS) == Boolean.TRUE) {
+                                highlightClaim(oldClaim, player);
+                            }
                         }
                     }
                 } else { // (claim != null)
@@ -147,7 +149,9 @@ public final class HomePlugin extends JavaPlugin {
                         } else {
                             player.spigot().sendMessage(ChatMessageType.ACTION_BAR, TextComponent.fromLegacyText(ChatColor.GRAY + "Entering " + claim.getOwnerName() + "'s claim"));
                         }
-                        highlightClaim(claim, player);
+                        if (claim.getSetting(Claim.Setting.SHOW_BORDERS) == Boolean.TRUE) {
+                            highlightClaim(claim, player);
+                        }
                     }
                 }
             }

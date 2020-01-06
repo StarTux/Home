@@ -6,6 +6,7 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
+import java.util.Random;
 import java.util.UUID;
 import java.util.concurrent.ThreadLocalRandom;
 import java.util.stream.Collectors;
@@ -13,14 +14,10 @@ import lombok.Getter;
 import lombok.Value;
 import net.md_5.bungee.api.ChatColor;
 import net.md_5.bungee.api.ChatMessageType;
-import net.md_5.bungee.api.chat.ClickEvent;
-import net.md_5.bungee.api.chat.ComponentBuilder;
-import net.md_5.bungee.api.chat.HoverEvent;
 import net.md_5.bungee.api.chat.TextComponent;
 import org.bukkit.Location;
 import org.bukkit.Particle;
 import org.bukkit.World;
-import org.bukkit.WorldBorder;
 import org.bukkit.block.Block;
 import org.bukkit.configuration.ConfigurationSection;
 import org.bukkit.entity.Player;
@@ -33,36 +30,36 @@ import org.json.simple.JSONValue;
 @Getter
 public final class HomePlugin extends JavaPlugin {
     // Globals
-    static final String META_COOLDOWN_WILD = "home.cooldown.wild";
     static final String META_LOCATION = "home.location";
     static final String META_BUY = "home.buyclaimblocks";
     static final String META_ABANDON = "home.abandonclaim";
     static final String META_NEWCLAIM = "home.newclaim";
     static final String META_IGNORE = "home.ignore";
     // Database
-    private SQLDatabase db;
+    SQLDatabase db;
     // Worlds
-    private String primaryHomeWorld;
-    private final Map<String, WorldSettings> worldSettings = new HashMap<>();
-    private final Map<String, String> mirrorWorlds = new HashMap<>();
+    String primaryHomeWorld;
+    final Map<String, WorldSettings> worldSettings = new HashMap<>();
+    final Map<String, String> mirrorWorlds = new HashMap<>();
     // Homes
-    private final List<Home> homes = new ArrayList<>();
-    private final List<String> homeWorlds = new ArrayList<>();
+    final List<Home> homes = new ArrayList<>();
+    final List<String> homeWorlds = new ArrayList<>();
     // Claims
-    private final List<Claim> claims = new ArrayList<>();
+    final List<Claim> claims = new ArrayList<>();
     // Utilty
-    private long ticks;
+    long ticks;
+    Random random = ThreadLocalRandom.current();
     // Interface
-    private DynmapClaims dynmapClaims;
+    DynmapClaims dynmapClaims;
     // Commands
-    private final HomeAdminCommand homeAdminCommand = new HomeAdminCommand(this);
-    private final ClaimCommand claimCommand = new ClaimCommand(this);
-    private final HomeCommand homeCommand = new HomeCommand(this);
-    private final HomesCommand homesCommand = new HomesCommand(this);
-    private final VisitCommand visitCommand = new VisitCommand(this);
-    private final SetHomeCommand setHomeCommand = new SetHomeCommand(this);
-    private final BuildCommand buildCommand = new BuildCommand(this);
-    private final InviteHomeCommand inviteHomeCommand = new InviteHomeCommand(this);
+    final HomeAdminCommand homeAdminCommand = new HomeAdminCommand(this);
+    final ClaimCommand claimCommand = new ClaimCommand(this);
+    final HomeCommand homeCommand = new HomeCommand(this);
+    final HomesCommand homesCommand = new HomesCommand(this);
+    final VisitCommand visitCommand = new VisitCommand(this);
+    final SetHomeCommand setHomeCommand = new SetHomeCommand(this);
+    final BuildCommand buildCommand = new BuildCommand(this);
+    final InviteHomeCommand inviteHomeCommand = new InviteHomeCommand(this);
 
     @Override
     public void onEnable() {
@@ -98,9 +95,9 @@ public final class HomePlugin extends JavaPlugin {
 
     @Value
     class CachedLocation {
-        private final String world;
-        private final int x, z;
-        private final int claimId;
+        final String world;
+        final int x, z;
+        final int claimId;
     }
 
     // --- Ticking
@@ -171,58 +168,8 @@ public final class HomePlugin extends JavaPlugin {
             getLogger().warning("Home world not found: " + worldName);
             throw new PlayerCommand.CommandException("Something went wrong. Please contact an administrator.");
         }
-        // Cooldown
-        WorldSettings settings = worldSettings.get(worldName);
-        long wildCooldown = getMetadata(player, META_COOLDOWN_WILD, Long.class).orElse(-1L);
-        if (wildCooldown >= 0) {
-            long remain = (wildCooldown - System.nanoTime()) / 1000000000 - (long)settings.wildCooldown;
-            if (remain > 0) {
-                throw new PlayerCommand.CommandException("Please wait " + remain + " more seconds");
-            }
-        }
-        // Borders
-        WorldBorder border = bworld.getWorldBorder();
-        Location center = border.getCenter();
-        int cx = center.getBlockX();
-        int cz = center.getBlockZ();
-        int size = (int)Math.min(50000.0, border.getSize()) - settings.claimMargin * 2;
-        if (size < 0) return;
-        Location location = null;
-        // Try 100 times to find a random spot, then give up
-        List<Claim> worldClaims = findClaimsInWorld(worldName);
-        Location ploc = player.getLocation();
-        SAMPLE:
-        for (int i = 0; i < 100; i += 1) {
-            int x = cx - size / 2 + ThreadLocalRandom.current().nextInt(size);
-            int z = cz - size / 2 + ThreadLocalRandom.current().nextInt(size);
-            for (Claim claim : worldClaims) {
-                if (claim.getArea().isWithin(x, z, settings.claimMargin)) {
-                    continue SAMPLE;
-                }
-            }
-            Block block = bworld.getHighestBlockAt(x, z);
-            Block below = block.getRelative(0, -1, 0);
-            if (!below.getType().isSolid()) continue SAMPLE;
-            location = block.getLocation().add(0.5, 0.5, 0.5);
-            location.setPitch(ploc.getPitch());
-            location.setYaw(ploc.getYaw());
-        }
-        if (location == null) {
-            throw new PlayerCommand.CommandException("Could not find a place to build. Please try again");
-        }
-        // Teleport, notify, and set cooldown
-        player.teleport(location);
-        ComponentBuilder cb = new ComponentBuilder("")
-            .append("Found you a place to build. ").color(ChatColor.WHITE)
-            .append("[Claim]").color(ChatColor.GREEN)
-            .event(new ClickEvent(ClickEvent.Action.SUGGEST_COMMAND, "/claim new"))
-            .event(new HoverEvent(HoverEvent.Action.SHOW_TEXT, TextComponent.fromLegacyText(ChatColor.GREEN + "/claim new\n" + ChatColor.WHITE + ChatColor.ITALIC + "Create a claim and set a home at this location so you can build and return any time.")))
-            .append("  ", ComponentBuilder.FormatRetention.NONE)
-            .append("[Retry]").color(ChatColor.YELLOW)
-            .event(new ClickEvent(ClickEvent.Action.SUGGEST_COMMAND, "/wild"))
-            .event(new HoverEvent(HoverEvent.Action.SHOW_TEXT, TextComponent.fromLegacyText(ChatColor.GREEN + "/wild\n" + ChatColor.WHITE + ChatColor.ITALIC + "Find another place to build.")));
-        player.spigot().sendMessage(cb.create());
-        setMetadata(player, META_COOLDOWN_WILD, System.nanoTime());
+        WildTask wildTask = new WildTask(this, bworld, player);
+        wildTask.withCooldown();
     }
 
     boolean autoGrowClaim(Claim claim) {

@@ -95,7 +95,7 @@ public final class ClaimCommand extends PlayerCommand {
                 throw new CommandException("You don't have a claim in this world");
             }
             WorldSettings settings = plugin.getWorldSettings().get(claim.getWorld());
-            double price = (double)buyClaimBlocks * settings.claimBlockCost;
+            double price = (double) buyClaimBlocks * settings.claimBlockCost;
             String priceFormat = GenericEvents.formatMoney(price);
             if (GenericEvents.getPlayerBalance(playerId) < price) {
                 throw new CommandException("You do not have " + priceFormat + " to buy " + buyClaimBlocks + " claim blocks");
@@ -147,7 +147,6 @@ public final class ClaimCommand extends PlayerCommand {
                 }
                 plugin.deleteClaim(claim);
                 player.sendMessage(ChatColor.YELLOW + "Claim removed");
-                plugin.setStoredPlayerData(playerId, "AbandonedClaim", 1);
             }
             // NewClaim confirm
             NewClaimMeta ncmeta = plugin.getMetadata(player, plugin.META_NEWCLAIM, NewClaimMeta.class).orElse(null);
@@ -355,7 +354,7 @@ public final class ClaimCommand extends PlayerCommand {
             WorldSettings settings = plugin.getWorldSettings().get(claim.getWorld());
             if (claim.getBlocks() < newArea.size()) {
                 int needed = newArea.size() - claim.getBlocks();
-                String formatMoney = GenericEvents.formatMoney((double)needed * settings.claimBlockCost);
+                String formatMoney = GenericEvents.formatMoney((double) needed * settings.claimBlockCost);
                 player.spigot().sendMessage(new ComponentBuilder("")
                                             .append(needed + " more claim blocks required. ").color(ChatColor.RED)
                                             .append("[Buy More]").color(ChatColor.GRAY)

@@ -25,7 +25,6 @@ import org.bukkit.metadata.FixedMetadataValue;
 import org.bukkit.metadata.MetadataValue;
 import org.bukkit.metadata.Metadatable;
 import org.bukkit.plugin.java.JavaPlugin;
-import org.json.simple.JSONValue;
 
 @Getter
 public final class HomePlugin extends JavaPlugin {
@@ -65,7 +64,8 @@ public final class HomePlugin extends JavaPlugin {
     public void onEnable() {
         saveDefaultConfig();
         db = new SQLDatabase(this);
-        db.registerTables(Claim.SQLRow.class, ClaimTrust.class, Home.class, HomeInvite.class, SQLPlayer.class);
+        db.registerTables(Claim.SQLRow.class, ClaimTrust.class, Home.class,
+                          HomeInvite.class);
         db.createAllTables();
         getServer().getPluginManager().registerEvents(new ClaimListener(this), this);
         getCommand("homeadmin").setExecutor(homeAdminCommand);
@@ -394,50 +394,6 @@ public final class HomePlugin extends JavaPlugin {
         db.find(Claim.SQLRow.class).eq("id", claimId).delete();
         db.find(ClaimTrust.class).eq("claimId", claimId).delete();
         claims.remove(claim);
-    }
-
-    // --- Player stored data
-
-    Object getStoredPlayerData(UUID playerId, String key) {
-        SQLPlayer row = db.find(SQLPlayer.class).eq("uuid", playerId).findUnique();
-        if (row == null) return null;
-        @SuppressWarnings("unchecked")
-        Map<String, Object> json = (Map<String, Object>)JSONValue.parse(row.getData());
-        if (json == null) return null;
-        return json.get(key);
-    }
-
-    int getStoredPlayerInt(UUID playerId, String key) {
-        Object val = getStoredPlayerData(playerId, key);
-        if (val == null) return 0;
-        if (val instanceof Number) return ((Number)val).intValue();
-        if (val instanceof String) {
-            try {
-                return Integer.parseInt((String)val);
-            } catch (NumberFormatException nfe) { }
-        }
-        return 0;
-    }
-
-    void setStoredPlayerData(UUID playerId, String key, Object value) {
-        SQLPlayer row = db.find(SQLPlayer.class).eq("uuid", playerId).findUnique();
-        Map<String, Object> json;
-        if (row != null) {
-            @SuppressWarnings("unchecked")
-            Map<String, Object> tmp = (Map<String, Object>)JSONValue.parse(row.getData());
-            if (tmp == null) tmp = new HashMap<>();
-            json = tmp;
-        } else {
-            row = new SQLPlayer(playerId);
-            json = new HashMap<>();
-        }
-        if (value == null) {
-            json.remove(key);
-        } else {
-            json.put(key, value);
-        }
-        row.setData(JSONValue.toJSONString(json));
-        db.saveAsync(row, null);
     }
 
     // --- Metadata

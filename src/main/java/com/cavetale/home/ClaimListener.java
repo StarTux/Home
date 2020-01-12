@@ -3,7 +3,11 @@ package com.cavetale.home;
 import java.util.Iterator;
 import java.util.UUID;
 import lombok.RequiredArgsConstructor;
+import net.md_5.bungee.api.ChatColor;
 import org.bukkit.Material;
+import org.bukkit.Particle;
+import org.bukkit.Sound;
+import org.bukkit.SoundCategory;
 import org.bukkit.block.Block;
 import org.bukkit.block.BlockState;
 import org.bukkit.block.DoubleChest;
@@ -57,6 +61,7 @@ import org.spigotmc.event.entity.EntityMountEvent;
 @RequiredArgsConstructor
 final class ClaimListener implements Listener {
     private final HomePlugin plugin;
+    Claim sideEffectClaim = null;
 
     enum Action {
         BUILD,
@@ -87,6 +92,7 @@ final class ClaimListener implements Listener {
             .filter(c -> c.isInWorld(world)
                     && c.getArea().contains(block.getX(), block.getZ()))
             .findFirst().orElse(null);
+        sideEffectClaim = claim;
         if (claim == null) return true;
         // We know there is a claim, so return on the player is
         // privileged here.  The owner and members can do anything.
@@ -178,14 +184,42 @@ final class ClaimListener implements Listener {
     public void onBlockBreak(BlockBreakEvent event) {
         Block block = event.getBlock();
         Player player = event.getPlayer();
-        checkPlayerAction(player, block, Action.BUILD, event);
+        if (!checkPlayerAction(player, block, Action.BUILD, event)) {
+            if (sideEffectClaim != null) {
+                player.sendActionBar(ChatColor.RED + "This area is claimed by "
+                                     + sideEffectClaim.getOwnerName() + "!");
+            } else {
+                player.sendActionBar(ChatColor.RED + "This area is claimed!");
+            }
+            player.spawnParticle(Particle.BARRIER,
+                                 block.getLocation().add(0.5, 0, 0.5),
+                                 1, 0, 0, 0, 0);
+            player.playSound(player.getEyeLocation(),
+                             Sound.ENTITY_POLAR_BEAR_WARNING,
+                             SoundCategory.MASTER,
+                             0.1f, 1.0f);
+        }
     }
 
     @EventHandler(ignoreCancelled = true, priority = EventPriority.LOW)
     public void onBlockPlace(BlockPlaceEvent event) {
         Block block = event.getBlock();
         Player player = event.getPlayer();
-        checkPlayerAction(event.getPlayer(), event.getBlock(), Action.BUILD, event);
+        if (!checkPlayerAction(event.getPlayer(), event.getBlock(), Action.BUILD, event)) {
+            if (sideEffectClaim != null) {
+                player.sendActionBar(ChatColor.RED + "This area is claimed by "
+                                     + sideEffectClaim.getOwnerName() + "!");
+            } else {
+                player.sendActionBar(ChatColor.RED + "This area is claimed!");
+            }
+            player.spawnParticle(Particle.BARRIER,
+                                 block.getLocation().add(0.5, 0, 0.5),
+                                 1, 0, 0, 0, 0);
+            player.playSound(player.getEyeLocation(),
+                             Sound.ENTITY_POLAR_BEAR_WARNING,
+                             SoundCategory.MASTER,
+                             0.1f, 1.0f);
+        }
     }
 
     // Frost Walker

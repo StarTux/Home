@@ -61,7 +61,6 @@ import org.spigotmc.event.entity.EntityMountEvent;
 @RequiredArgsConstructor
 final class ClaimListener implements Listener {
     private final HomePlugin plugin;
-    Claim sideEffectClaim = null;
 
     enum Action {
         BUILD,
@@ -92,7 +91,6 @@ final class ClaimListener implements Listener {
             .filter(c -> c.isInWorld(world)
                     && c.getArea().contains(block.getX(), block.getZ()))
             .findFirst().orElse(null);
-        sideEffectClaim = claim;
         if (claim == null) return true;
         // We know there is a claim, so return on the player is
         // privileged here.  The owner and members can do anything.
@@ -126,6 +124,19 @@ final class ClaimListener implements Listener {
         } else if (cancellable != null) {
             cancellable.setCancelled(true);
         }
+        if (claim != null) {
+            player.sendActionBar(ChatColor.RED + "This area is claimed by "
+                                 + claim.getOwnerName() + "!");
+        } else {
+            player.sendActionBar(ChatColor.RED + "This area is claimed!");
+        }
+        player.spawnParticle(Particle.BARRIER,
+                             block.getLocation().add(0.5, 0, 0.5),
+                             1, 0, 0, 0, 0);
+        player.playSound(player.getEyeLocation(),
+                         Sound.ENTITY_POLAR_BEAR_WARNING,
+                         SoundCategory.MASTER,
+                         0.1f, 1.0f);
         return false;
     }
 
@@ -184,42 +195,14 @@ final class ClaimListener implements Listener {
     public void onBlockBreak(BlockBreakEvent event) {
         Block block = event.getBlock();
         Player player = event.getPlayer();
-        if (!checkPlayerAction(player, block, Action.BUILD, event)) {
-            if (sideEffectClaim != null) {
-                player.sendActionBar(ChatColor.RED + "This area is claimed by "
-                                     + sideEffectClaim.getOwnerName() + "!");
-            } else {
-                player.sendActionBar(ChatColor.RED + "This area is claimed!");
-            }
-            player.spawnParticle(Particle.BARRIER,
-                                 block.getLocation().add(0.5, 0, 0.5),
-                                 1, 0, 0, 0, 0);
-            player.playSound(player.getEyeLocation(),
-                             Sound.ENTITY_POLAR_BEAR_WARNING,
-                             SoundCategory.MASTER,
-                             0.1f, 1.0f);
-        }
+        checkPlayerAction(player, block, Action.BUILD, event);
     }
 
     @EventHandler(ignoreCancelled = true, priority = EventPriority.LOW)
     public void onBlockPlace(BlockPlaceEvent event) {
         Block block = event.getBlock();
         Player player = event.getPlayer();
-        if (!checkPlayerAction(event.getPlayer(), event.getBlock(), Action.BUILD, event)) {
-            if (sideEffectClaim != null) {
-                player.sendActionBar(ChatColor.RED + "This area is claimed by "
-                                     + sideEffectClaim.getOwnerName() + "!");
-            } else {
-                player.sendActionBar(ChatColor.RED + "This area is claimed!");
-            }
-            player.spawnParticle(Particle.BARRIER,
-                                 block.getLocation().add(0.5, 0, 0.5),
-                                 1, 0, 0, 0, 0);
-            player.playSound(player.getEyeLocation(),
-                             Sound.ENTITY_POLAR_BEAR_WARNING,
-                             SoundCategory.MASTER,
-                             0.1f, 1.0f);
-        }
+        checkPlayerAction(event.getPlayer(), event.getBlock(), Action.BUILD, event);
     }
 
     // Frost Walker

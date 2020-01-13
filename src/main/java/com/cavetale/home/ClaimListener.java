@@ -131,7 +131,7 @@ final class ClaimListener implements Listener {
             player.sendActionBar(ChatColor.RED + "This area is claimed!");
         }
         player.spawnParticle(Particle.BARRIER,
-                             block.getLocation().add(0.5, 0, 0.5),
+                             block.getLocation().add(0.5, 0.5, 0.5),
                              1, 0, 0, 0, 0);
         player.playSound(player.getEyeLocation(),
                          Sound.ENTITY_POLAR_BEAR_WARNING,

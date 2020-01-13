@@ -2,8 +2,10 @@ package com.cavetale.home;
 
 import java.util.Iterator;
 import java.util.UUID;
+import lombok.NonNull;
 import lombok.RequiredArgsConstructor;
 import net.md_5.bungee.api.ChatColor;
+import org.bukkit.Location;
 import org.bukkit.Material;
 import org.bukkit.Particle;
 import org.bukkit.Sound;
@@ -124,20 +126,22 @@ final class ClaimListener implements Listener {
         } else if (cancellable != null) {
             cancellable.setCancelled(true);
         }
+        return false;
+    }
+
+    void warnNoBuild(Player player, Block block) {
+        Claim claim = plugin.getClaimAt(block);
         if (claim != null) {
             player.sendActionBar(ChatColor.RED + "This area is claimed by "
                                  + claim.getOwnerName() + "!");
         } else {
             player.sendActionBar(ChatColor.RED + "This area is claimed!");
         }
-        player.spawnParticle(Particle.BARRIER,
-                             block.getLocation().add(0.5, 0.5, 0.5),
-                             1, 0, 0, 0, 0);
-        player.playSound(player.getEyeLocation(),
-                         Sound.ENTITY_POLAR_BEAR_WARNING,
+        Location loc = block.getLocation().add(0.5, 0.5, 0.5);
+        player.spawnParticle(Particle.BARRIER, loc, 1, 0, 0, 0, 0);
+        player.playSound(loc, Sound.ENTITY_POLAR_BEAR_WARNING,
                          SoundCategory.MASTER,
                          0.1f, 1.0f);
-        return false;
     }
 
     /**
@@ -195,14 +199,18 @@ final class ClaimListener implements Listener {
     public void onBlockBreak(BlockBreakEvent event) {
         Block block = event.getBlock();
         Player player = event.getPlayer();
-        checkPlayerAction(player, block, Action.BUILD, event);
+        if (!checkPlayerAction(player, block, Action.BUILD, event)) {
+            warnNoBuild(player, block);
+        }
     }
 
     @EventHandler(ignoreCancelled = true, priority = EventPriority.LOW)
     public void onBlockPlace(BlockPlaceEvent event) {
         Block block = event.getBlock();
         Player player = event.getPlayer();
-        checkPlayerAction(event.getPlayer(), event.getBlock(), Action.BUILD, event);
+        if (!checkPlayerAction(event.getPlayer(), event.getBlock(), Action.BUILD, event)) {
+            warnNoBuild(player, block);
+        }
     }
 
     // Frost Walker
@@ -276,6 +284,7 @@ final class ClaimListener implements Listener {
             }
             return;
         }
+        if (isHostileMob(entity)) return;
         if (isOwner(damager, entity)) return;
         checkPlayerAction(damager, entity.getLocation().getBlock(), Action.BUILD, event);
     }

@@ -14,7 +14,9 @@ import lombok.Getter;
 import lombok.Value;
 import net.md_5.bungee.api.ChatColor;
 import net.md_5.bungee.api.ChatMessageType;
+import net.md_5.bungee.api.chat.BaseComponent;
 import net.md_5.bungee.api.chat.TextComponent;
+import org.bukkit.GameMode;
 import org.bukkit.Location;
 import org.bukkit.Particle;
 import org.bukkit.World;
@@ -96,7 +98,8 @@ public final class HomePlugin extends JavaPlugin {
     @Value
     class CachedLocation {
         final String world;
-        final int x, z;
+        final int x;
+        final int z;
         final int claimId;
     }
 
@@ -105,6 +108,7 @@ public final class HomePlugin extends JavaPlugin {
     void onTick() {
         ticks += 1;
         for (Player player : getServer().getOnlinePlayers()) {
+            if (player.getGameMode() == GameMode.SPECTATOR) continue;
             if (!isHomeWorld(player.getWorld())) {
                 player.removeMetadata(META_LOCATION, this);
                 continue;
@@ -120,9 +124,13 @@ public final class HomePlugin extends JavaPlugin {
                     highlightClaim(claim, player);
                 }
             }
-            CachedLocation cl1 = getMetadata(player, META_LOCATION, CachedLocation.class).orElse(null);
-            if (cl1 == null || !cl1.world.equals(pl.getWorld().getName()) || cl1.x != pl.getBlockX() || cl1.z != pl.getBlockZ()) {
-                CachedLocation cl2 = new CachedLocation(pl.getWorld().getName(), pl.getBlockX(), pl.getBlockZ(), claim == null ? -1 : claim.getId());
+            CachedLocation cl1 = getMetadata(player, META_LOCATION, CachedLocation.class)
+                .orElse(null);
+            if (cl1 == null || !cl1.world.equals(pl.getWorld().getName())
+                || cl1.x != pl.getBlockX() || cl1.z != pl.getBlockZ()) {
+                CachedLocation cl2 = new CachedLocation(pl.getWorld().getName(),
+                                                        pl.getBlockX(), pl.getBlockZ(),
+                                                        claim == null ? -1 : claim.getId());
                 if (cl1 == null) cl1 = cl2; // Taking the easy way out
                 player.setMetadata(META_LOCATION, new FixedMetadataValue(this, cl2));
                 if (claim == null) {
@@ -130,9 +138,14 @@ public final class HomePlugin extends JavaPlugin {
                         Claim oldClaim = getClaimById(cl1.claimId);
                         if (oldClaim != null) {
                             if (oldClaim.isOwner(player.getUniqueId())) {
-                                player.spigot().sendMessage(ChatMessageType.ACTION_BAR, TextComponent.fromLegacyText(ChatColor.GRAY + "Leaving your claim"));
+                                BaseComponent[] txt = TextComponent
+                                    .fromLegacyText(ChatColor.GRAY + "Leaving your claim");
+                                player.spigot().sendMessage(ChatMessageType.ACTION_BAR, txt);
                             } else {
-                                player.spigot().sendMessage(ChatMessageType.ACTION_BAR, TextComponent.fromLegacyText(ChatColor.GRAY + "Leaving " + oldClaim.getOwnerName() + "'s claim"));
+                                BaseComponent[] txt = TextComponent
+                                    .fromLegacyText(ChatColor.GRAY + "Leaving "
+                                                    + oldClaim.getOwnerName() + "'s claim");
+                                player.spigot().sendMessage(ChatMessageType.ACTION_BAR, txt);
                             }
                             if (oldClaim.getSetting(Claim.Setting.SHOW_BORDERS) == Boolean.TRUE) {
                                 highlightClaim(oldClaim, player);
@@ -142,9 +155,14 @@ public final class HomePlugin extends JavaPlugin {
                 } else { // (claim != null)
                     if (cl1.claimId != cl2.claimId) {
                         if (claim.isOwner(player.getUniqueId())) {
-                            player.spigot().sendMessage(ChatMessageType.ACTION_BAR, TextComponent.fromLegacyText(ChatColor.GRAY + "Entering your claim"));
+                            BaseComponent[] txt = TextComponent
+                                .fromLegacyText(ChatColor.GRAY + "Entering your claim");
+                            player.spigot().sendMessage(ChatMessageType.ACTION_BAR, txt);
                         } else {
-                            player.spigot().sendMessage(ChatMessageType.ACTION_BAR, TextComponent.fromLegacyText(ChatColor.GRAY + "Entering " + claim.getOwnerName() + "'s claim"));
+                            BaseComponent[] txt = TextComponent
+                                .fromLegacyText(ChatColor.GRAY + "Entering "
+                                                + claim.getOwnerName() + "'s claim");
+                            player.spigot().sendMessage(ChatMessageType.ACTION_BAR, txt);
                         }
                         if (claim.getSetting(Claim.Setting.SHOW_BORDERS) == Boolean.TRUE) {
                             highlightClaim(claim, player);
@@ -166,7 +184,8 @@ public final class HomePlugin extends JavaPlugin {
         World bworld = getServer().getWorld(worldName);
         if (bworld == null) {
             getLogger().warning("Home world not found: " + worldName);
-            throw new PlayerCommand.CommandException("Something went wrong. Please contact an administrator.");
+            throw new PlayerCommand
+                .CommandException("Something went wrong. Please contact an administrator.");
         }
         WildTask wildTask = new WildTask(this, bworld, player);
         wildTask.withCooldown();
@@ -178,7 +197,8 @@ public final class HomePlugin extends JavaPlugin {
         if (newArea.size() > claim.getBlocks()) return false;
         String claimWorld = claim.getWorld();
         for (Claim other : claims) {
-            if (other != claim && other.isInWorld(claimWorld) && other.getArea().overlaps(newArea)) {
+            if (other != claim && other.isInWorld(claimWorld)
+                && other.getArea().overlaps(newArea)) {
                 return false;
             }
         }
@@ -271,32 +291,48 @@ public final class HomePlugin extends JavaPlugin {
     }
 
     Claim getClaimAt(Location location) {
-        return getClaimAt(location.getWorld().getName(), location.getBlockX(), location.getBlockZ());
+        return getClaimAt(location.getWorld().getName(),
+                          location.getBlockX(),
+                          location.getBlockZ());
     }
 
     Claim getClaimAt(String w, int x, int y) {
         final String world = mirrorWorlds.containsKey(w) ? mirrorWorlds.get(w) : w;
-        return claims.stream().filter(c -> c.isInWorld(world) && c.getArea().contains(x, y)).findFirst().orElse(null);
+        return claims.stream()
+            .filter(c -> c.isInWorld(world) && c.getArea().contains(x, y))
+            .findFirst().orElse(null);
     }
 
     Claim findNearestOwnedClaim(Player player) {
         Location playerLocation = player.getLocation();
         String playerWorld = playerLocation.getWorld().getName();
-        final String w = mirrorWorlds.containsKey(playerWorld) ? mirrorWorlds.get(playerWorld) : playerWorld;
+        final String w = mirrorWorlds.containsKey(playerWorld)
+            ? mirrorWorlds.get(playerWorld)
+            : playerWorld;
         int x = playerLocation.getBlockX();
         int z = playerLocation.getBlockZ();
         UUID playerId = player.getUniqueId();
-        return claims.stream().filter(c -> c.isOwner(playerId) && c.isInWorld(w)).min((a, b) -> Integer.compare(a.getArea().distanceToPoint(x, z), b.getArea().distanceToPoint(x, z))).orElse(null);
+        return claims.stream()
+            .filter(c -> c.isOwner(playerId) && c.isInWorld(w))
+            .min((a, b) -> Integer.compare(a.getArea().distanceToPoint(x, z),
+                                           b.getArea().distanceToPoint(x, z)))
+            .orElse(null);
     }
 
     Claim findNearbyBuildClaim(Player player, int radius) {
         Location playerLocation = player.getLocation();
         String playerWorld = playerLocation.getWorld().getName();
-        final String w = mirrorWorlds.containsKey(playerWorld) ? mirrorWorlds.get(playerWorld) : playerWorld;
+        final String w = mirrorWorlds.containsKey(playerWorld)
+            ? mirrorWorlds.get(playerWorld)
+            : playerWorld;
         int x = playerLocation.getBlockX();
         int z = playerLocation.getBlockZ();
         UUID playerId = player.getUniqueId();
-        return claims.stream().filter(c -> c.canBuild(playerId) && c.isInWorld(w) && c.getArea().isWithin(x, z, radius)).findFirst().orElse(null);
+        return claims.stream()
+            .filter(c -> c.canBuild(playerId)
+                    && c.isInWorld(w)
+                    && c.getArea().isWithin(x, z, radius))
+            .findFirst().orElse(null);
     }
 
     void highlightClaim(Claim claim, Player player) {
@@ -343,7 +379,8 @@ public final class HomePlugin extends JavaPlugin {
         for (Block block : blocks) {
             while (block.isEmpty() && block.getY() > 0) block = block.getRelative(0, -1, 0);
             while (!block.isEmpty() && block.getY() < 127) block = block.getRelative(0, 1, 0);
-            player.spawnParticle(Particle.BARRIER, block.getLocation().add(0.5, 0.5, 0.5), 1, 0.0, 0.0, 0.0, 0.0);
+            player.spawnParticle(Particle.BARRIER, block.getLocation().add(0.5, 0.5, 0.5), 1,
+                                 0.0, 0.0, 0.0, 0.0);
         }
     }
 
@@ -354,11 +391,15 @@ public final class HomePlugin extends JavaPlugin {
     }
 
     public Home findHome(UUID owner, String name) {
-        return homes.stream().filter(h -> h.isOwner(owner) && h.isNamed(name)).findFirst().orElse(null);
+        return homes.stream()
+            .filter(h -> h.isOwner(owner) && h.isNamed(name))
+            .findFirst().orElse(null);
     }
 
     public Home findPublicHome(String name) {
-        return homes.stream().filter(h -> name.equals(h.getPublicName())).findFirst().orElse(null);
+        return homes.stream()
+            .filter(h -> name.equals(h.getPublicName()))
+            .findFirst().orElse(null);
     }
 
     public Claim findPrimaryClaim(UUID owner) {
@@ -374,7 +415,9 @@ public final class HomePlugin extends JavaPlugin {
 
     public List<Claim> findClaimsInWorld(UUID owner, String w) {
         final String world = mirrorWorlds.containsKey(w) ? mirrorWorlds.get(w) : w;
-        return claims.stream().filter(c -> c.isOwner(owner) && c.isInWorld(world)).collect(Collectors.toList());
+        return claims.stream()
+            .filter(c -> c.isOwner(owner) && c.isInWorld(world))
+            .collect(Collectors.toList());
     }
 
     public List<Claim> findClaimsInWorld(String w) {

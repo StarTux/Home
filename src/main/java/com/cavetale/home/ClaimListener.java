@@ -98,9 +98,9 @@ final class ClaimListener implements Listener {
         // privileged here.  The owner and members can do anything.
         UUID uuid = player.getUniqueId();
         if (claim.canBuild(uuid)) return true;
-        if (claim.getSetting(Claim.Setting.PUBLIC) == Boolean.TRUE) return true;
+        if (claim.getBoolSetting(Claim.Setting.PUBLIC)) return true;
         // Visitors may interact and do combat.
-        if (claim.canVisit(uuid) || claim.getSetting(Claim.Setting.PUBLIC_INVITE) == Boolean.TRUE) {
+        if (claim.canVisit(uuid) || claim.getBoolSetting(Claim.Setting.PUBLIC_INVITE)) {
             switch (action) {
             case COMBAT:
             case INTERACT:
@@ -235,7 +235,7 @@ final class ClaimListener implements Listener {
                 event.setCancelled(true);
                 return;
             }
-            if (claim.getSetting(Claim.Setting.PVP) == Boolean.TRUE) return;
+            if (claim.getBoolSetting(Claim.Setting.PVP)) return;
             event.setCancelled(true);
         } else if (player != null) {
             boolean claimed = plugin.getClaimAt(entity.getLocation().getBlock()) != null;
@@ -258,7 +258,7 @@ final class ClaimListener implements Listener {
                 if (claim == null) {
                     return;
                 }
-                if (claim.getSetting(Claim.Setting.EXPLOSIONS) == Boolean.TRUE) return;
+                if (claim.getBoolSetting(Claim.Setting.EXPLOSIONS)) return;
                 if (entity instanceof Player) return;
                 if (entity instanceof Mob) return;
                 event.setCancelled(true);
@@ -279,7 +279,7 @@ final class ClaimListener implements Listener {
         if (entity instanceof Player) {
             if (damager.equals(entity)) return;
             Claim claim = plugin.getClaimAt(event.getEntity().getLocation().getBlock());
-            if (claim == null || claim.getSetting(Claim.Setting.PVP) != Boolean.TRUE) {
+            if (claim == null || !claim.getBoolSetting(Claim.Setting.PVP)) {
                 event.setCancelled(true);
             }
             return;
@@ -409,7 +409,7 @@ final class ClaimListener implements Listener {
         if (!plugin.isHomeWorld(event.getEntity().getWorld())) return;
         if (event.getCause() == HangingBreakEvent.RemoveCause.EXPLOSION) {
             Claim claim = plugin.getClaimAt(event.getEntity().getLocation().getBlock());
-            if (claim == null || claim.getSetting(Claim.Setting.EXPLOSIONS) != Boolean.TRUE) {
+            if (claim == null || !claim.getBoolSetting(Claim.Setting.EXPLOSIONS)) {
                 event.setCancelled(true);
             }
         }
@@ -430,7 +430,7 @@ final class ClaimListener implements Listener {
         }
         if (event.getCause() == HangingBreakEvent.RemoveCause.EXPLOSION) {
             Claim claim = plugin.getClaimAt(event.getEntity().getLocation().getBlock());
-            if (claim == null || claim.getSetting(Claim.Setting.EXPLOSIONS) != Boolean.TRUE) {
+            if (claim == null || !claim.getBoolSetting(Claim.Setting.EXPLOSIONS)) {
                 event.setCancelled(true);
             }
         }
@@ -451,7 +451,7 @@ final class ClaimListener implements Listener {
         if (!plugin.isHomeWorld(event.getEntity().getWorld())) return;
         for (Iterator<Block> iter = event.blockList().iterator(); iter.hasNext();) {
             Claim claim = plugin.getClaimAt(iter.next());
-            if (claim == null || claim.getSetting(Claim.Setting.EXPLOSIONS) != Boolean.TRUE) {
+            if (claim == null || !claim.getBoolSetting(Claim.Setting.EXPLOSIONS)) {
                 iter.remove();
             }
         }
@@ -461,7 +461,7 @@ final class ClaimListener implements Listener {
     public void onBlockBurn(BlockBurnEvent event) {
         if (!plugin.isHomeWorld(event.getBlock().getWorld())) return;
         Claim claim = plugin.getClaimAt(event.getBlock());
-        if (claim == null || claim.getSetting(Claim.Setting.FIRE) != Boolean.TRUE) {
+        if (claim == null || !claim.getBoolSetting(Claim.Setting.FIRE)) {
             event.setCancelled(true);
             return;
         }
@@ -483,7 +483,7 @@ final class ClaimListener implements Listener {
             break;
         }
         Claim claim = plugin.getClaimAt(event.getBlock());
-        if (claim == null || claim.getSetting(Claim.Setting.FIRE) != Boolean.TRUE) {
+        if (claim == null || !claim.getBoolSetting(Claim.Setting.FIRE)) {
             event.setCancelled(true);
             return;
         }

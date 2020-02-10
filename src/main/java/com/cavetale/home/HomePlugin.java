@@ -108,35 +108,44 @@ public final class HomePlugin extends JavaPlugin {
     void onTick() {
         ticks += 1;
         for (Player player : getServer().getOnlinePlayers()) {
-            if (player.getGameMode() == GameMode.SPECTATOR) continue;
-            if (!isHomeWorld(player.getWorld())) {
-                player.removeMetadata(META_LOCATION, this);
-                continue;
+            tickPlayer(player);
+        }
+        if ((ticks % 200L) == 0L) {
+            if (dynmapClaims != null) dynmapClaims.update();
+        }
+    }
+
+    void tickPlayer(Player player) {
+        if (player.getGameMode() == GameMode.SPECTATOR) return;
+        if (!isHomeWorld(player.getWorld())) {
+            player.removeMetadata(META_LOCATION, this);
+            return;
+        }
+        Location pl = player.getLocation();
+        Claim claim = getClaimAt(pl);
+        UUID playerId = player.getUniqueId();
+        if (claim != null
+            && claim.isOwner(playerId) && (ticks % 100) == 0
+            && claim.getBlocks() > claim.getArea().size()
+            && claim.getBoolSetting(Claim.Setting.AUTOGROW)) {
+            if (autoGrowClaim(claim)) {
+                highlightClaim(claim, player);
             }
-            Location pl = player.getLocation();
-            Claim claim = getClaimAt(pl);
-            UUID playerId = player.getUniqueId();
-            if (claim != null
-                && claim.isOwner(playerId) && (ticks % 100) == 0
-                && claim.getBlocks() > claim.getArea().size()
-                && claim.getSetting(Claim.Setting.AUTOGROW) == Boolean.TRUE) {
-                if (autoGrowClaim(claim)) {
-                    highlightClaim(claim, player);
-                }
-            }
-            CachedLocation cl1 = getMetadata(player, META_LOCATION, CachedLocation.class)
-                .orElse(null);
-            if (cl1 == null || !cl1.world.equals(pl.getWorld().getName())
-                || cl1.x != pl.getBlockX() || cl1.z != pl.getBlockZ()) {
-                CachedLocation cl2 = new CachedLocation(pl.getWorld().getName(),
-                                                        pl.getBlockX(), pl.getBlockZ(),
-                                                        claim == null ? -1 : claim.getId());
-                if (cl1 == null) cl1 = cl2; // Taking the easy way out
-                player.setMetadata(META_LOCATION, new FixedMetadataValue(this, cl2));
-                if (claim == null) {
-                    if (cl1.claimId != cl2.claimId) {
-                        Claim oldClaim = getClaimById(cl1.claimId);
-                        if (oldClaim != null) {
+        }
+        CachedLocation cl1 = getMetadata(player, META_LOCATION, CachedLocation.class)
+            .orElse(null);
+        if (cl1 == null || !cl1.world.equals(pl.getWorld().getName())
+            || cl1.x != pl.getBlockX() || cl1.z != pl.getBlockZ()) {
+            CachedLocation cl2 = new CachedLocation(pl.getWorld().getName(),
+                                                    pl.getBlockX(), pl.getBlockZ(),
+                                                    claim == null ? -1 : claim.getId());
+            if (cl1 == null) cl1 = cl2; // Taking the easy way out
+            player.setMetadata(META_LOCATION, new FixedMetadataValue(this, cl2));
+            if (claim == null) {
+                if (cl1.claimId != cl2.claimId) {
+                    Claim oldClaim = getClaimById(cl1.claimId);
+                    if (oldClaim != null) {
+                        if (!oldClaim.getBoolSetting(Claim.Setting.HIDDEN)) {
                             if (oldClaim.isOwner(player.getUniqueId())) {
                                 BaseComponent[] txt = TextComponent
                                     .fromLegacyText(ChatColor.GRAY + "Leaving your claim");
@@ -147,13 +156,15 @@ public final class HomePlugin extends JavaPlugin {
                                                     + oldClaim.getOwnerName() + "'s claim");
                                 player.spigot().sendMessage(ChatMessageType.ACTION_BAR, txt);
                             }
-                            if (oldClaim.getSetting(Claim.Setting.SHOW_BORDERS) == Boolean.TRUE) {
+                            if (oldClaim.getBoolSetting(Claim.Setting.SHOW_BORDERS)) {
                                 highlightClaim(oldClaim, player);
                             }
                         }
                     }
-                } else { // (claim != null)
-                    if (cl1.claimId != cl2.claimId) {
+                }
+            } else { // (claim != null)
+                if (cl1.claimId != cl2.claimId) {
+                    if (!claim.getBoolSetting(Claim.Setting.HIDDEN)) {
                         if (claim.isOwner(player.getUniqueId())) {
                             BaseComponent[] txt = TextComponent
                                 .fromLegacyText(ChatColor.GRAY + "Entering your claim");
@@ -164,15 +175,12 @@ public final class HomePlugin extends JavaPlugin {
                                                 + claim.getOwnerName() + "'s claim");
                             player.spigot().sendMessage(ChatMessageType.ACTION_BAR, txt);
                         }
-                        if (claim.getSetting(Claim.Setting.SHOW_BORDERS) == Boolean.TRUE) {
+                        if (claim.getBoolSetting(Claim.Setting.SHOW_BORDERS)) {
                             highlightClaim(claim, player);
                         }
                     }
                 }
             }
-        }
-        if ((ticks % 200L) == 0L) {
-            if (dynmapClaims != null) dynmapClaims.update();
         }
     }
 

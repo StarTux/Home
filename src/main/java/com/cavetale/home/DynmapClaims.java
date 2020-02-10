@@ -11,7 +11,7 @@ final class DynmapClaims {
     private final HomePlugin plugin;
     private static final String MARKER_SET = "home.claims";
 
-    DynmapClaims(HomePlugin plugin) {
+    DynmapClaims(final HomePlugin plugin) {
         this.plugin = plugin;
     }
 
@@ -19,7 +19,7 @@ final class DynmapClaims {
         Plugin dplugin = Bukkit.getServer().getPluginManager().getPlugin("dynmap");
         if (dplugin == null) return false;
         if (!dplugin.isEnabled()) return false;
-        DynmapAPI dynmap = (DynmapAPI)dplugin;
+        DynmapAPI dynmap = (DynmapAPI) dplugin;
         MarkerAPI dmarker = dynmap.getMarkerAPI();
         if (dmarker == null) return false;
         MarkerSet markerSet = dmarker.getMarkerSet(MARKER_SET);
@@ -29,19 +29,31 @@ final class DynmapClaims {
         markerSet.setLayerPriority(10);
         markerSet.setHideByDefault(false);
         for (Claim claim : plugin.getClaims()) {
+            if (claim.getBoolSetting(Claim.Setting.HIDDEN)) continue;
             double[] x = new double[4];
             double[] z = new double[4];
-            x[0] = x[1] = (double)claim.getArea().ax;
-            x[2] = x[3] = (double)claim.getArea().bx;
-            z[0] = z[3] = (double)claim.getArea().ay;
-            z[1] = z[2] = (double)claim.getArea().by;
+            x[1] = (double) claim.getArea().ax;
+            x[3] = (double) claim.getArea().bx;
+            z[3] = (double) claim.getArea().ay;
+            z[2] = (double) claim.getArea().by;
+            //
+            x[0] = x[1];
+            x[2] = x[3];
+            z[0] = z[3];
+            z[1] = z[2];
             AreaMarker marker = markerSet.findAreaMarker("" + claim.getId());
             if (marker == null) {
-                marker = markerSet.createAreaMarker("" + claim.getId(), claim.getOwnerName(), false, claim.getWorld(), x, z, false);
+                marker = markerSet.createAreaMarker("" + claim.getId(), claim.getOwnerName(),
+                                                    false, claim.getWorld(), x, z, false);
             } else {
                 marker.setCornerLocations(x, z);
             }
             marker.setBoostFlag(true);
+            if (claim.isAdminClaim()) {
+                marker.setLineStyle(2, 0.75, 0x0000FF);
+            } else {
+                marker.setLineStyle(2, 0.75, 0xFF8888);
+            }
             marker.setFillStyle(0.0, 0);
         }
         for (AreaMarker marker : markerSet.getAreaMarkers()) {
@@ -60,7 +72,7 @@ final class DynmapClaims {
     void disable() {
         Plugin dplugin = Bukkit.getServer().getPluginManager().getPlugin("dynmap");
         if (dplugin == null) return;
-        DynmapAPI dynmap = (DynmapAPI)dplugin;
+        DynmapAPI dynmap = (DynmapAPI) dplugin;
         MarkerAPI dmarker = dynmap.getMarkerAPI();
         if (dmarker == null) return;
         MarkerSet markerSet = dmarker.getMarkerSet(MARKER_SET);

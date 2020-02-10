@@ -97,4 +97,4 @@ permissions:
     default: op
   home.admin:
     description: Use /homeadmin
-    default: op
+    default: false

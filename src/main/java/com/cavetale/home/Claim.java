@@ -53,7 +53,9 @@ final class Claim {
         AUTOGROW("Claim Grows Automatically", true),
         PUBLIC("Anyone can build", false),
         PUBLIC_INVITE("Anyone can interact with blocks such as doors", false),
-        SHOW_BORDERS("Show claim borders as you enter or leave", true);
+        SHOW_BORDERS("Show claim borders as you enter or leave", true),
+        // Admin only
+        HIDDEN("Claim is hidden", false);
 
         final String key;
         final String displayName;
@@ -64,12 +66,22 @@ final class Claim {
             this.displayName = displayName;
             this.defaultValue = defaultValue;
         }
+
+        boolean isAdminOnly() {
+            return this == HIDDEN;
+        }
     }
 
     Object getSetting(Setting setting) {
         Object result = settings.get(setting);
         if (result != null) return result;
         return setting.defaultValue;
+    }
+
+    boolean getBoolSetting(Setting setting) {
+        Object result = settings.get(setting);
+        if (result == null) result = setting.defaultValue;
+        return result == Boolean.TRUE;
     }
 
     // SQL Interface
@@ -152,6 +164,10 @@ final class Claim {
 
     boolean isInWorld(String worldName) {
         return this.world.equals(worldName);
+    }
+
+    boolean isAdminClaim() {
+        return ADMIN_ID.equals(owner);
     }
 
     String getOwnerName() {

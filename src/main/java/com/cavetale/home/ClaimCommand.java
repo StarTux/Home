@@ -131,7 +131,7 @@ public final class ClaimCommand extends PlayerCommand {
                 }
                 claim.setBlocks(claim.getBlocks() + meta.amount);
                 claim.saveToDatabase();
-                if (claim.getSetting(Claim.Setting.AUTOGROW) == Boolean.TRUE) {
+                if (claim.getBoolSetting(Claim.Setting.AUTOGROW)) {
                     player.sendMessage(ChatColor.WHITE + "Added " + meta.amount + " blocks to this claim. It will grow automatically.");
                 } else {
                     player.sendMessage(ChatColor.WHITE + "Added " + meta.amount + " blocks to this claim. Grow it manually or enable \"autogrow\" in the settings.");
@@ -492,6 +492,10 @@ public final class ClaimCommand extends PlayerCommand {
         commandHelp(player, "/claim abandon", new String[]{}, "Abandon your claim.");
     }
 
+    boolean isAdmin(Player player) {
+        return player.hasPermission("home.admin");
+    }
+
     public void printClaimInfo(Player player, Claim claim) {
         player.sendMessage("");
         ComponentBuilder cb = new ComponentBuilder("");
@@ -535,10 +539,13 @@ public final class ClaimCommand extends PlayerCommand {
         cb = new ComponentBuilder("");
         cb.append("Settings").color(ChatColor.GRAY);
         for (Claim.Setting setting : Claim.Setting.values()) {
+            if (setting.isAdminOnly() && !isAdmin(player)) continue;
             Object value = claim.getSetting(setting);
             if (value == null) continue;
             cb.append(" ").reset();
-            cb.append(setting.name().toLowerCase()).color(ChatColor.WHITE);
+            cb.append(setting.name().toLowerCase()).color(setting.isAdminOnly()
+                                                          ? ChatColor.RED
+                                                          : ChatColor.WHITE);
             cb.append("=").color(ChatColor.GRAY);
             String valueString;
             ChatColor valueColor;
@@ -734,6 +741,7 @@ public final class ClaimCommand extends PlayerCommand {
         frame(cb, "Claim Settings");
         player.spigot().sendMessage(cb.create());
         for (Claim.Setting setting : Claim.Setting.values()) {
+            if (setting.isAdminOnly() && !isAdmin(player)) continue;
             cb = new ComponentBuilder(" ");
             Object value = claim.getSetting(setting);
             String key = setting.name().toLowerCase();
@@ -750,7 +758,9 @@ public final class ClaimCommand extends PlayerCommand {
                     .append("  ", ComponentBuilder.FormatRetention.NONE)
                     .append("[OFF]").color(ChatColor.RED);
             }
-            cb.append(" " + setting.displayName).color(ChatColor.WHITE);
+            cb.append(" " + setting.displayName).color(setting.isAdminOnly()
+                                                       ? ChatColor.RED
+                                                       : ChatColor.WHITE);
             player.spigot().sendMessage(cb.create());
         }
         player.sendMessage("");

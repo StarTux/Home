@@ -123,9 +123,8 @@ public final class HomePlugin extends JavaPlugin {
         }
         Location pl = player.getLocation();
         Claim claim = getClaimAt(pl);
-        UUID playerId = player.getUniqueId();
         if (claim != null
-            && claim.isOwner(playerId) && (ticks % 100) == 0
+            && claim.isOwner(player) && (ticks % 100) == 0
             && claim.getBlocks() > claim.getArea().size()
             && claim.getBoolSetting(Claim.Setting.AUTOGROW)) {
             if (autoGrowClaim(claim)) {
@@ -146,7 +145,7 @@ public final class HomePlugin extends JavaPlugin {
                     Claim oldClaim = getClaimById(cl1.claimId);
                     if (oldClaim != null) {
                         if (!oldClaim.getBoolSetting(Claim.Setting.HIDDEN)) {
-                            if (oldClaim.isOwner(player.getUniqueId())) {
+                            if (oldClaim.isOwner(player)) {
                                 BaseComponent[] txt = TextComponent
                                     .fromLegacyText(ChatColor.GRAY + "Leaving your claim");
                                 player.spigot().sendMessage(ChatMessageType.ACTION_BAR, txt);
@@ -165,7 +164,7 @@ public final class HomePlugin extends JavaPlugin {
             } else { // (claim != null)
                 if (cl1.claimId != cl2.claimId) {
                     if (!claim.getBoolSetting(Claim.Setting.HIDDEN)) {
-                        if (claim.isOwner(player.getUniqueId())) {
+                        if (claim.isOwner(player)) {
                             BaseComponent[] txt = TextComponent
                                 .fromLegacyText(ChatColor.GRAY + "Entering your claim");
                             player.spigot().sendMessage(ChatMessageType.ACTION_BAR, txt);
@@ -319,9 +318,8 @@ public final class HomePlugin extends JavaPlugin {
             : playerWorld;
         int x = playerLocation.getBlockX();
         int z = playerLocation.getBlockZ();
-        UUID playerId = player.getUniqueId();
         return claims.stream()
-            .filter(c -> c.isOwner(playerId) && c.isInWorld(w))
+            .filter(c -> c.isOwner(player) && c.isInWorld(w))
             .min((a, b) -> Integer.compare(a.getArea().distanceToPoint(x, z),
                                            b.getArea().distanceToPoint(x, z)))
             .orElse(null);
@@ -335,9 +333,8 @@ public final class HomePlugin extends JavaPlugin {
             : playerWorld;
         int x = playerLocation.getBlockX();
         int z = playerLocation.getBlockZ();
-        UUID playerId = player.getUniqueId();
         return claims.stream()
-            .filter(c -> c.canBuild(playerId)
+            .filter(c -> c.canBuild(player)
                     && c.isInWorld(w)
                     && c.getArea().isWithin(x, z, radius))
             .findFirst().orElse(null);
@@ -462,6 +459,10 @@ public final class HomePlugin extends JavaPlugin {
 
     void removeMetadata(Metadatable entity, String key) {
         entity.removeMetadata(key, this);
+    }
+
+    boolean doesIgnoreClaims(Player player) {
+        return player.hasMetadata(META_IGNORE);
     }
 
     // --- Dynmap

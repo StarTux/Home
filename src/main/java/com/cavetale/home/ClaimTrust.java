@@ -21,7 +21,7 @@ public final class ClaimTrust {
 
     public ClaimTrust() { }
 
-    ClaimTrust(Claim claim, Type type, UUID trustee) {
+    ClaimTrust(final Claim claim, final Type type, final UUID trustee) {
         this.claimId = claim.getId();
         this.type = type.name().toLowerCase();
         this.trustee = trustee;

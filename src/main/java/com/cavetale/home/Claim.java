@@ -14,6 +14,7 @@ import javax.persistence.Id;
 import javax.persistence.Table;
 import lombok.Data;
 import org.bukkit.Location;
+import org.bukkit.entity.Player;
 import org.json.simple.JSONValue;
 
 @Data
@@ -28,14 +29,15 @@ final class Claim {
     int blocks;
     long created;
     final Map<Setting, Object> settings = new EnumMap<>(Setting.class);
-    int centerX, centerY;
+    int centerX;
+    int centerY;
     public static final UUID ADMIN_ID = new UUID(0L, 0L);
 
-    Claim(HomePlugin plugin) {
+    Claim(final HomePlugin plugin) {
         this.plugin = plugin;
     }
 
-    Claim(HomePlugin plugin, UUID owner, String world, Area area) {
+    Claim(final HomePlugin plugin, final UUID owner, final String world, final Area area) {
         this.plugin = plugin;
         this.owner = owner;
         this.world = world;
@@ -61,7 +63,7 @@ final class Claim {
         final String displayName;
         final Object defaultValue;
 
-        Setting(String displayName, Object defaultValue) {
+        Setting(final String displayName, final Object defaultValue) {
             this.key = name().toLowerCase();
             this.displayName = displayName;
             this.defaultValue = defaultValue;
@@ -91,7 +93,10 @@ final class Claim {
         private @Id Integer id;
         @Column(nullable = false) private UUID owner;
         @Column(nullable = false, length = 16) private String world;
-        @Column(nullable = false) private Integer ax, ay, bx, by;
+        @Column(nullable = false) private Integer ax;
+        @Column(nullable = false) private Integer ay;
+        @Column(nullable = false) private Integer bx;
+        @Column(nullable = false) private Integer by;
         @Column(nullable = false) private Integer blocks;
         @Column(nullable = false, length = 255) private String settings;
         @Column(nullable = false) private Date created;
@@ -125,14 +130,14 @@ final class Claim {
         this.blocks = row.blocks;
         this.created = row.getCreated().getTime();
         @SuppressWarnings("unchecked")
-        Map<String, Object> settingsMap = (Map<String, Object>)JSONValue.parse(row.getSettings());
+        Map<String, Object> settingsMap = (Map<String, Object>) JSONValue.parse(row.getSettings());
         settings.clear();
         for (Setting setting : Setting.values()) {
             Object value = settingsMap.get(setting.key);
             if (value != null) settings.put(setting, value);
         }
         @SuppressWarnings("unchecked")
-        List<Number> center = (List<Number>)settingsMap.get("center");
+        List<Number> center = (List<Number>) settingsMap.get("center");
         if (center == null) {
             centerX = (area.ax + area.bx) / 2;
             centerY = (area.ay + area.by) / 2;
@@ -150,12 +155,34 @@ final class Claim {
 
     // Utility
 
+    static boolean isAdmin(Player player) {
+        return player.hasPermission("home.admin");
+    }
+
+    boolean isOwner(Player player) {
+        if (plugin.doesIgnoreClaims(player)) return true;
+        if (isAdminClaim() && isAdmin(player)) return true;
+        return isOwner(player.getUniqueId());
+    }
+
     boolean isOwner(UUID playerId) {
         return owner.equals(playerId);
     }
 
+    boolean canBuild(Player player) {
+        if (plugin.doesIgnoreClaims(player)) return true;
+        if (isAdminClaim() && isAdmin(player)) return true;
+        return canBuild(player.getUniqueId());
+    }
+
     boolean canBuild(UUID playerId) {
         return isOwner(playerId) || members.contains(playerId);
+    }
+
+    boolean canVisit(Player player) {
+        if (plugin.doesIgnoreClaims(player)) return true;
+        if (isAdminClaim() && isAdmin(player)) return true;
+        return canVisit(player.getUniqueId());
     }
 
     boolean canVisit(UUID playerId) {

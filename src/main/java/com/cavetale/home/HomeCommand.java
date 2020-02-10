@@ -56,14 +56,17 @@ public final class HomeCommand extends PlayerCommand {
                 }
             }
             // Try the primary claim in the home world.
-            List<Claim> playerClaims = plugin.findClaimsInWorld(playerId, plugin.getPrimaryHomeWorld());
+            List<Claim> playerClaims = plugin
+                .findClaimsInWorld(playerId, plugin.getPrimaryHomeWorld());
             // or any claim
             if (playerClaims.isEmpty()) playerClaims = plugin.findClaims(playerId);
             if (!playerClaims.isEmpty()) {
                 Claim claim = playerClaims.get(0);
                 World bworld = plugin.getServer().getWorld(claim.getWorld());
                 Area area = claim.getArea();
-                Location location = bworld.getHighestBlockAt((area.ax + area.bx) / 2, (area.ay + area.by) / 2).getLocation().add(0.5, 0.0, 0.5);
+                Location location = bworld.getHighestBlockAt((area.ax + area.bx) / 2,
+                                                             (area.ay + area.by) / 2)
+                    .getLocation().add(0.5, 0.0, 0.5);
                 player.teleport(location);
                 player.sendMessage(ChatColor.GREEN + "Welcome to your claim. :)");
                 plugin.highlightClaim(claim, player);

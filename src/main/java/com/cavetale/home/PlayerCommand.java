@@ -17,7 +17,7 @@ import org.bukkit.entity.Player;
 abstract class PlayerCommand implements TabExecutor {
 
     static final class CommandException extends Exception {
-        CommandException(String msg) {
+        CommandException(final String msg) {
             super(msg);
         }
     }
@@ -28,7 +28,7 @@ abstract class PlayerCommand implements TabExecutor {
             sender.sendMessage("Player expected.");
             return true;
         }
-        Player player = (Player)sender;
+        Player player = (Player) sender;
         try {
             if (!onCommand(player, args)) commandHelp(player);
         } catch (CommandException e) {
@@ -42,9 +42,10 @@ abstract class PlayerCommand implements TabExecutor {
     abstract void commandHelp(Player player);
 
     @Override
-    public List<String> onTabComplete(CommandSender sender, Command command, String alias, String[] args) {
+    public List<String> onTabComplete(CommandSender sender, Command command,
+                                      String alias, String[] args) {
         if (!(sender instanceof Player)) return null;
-        return onTabComplete((Player)sender, args);
+        return onTabComplete((Player) sender, args);
     }
 
     abstract List<String> onTabComplete(Player player, String[] args);

@@ -4,7 +4,10 @@ import lombok.Value;
 
 @Value
 final class Area {
-    public final int ax, ay, bx, by;
+    public final int ax;
+    public final int ay;
+    public final int bx;
+    public final int by;
 
     boolean contains(int x, int y) {
         return x >= ax && x <= bx && y >= ay && y <= by;
@@ -40,7 +43,8 @@ final class Area {
     // vertical distance.  Only to be used to find nearest claim;
     // never for precision operations!
     int distanceToPoint(int x, int y) {
-        int dx, dy;
+        int dx;
+        int dy;
         if (x < ax) {
             dx = ax - x;
         } else if (x > bx) {

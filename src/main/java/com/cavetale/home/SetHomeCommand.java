@@ -31,12 +31,13 @@ public final class SetHomeCommand extends PlayerCommand {
         for (Home home : plugin.getHomes()) {
             if (home.isOwner(playerId) && home.isInWorld(playerWorld)
                 && !home.isNamed(homeName)
-                && Math.abs(playerX - (int)home.getX()) < settings.homeMargin
-                && Math.abs(playerZ - (int)home.getZ()) < settings.homeMargin) {
+                && Math.abs(playerX - (int) home.getX()) < settings.homeMargin
+                && Math.abs(playerZ - (int) home.getZ()) < settings.homeMargin) {
                 if (home.getName() == null) {
                     throw new CommandException("Your primary home is nearby");
                 } else {
-                    throw new CommandException("You have a home named \"" + home.getName() + "\" nearby");
+                    throw new CommandException("You have a home named \""
+                                               + home.getName() + "\" nearby");
                 }
             }
         }

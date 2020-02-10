@@ -24,13 +24,17 @@ public final class Home {
     @Column(nullable = true, length = 32) String name;
     @Column(nullable = false) private Date created;
     @Column(nullable = false, length = 32) private String world;
-    @Column(nullable = false) private double x, y, z, pitch, yaw;
+    @Column(nullable = false) private double x;
+    @Column(nullable = false) private double y;
+    @Column(nullable = false) private double z;
+    @Column(nullable = false) private double pitch;
+    @Column(nullable = false) private double yaw;
     @Column(nullable = true, length = 32) private String publicName;
     final transient List<UUID> invites = new ArrayList<>();
 
     public Home() { }
 
-    Home(UUID owner, Location location, String name) {
+    Home(final UUID owner, final Location location, final String name) {
         this.owner = owner;
         this.name = name;
         this.created = new Date();
@@ -38,8 +42,8 @@ public final class Home {
         this.x = location.getX();
         this.y = location.getY();
         this.z = location.getZ();
-        this.pitch = (double)location.getPitch();
-        this.yaw = (double)location.getYaw();
+        this.pitch = (double) location.getPitch();
+        this.yaw = (double) location.getYaw();
     }
 
     // Bukkit
@@ -49,14 +53,14 @@ public final class Home {
         this.x = location.getX();
         this.y = location.getY();
         this.z = location.getZ();
-        this.pitch = (double)location.getPitch();
-        this.yaw = (double)location.getYaw();
+        this.pitch = (double) location.getPitch();
+        this.yaw = (double) location.getYaw();
     }
 
     Location createLocation() {
         World bw = Bukkit.getServer().getWorld(world);
         if (bw == null) return null;
-        return new Location(bw, x, y, z, (float)yaw, (float)pitch);
+        return new Location(bw, x, y, z, (float) yaw, (float) pitch);
     }
 
     boolean isOwner(UUID playerId) {

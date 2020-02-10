@@ -1,5 +1,7 @@
 package com.cavetale.home;
 
+import com.winthier.generic_events.GenericEvents;
+import java.util.stream.Collectors;
 import org.bukkit.Bukkit;
 import org.bukkit.plugin.Plugin;
 import org.dynmap.DynmapAPI;
@@ -45,22 +47,24 @@ final class DynmapClaims {
                 if (claim.getBoolSetting(Claim.Setting.HIDDEN)) {
                     continue;
                 }
-                marker = markerSet.createAreaMarker("" + claim.getId(), claim.getOwnerName(),
-                                                    false, claim.getWorld(), x, z, false);
+                marker = markerSet.createAreaMarker("" + claim.getId(), label(claim),
+                                                    true, claim.getWorld(), x, z, false);
             } else {
                 if (claim.getBoolSetting(Claim.Setting.HIDDEN)) {
                     marker.deleteMarker();
                     continue;
                 }
+                marker.setLabel(label(claim), true);
                 marker.setCornerLocations(x, z);
             }
             marker.setBoostFlag(true);
             if (claim.isAdminClaim()) {
                 marker.setLineStyle(2, 0.75, 0x0000FF);
+                marker.setFillStyle(0.1, 0x0000FF);
             } else {
-                marker.setLineStyle(2, 0.75, 0xFF8888);
+                marker.setLineStyle(3, 0.75, 0xFF0000);
+                marker.setFillStyle(0.1, 0xFF0000);
             }
-            marker.setFillStyle(0.0, 0);
         }
         for (AreaMarker marker : markerSet.getAreaMarkers()) {
             int id;
@@ -73,6 +77,19 @@ final class DynmapClaims {
             if (claim == null) marker.deleteMarker();
         }
         return true;
+    }
+
+    String label(Claim claim) {
+        return ""
+            + "<strong>Owner</strong>: " + claim.getOwnerName()
+            + "<br/><strong>Size</strong>: "
+            + claim.getArea().width() + "x" + claim.getArea().height()
+            + "<br/><strong>Members</strong>: " + claim.getMembers().stream()
+            .map(GenericEvents::cachedPlayerName)
+            .collect(Collectors.joining(", "))
+            + "<br/><strong>Visitors</strong>: " + claim.getVisitors().stream()
+            .map(GenericEvents::cachedPlayerName)
+            .collect(Collectors.joining(", "));
     }
 
     void disable() {

@@ -16,13 +16,15 @@ import org.bukkit.entity.Player;
 @RequiredArgsConstructor
 public final class HomeAdminCommand implements TabExecutor {
     private final HomePlugin plugin;
-    static final List<String> COMMANDS = Arrays.asList("claims", "ignore", "reload", "debug", "giveclaimblocks", "deleteclaim", "adminclaim", "transferclaim", "claiminfo");
+    static final List<String> COMMANDS = Arrays
+        .asList("claims", "ignore", "reload", "debug", "giveclaimblocks",
+                "deleteclaim", "adminclaim", "transferclaim", "claiminfo");
 
     @Override
     public boolean onCommand(CommandSender sender, Command command, String alias, String[] args) {
         if (args.length == 0) return false;
         if (args.length == 1 && args[0].equals("help")) return false;
-        Player player = sender instanceof Player ? (Player)sender : null;
+        Player player = sender instanceof Player ? (Player) sender : null;
         switch (args[0]) {
         case "claims":
             if (args.length == 1) {
@@ -77,7 +79,8 @@ public final class HomeAdminCommand implements TabExecutor {
                 if (newblocks < 0) newblocks = 0;
                 claim.setBlocks(newblocks);
                 claim.saveToDatabase();
-                player.sendMessage(ChatColor.YELLOW + "Claim owner by " + claim.getOwnerName() + " now has " + newblocks + " claim blocks.");
+                player.sendMessage(ChatColor.YELLOW + "Claim owner by " + claim.getOwnerName()
+                                   + " now has " + newblocks + " claim blocks.");
                 return true;
             }
             break;
@@ -93,7 +96,8 @@ public final class HomeAdminCommand implements TabExecutor {
                     return true;
                 }
                 plugin.deleteClaim(claim);
-                player.sendMessage(ChatColor.YELLOW + "Deleted claim owned by " + claim.getOwnerName() + ".");
+                player.sendMessage(ChatColor.YELLOW + "Deleted claim owned by "
+                                   + claim.getOwnerName() + ".");
                 return true;
             }
             break;
@@ -104,7 +108,9 @@ public final class HomeAdminCommand implements TabExecutor {
                                  loc.getBlockX() + 32, loc.getBlockZ() + 32);
             for (Claim other : plugin.findClaimsInWorld(player.getWorld().getName())) {
                 if (other.area.contains(area)) {
-                    sender.sendMessage(ChatColor.RED + "This claim would intersect an existing claim owned by " + other.getOwnerName() + ".");
+                    sender.sendMessage(ChatColor.RED
+                                       + "This claim would intersect an existing claim owned by "
+                                       + other.getOwnerName() + ".");
                     return true;
                 }
             }
@@ -135,7 +141,8 @@ public final class HomeAdminCommand implements TabExecutor {
             }
             claim.setOwner(targetId);
             claim.saveToDatabase();
-            sender.sendMessage(ChatColor.YELLOW + "Claim transferred to " + claim.getOwnerName() + ".");
+            sender.sendMessage(ChatColor.YELLOW + "Claim transferred to "
+                               + claim.getOwnerName() + ".");
             return true;
         }
         case "claiminfo": {
@@ -155,8 +162,11 @@ public final class HomeAdminCommand implements TabExecutor {
     }
 
     @Override
-    public List<String> onTabComplete(CommandSender sender, Command command, String alias, String[] args) {
-        if (args.length == 1) return COMMANDS.stream().filter(arg -> arg.startsWith(args[0])).collect(Collectors.toList());
+    public List<String> onTabComplete(CommandSender sender, Command command,
+                                      String alias, String[] args) {
+        if (args.length == 1) return COMMANDS.stream()
+                                  .filter(arg -> arg.startsWith(args[0]))
+                                  .collect(Collectors.toList());
         return null;
     }
 }

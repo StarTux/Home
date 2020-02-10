@@ -69,7 +69,7 @@ public final class ClaimCommand extends PlayerCommand {
                     throw new CommandException("You don't have a claim yet.");
                 }
             }
-            if (!claim.canVisit(playerId)) return true;
+            if (!claim.canVisit(player)) return true;
             World world = plugin.getServer().getWorld(claim.getWorld());
             if (world == null) return true;
             int x = (claim.getArea().ax + claim.getArea().bx) / 2;
@@ -142,7 +142,7 @@ public final class ClaimCommand extends PlayerCommand {
             if (claimId >= 0) {
                 plugin.removeMetadata(player, plugin.META_ABANDON);
                 Claim claim = plugin.findClaimWithId(claimId);
-                if (claim == null || !claim.isOwner(playerId) || !args[1].equals("" + claimId)) {
+                if (claim == null || !claim.isOwner(player) || !args[1].equals("" + claimId)) {
                     throw new CommandException("Claim removal expired");
                 }
                 plugin.deleteClaim(claim);
@@ -215,7 +215,7 @@ public final class ClaimCommand extends PlayerCommand {
             if (claim == null) {
                 throw new CommandException("Stand in the claim to which you want to add members.");
             }
-            if (!claim.isOwner(playerId)) {
+            if (!claim.isOwner(player)) {
                 throw new CommandException("You are not the owner of this claim.");
             }
             String targetName = args[1];
@@ -242,7 +242,7 @@ public final class ClaimCommand extends PlayerCommand {
             if (claim == null) {
                 throw new CommandException("Stand in the claim to which you want to invite people.");
             }
-            if (!claim.isOwner(playerId)) {
+            if (!claim.isOwner(player)) {
                 throw new CommandException("You are not the owner of this claim.");
             }
             String targetName = args[1];
@@ -265,7 +265,7 @@ public final class ClaimCommand extends PlayerCommand {
             if (claim == null) {
                 throw new CommandException("Stand in the claim to which you want to invite people");
             }
-            if (!claim.isOwner(playerId)) {
+            if (!claim.isOwner(player)) {
                 throw new CommandException("You are not the owner of this claim");
             }
             String targetName = args[1];
@@ -292,7 +292,7 @@ public final class ClaimCommand extends PlayerCommand {
                 if (claim == null) {
                     throw new CommandException("Stand in the claim you wish to edit");
                 }
-                if (!claim.isOwner(playerId)) {
+                if (!claim.isOwner(player)) {
                     throw new CommandException("Only the claim owner can do this");
                 }
                 showClaimSettings(claim, player);
@@ -302,7 +302,7 @@ public final class ClaimCommand extends PlayerCommand {
                 if (claim == null) {
                     throw new CommandException("Stand in the claim you wish to edit");
                 }
-                if (!claim.isOwner(playerId)) {
+                if (!claim.isOwner(player)) {
                     throw new CommandException("Only the claim owner can do this");
                 }
                 Claim.Setting setting;
@@ -383,7 +383,7 @@ public final class ClaimCommand extends PlayerCommand {
             if (claim == null) {
                 throw new CommandException("Stand in the claim you wish to shrink");
             }
-            if (!claim.isOwner(playerId)) {
+            if (!claim.isOwner(player)) {
                 throw new CommandException("You can only shrink your own claims");
             }
             Area area = claim.getArea();
@@ -417,7 +417,7 @@ public final class ClaimCommand extends PlayerCommand {
             if (claim == null) {
                 throw new CommandException("There is no claim here.");
             }
-            if (!claim.isOwner(playerId)) {
+            if (!claim.isOwner(player)) {
                 throw new CommandException("This claim does not belong to you.");
             }
             long life = System.currentTimeMillis() - claim.getCreated();
@@ -492,7 +492,7 @@ public final class ClaimCommand extends PlayerCommand {
         commandHelp(player, "/claim abandon", new String[]{}, "Abandon your claim.");
     }
 
-    boolean isAdmin(Player player) {
+    static boolean isAdmin(Player player) {
         return player.hasPermission("home.admin");
     }
 
@@ -568,7 +568,7 @@ public final class ClaimCommand extends PlayerCommand {
         cb.append("  ").append("[Info]").color(buttonColor)
             .event(new ClickEvent(ClickEvent.Action.RUN_COMMAND, "/claim info"))
             .event(new HoverEvent(HoverEvent.Action.SHOW_TEXT, TextComponent.fromLegacyText(buttonColor + "/claim info\n" + ChatColor.WHITE + ChatColor.ITALIC + "Get claim info.")));
-        if (claim.canVisit(playerId)) {
+        if (claim.canVisit(player)) {
             cb.append("  ").append("[Port]").color(buttonColor)
                 .event(new ClickEvent(ClickEvent.Action.RUN_COMMAND, "/claim port " + claim.getId()))
                 .event(new HoverEvent(HoverEvent.Action.SHOW_TEXT, TextComponent.fromLegacyText(buttonColor + "Teleport to this claim.")));
@@ -576,14 +576,14 @@ public final class ClaimCommand extends PlayerCommand {
         cb.append("  ").append("[List]").color(buttonColor)
             .event(new ClickEvent(ClickEvent.Action.RUN_COMMAND, "/claim list"))
             .event(new HoverEvent(HoverEvent.Action.SHOW_TEXT, TextComponent.fromLegacyText(buttonColor + "/claim list\n" + ChatColor.WHITE + ChatColor.ITALIC + "List all your claims.")));
-        if (claim.isOwner(playerId)) {
+        if (claim.isOwner(player)) {
             cb.append("  ").append("[Abandon]").color(ChatColor.DARK_RED)
                 .event(new ClickEvent(ClickEvent.Action.RUN_COMMAND, "/claim abandon"))
                 .event(new HoverEvent(HoverEvent.Action.SHOW_TEXT, TextComponent.fromLegacyText(ChatColor.DARK_RED + "/claim abandon\n" + ChatColor.WHITE + ChatColor.ITALIC + "Abandon this claim.")));
         }
         player.spigot().sendMessage(cb.create());
         WorldSettings settings = plugin.getWorldSettings().get(claim.getWorld());
-        if (claim.isOwner(playerId) && claim.contains(playerLocation)) {
+        if (claim.isOwner(player) && claim.contains(playerLocation)) {
             cb = new ComponentBuilder("");
             cb.append("Manage").color(ChatColor.GRAY);
             cb.append("  ").append("[Buy]").color(buttonColor)
@@ -709,7 +709,7 @@ public final class ClaimCommand extends PlayerCommand {
         }
         playerClaims.clear();
         for (Claim claim : plugin.getClaims()) {
-            if (!claim.isOwner(playerId) && claim.canVisit(playerId)) playerClaims.add(claim);
+            if (!claim.isOwner(player) && claim.canVisit(player)) playerClaims.add(claim);
         }
         if (!playerClaims.isEmpty()) {
             cb = new ComponentBuilder("");

@@ -1,8 +1,6 @@
 package com.cavetale.home;
 
 import java.util.Iterator;
-import java.util.UUID;
-import lombok.NonNull;
 import lombok.RequiredArgsConstructor;
 import net.md_5.bungee.api.ChatColor;
 import org.bukkit.Location;
@@ -83,7 +81,7 @@ final class ClaimListener implements Listener {
      */
     private boolean checkPlayerAction(Player player, Block block,
                                       Action action, Cancellable cancellable) {
-        if (player.hasMetadata(plugin.META_IGNORE) || player.isOp()) return true;
+        if (plugin.doesIgnoreClaims(player)) return true;
         String w = block.getWorld().getName();
         if (!plugin.getHomeWorlds().contains(w)) return true;
         final String world = plugin.getMirrorWorlds().containsKey(w)
@@ -96,11 +94,10 @@ final class ClaimListener implements Listener {
         if (claim == null) return true;
         // We know there is a claim, so return on the player is
         // privileged here.  The owner and members can do anything.
-        UUID uuid = player.getUniqueId();
-        if (claim.canBuild(uuid)) return true;
+        if (claim.canBuild(player)) return true;
         if (claim.getBoolSetting(Claim.Setting.PUBLIC)) return true;
         // Visitors may interact and do combat.
-        if (claim.canVisit(uuid) || claim.getBoolSetting(Claim.Setting.PUBLIC_INVITE)) {
+        if (claim.canVisit(player) || claim.getBoolSetting(Claim.Setting.PUBLIC_INVITE)) {
             switch (action) {
             case COMBAT:
             case INTERACT:
@@ -226,7 +223,7 @@ final class ClaimListener implements Listener {
         if (!plugin.isHomeWorld(entity.getWorld())) return;
         final Player player = getPlayerDamager(event.getDamager());
         if (player != null && entity instanceof Player) {
-            if (player.hasMetadata(plugin.META_IGNORE)) return;
+            if (plugin.doesIgnoreClaims(player)) return;
             // PvP
             if (player.equals(entity)) return;
             Claim claim = plugin.getClaimAt(entity.getLocation().getBlock());
@@ -324,7 +321,7 @@ final class ClaimListener implements Listener {
     @EventHandler(ignoreCancelled = true, priority = EventPriority.LOW)
     public void onPlayerInteractEntity(PlayerInteractEntityEvent event) {
         final Player player = event.getPlayer();
-        if (player.isOp() || player.hasMetadata(plugin.META_IGNORE)) return;
+        if (plugin.doesIgnoreClaims(player)) return;
         final Entity entity = event.getRightClicked();
         if (isOwner(player, entity)) return;
         checkPlayerAction(player, entity.getLocation().getBlock(), Action.BUILD, event);
@@ -334,7 +331,7 @@ final class ClaimListener implements Listener {
     @EventHandler(ignoreCancelled = true, priority = EventPriority.LOW)
     public void onPlayerInteractAtEntity(PlayerInteractAtEntityEvent event) {
         final Player player = event.getPlayer();
-        if (player.isOp() || player.hasMetadata(plugin.META_IGNORE)) return;
+        if (plugin.doesIgnoreClaims(player)) return;
         final Entity entity = event.getRightClicked();
         if (isOwner(player, entity)) return;
         checkPlayerAction(player, entity.getLocation().getBlock(), Action.BUILD, event);
@@ -350,7 +347,7 @@ final class ClaimListener implements Listener {
     @EventHandler(ignoreCancelled = true, priority = EventPriority.LOW)
     public void onPlayerShearEntity(PlayerShearEntityEvent event) {
         final Player player = event.getPlayer();
-        if (player.isOp() || player.hasMetadata(plugin.META_IGNORE)) return;
+        if (plugin.doesIgnoreClaims(player)) return;
         final Entity entity = event.getEntity();
         if (isOwner(player, entity)) return;
         checkPlayerAction(player, entity.getLocation().getBlock(), Action.BUILD, event);
@@ -360,7 +357,7 @@ final class ClaimListener implements Listener {
     public void onEntityMount(EntityMountEvent event) {
         if (!(event.getEntity() instanceof Player)) return;
         final Player player = (Player) event.getEntity();
-        if (player.isOp() || player.hasMetadata(plugin.META_IGNORE)) return;
+        if (plugin.doesIgnoreClaims(player)) return;
         final Entity mount = event.getMount();
         if (isOwner(player, mount)) return;
         checkPlayerAction(player, mount.getLocation().getBlock(), Action.INTERACT, event);
@@ -369,7 +366,7 @@ final class ClaimListener implements Listener {
     @EventHandler(ignoreCancelled = true, priority = EventPriority.LOW)
     public void onPlayerLeashEntity(PlayerLeashEntityEvent event) {
         final Player player = event.getPlayer();
-        if (player.isOp() || player.hasMetadata(plugin.META_IGNORE)) return;
+        if (plugin.doesIgnoreClaims(player)) return;
         final Entity entity = event.getEntity();
         if (isOwner(player, entity)) return;
         checkPlayerAction(player, entity.getLocation().getBlock(), Action.BUILD, event);
@@ -378,7 +375,7 @@ final class ClaimListener implements Listener {
     @EventHandler(ignoreCancelled = true, priority = EventPriority.LOW)
     public void onPlayerInteract(PlayerInteractEvent event) {
         final Player player = event.getPlayer();
-        if (player.isOp() || player.hasMetadata(plugin.META_IGNORE)) return;
+        if (plugin.doesIgnoreClaims(player)) return;
         final Block block = event.getClickedBlock();
         if (block == null) return;
         // Consider soil trampling
@@ -504,7 +501,7 @@ final class ClaimListener implements Listener {
     public void onInventoryOpen(InventoryOpenEvent event) {
         if (!(event.getPlayer() instanceof Player)) return;
         Player player = (Player) event.getPlayer();
-        if (player.isOp() || player.hasMetadata(plugin.META_IGNORE)) return;
+        if (plugin.doesIgnoreClaims(player)) return;
         if (!plugin.isHomeWorld(player.getWorld())) return;
         InventoryHolder holder = event.getInventory().getHolder();
         if (holder == null) return;

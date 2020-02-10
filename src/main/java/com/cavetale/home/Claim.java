@@ -55,7 +55,7 @@ final class Claim {
         PUBLIC_INVITE("Anyone can interact with blocks such as doors", false),
         SHOW_BORDERS("Show claim borders as you enter or leave", true),
         // Admin only
-        HIDDEN("Claim is hidden", false);
+        HIDDEN("Hide this claim", false);
 
         final String key;
         final String displayName;

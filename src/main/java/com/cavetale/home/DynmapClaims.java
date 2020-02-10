@@ -29,7 +29,6 @@ final class DynmapClaims {
         markerSet.setLayerPriority(10);
         markerSet.setHideByDefault(false);
         for (Claim claim : plugin.getClaims()) {
-            if (claim.getBoolSetting(Claim.Setting.HIDDEN)) continue;
             double[] x = new double[4];
             double[] z = new double[4];
             x[1] = (double) claim.getArea().ax;
@@ -43,9 +42,16 @@ final class DynmapClaims {
             z[1] = z[2];
             AreaMarker marker = markerSet.findAreaMarker("" + claim.getId());
             if (marker == null) {
+                if (claim.getBoolSetting(Claim.Setting.HIDDEN)) {
+                    continue;
+                }
                 marker = markerSet.createAreaMarker("" + claim.getId(), claim.getOwnerName(),
                                                     false, claim.getWorld(), x, z, false);
             } else {
+                if (claim.getBoolSetting(Claim.Setting.HIDDEN)) {
+                    marker.deleteMarker();
+                    continue;
+                }
                 marker.setCornerLocations(x, z);
             }
             marker.setBoostFlag(true);

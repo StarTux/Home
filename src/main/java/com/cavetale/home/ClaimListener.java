@@ -50,6 +50,7 @@ import org.bukkit.event.player.PlayerInteractAtEntityEvent;
 import org.bukkit.event.player.PlayerInteractEntityEvent;
 import org.bukkit.event.player.PlayerInteractEvent;
 import org.bukkit.event.player.PlayerShearEntityEvent;
+import org.bukkit.event.player.PlayerTakeLecternBookEvent;
 import org.bukkit.event.server.PluginDisableEvent;
 import org.bukkit.event.server.PluginEnableEvent;
 import org.bukkit.event.vehicle.VehicleCreateEvent;
@@ -584,5 +585,13 @@ final class ClaimListener implements Listener {
         if (event.getPlugin().getName().equals("dynmap")) {
             plugin.disableDynmap();
         }
+    }
+
+    @EventHandler
+    public void onPlayerTakeLecternBook(PlayerTakeLecternBookEvent event) {
+        Player player = event.getPlayer();
+        Block block = event.getLectern().getBlock();
+        if (block == null) return; // says @NotNull
+        checkPlayerAction(player, block, Action.BUILD, event);
     }
 }

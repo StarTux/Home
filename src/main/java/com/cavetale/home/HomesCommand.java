@@ -19,7 +19,7 @@ public final class HomesCommand extends PlayerCommand {
     private final HomePlugin plugin;
 
     @Override
-    public boolean onCommand(Player player, String[] args) throws CommandException {
+    public boolean onCommand(Player player, String[] args) throws Wrong {
         if (args.length == 1 && args[0].equals("help")) return false;
         final UUID playerId = player.getUniqueId();
         if (args.length == 0) return printHomesInfo(player);
@@ -37,17 +37,17 @@ public final class HomesCommand extends PlayerCommand {
             if (args.length != 2 && args.length != 3) return printHomesInfo(player);
             final String targetName = args[1];
             UUID target = GenericEvents.cachedPlayerUuid(targetName);
-            if (target == null) throw new CommandException("Player not found: " + targetName + "!");
+            if (target == null) throw new Wrong("Player not found: " + targetName + "!");
             Home home;
             if (args.length >= 3) {
                 String arg = args[2];
                 home = plugin.findHome(player.getUniqueId(), arg);
-                if (home == null) throw new CommandException("Home not found: " + arg + "!");
+                if (home == null) throw new Wrong("Home not found: " + arg + "!");
             } else {
                 home = plugin.findHome(player.getUniqueId(), null);
-                if (home == null) throw new CommandException("Default home not set.");
+                if (home == null) throw new Wrong("Default home not set.");
             }
-            if (!home.invites.contains(target)) throw new CommandException("Player not invited.");
+            if (!home.invites.contains(target)) throw new Wrong("Player not invited.");
             plugin.getDb().find(HomeInvite.class).eq("home_id", home.getId()).eq("invitee", target).deleteAsync(null);
             home.getInvites().remove(target);
             player.sendMessage(ChatColor.GREEN + targetName + " uninvited.");
@@ -57,11 +57,11 @@ public final class HomesCommand extends PlayerCommand {
             if (args.length == 2 || args.length == 3) {
                 String homeName = args[1];
                 Home home = plugin.findHome(playerId, homeName);
-                if (home == null) throw new CommandException("Home not found: " + homeName);
-                if (home.getPublicName() != null) throw new CommandException("Home is already public under the alias \"" + home.getPublicName() + "\"");
+                if (home == null) throw new Wrong("Home not found: " + homeName);
+                if (home.getPublicName() != null) throw new Wrong("Home is already public under the alias \"" + home.getPublicName() + "\"");
                 String publicName = args.length >= 3 ? args[2] : home.getName();
-                if (publicName == null) throw new CommandException("Please supply a public name for this home");
-                if (plugin.findPublicHome(publicName) != null) throw new CommandException("A public home by that name already exists. Please supply a different alias.");
+                if (publicName == null) throw new Wrong("Please supply a public name for this home");
+                if (plugin.findPublicHome(publicName) != null) throw new Wrong("A public home by that name already exists. Please supply a different alias.");
                 home.setPublicName(publicName);
                 plugin.getDb().saveAsync(home, null, "public_name");
                 String cmd = "/visit " + publicName;
@@ -80,9 +80,9 @@ public final class HomesCommand extends PlayerCommand {
                 Home home = plugin.findHome(playerId, homeName);
                 if (home == null) {
                     if (homeName == null) {
-                        throw new CommandException("Your primary home is not set");
+                        throw new Wrong("Your primary home is not set");
                     } else {
-                        throw new CommandException("You do not have a home named \"" + homeName + "\"");
+                        throw new Wrong("You do not have a home named \"" + homeName + "\"");
                     }
                 }
                 plugin.getDb().find(HomeInvite.class).eq("home_id", home.getId()).delete();
@@ -104,7 +104,7 @@ public final class HomesCommand extends PlayerCommand {
                 } else {
                     home = plugin.findHome(playerId, args[1]);
                 }
-                if (home == null) throw new CommandException("Home not found.");
+                if (home == null) throw new Wrong("Home not found.");
                 player.sendMessage("");
                 if (home.getName() == null) {
                     player.spigot().sendMessage(frame(new ComponentBuilder(""), "Primary Home Info").create());

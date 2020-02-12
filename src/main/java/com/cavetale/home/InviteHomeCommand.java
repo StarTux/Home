@@ -17,7 +17,7 @@ public final class InviteHomeCommand extends PlayerCommand {
     private final HomePlugin plugin;
 
     @Override
-    public boolean onCommand(Player player, String[] args) throws CommandException {
+    public boolean onCommand(Player player, String[] args) throws Wrong {
         if (args.length < 1 || args.length > 2) return false;
         if (args.length == 1 && args[0].equals("help")) return false;
         final UUID playerId = player.getUniqueId();

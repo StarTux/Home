@@ -15,7 +15,7 @@ public final class HomeCommand extends PlayerCommand {
     private final HomePlugin plugin;
 
     @Override
-    public boolean onCommand(Player player, String[] args) throws CommandException {
+    public boolean onCommand(Player player, String[] args) throws Wrong {
         if (args.length == 1 && args[0].equals("help")) return false;
         UUID playerId = player.getUniqueId();
         if (args.length == 0) {
@@ -25,10 +25,10 @@ public final class HomeCommand extends PlayerCommand {
                 Location location = home.createLocation();
                 Claim claim = plugin.getClaimAt(location);
                 if (claim != null && !claim.canVisit(playerId)) {
-                    throw new CommandException("This home is not claimed by you.");
+                    throw new Wrong("This home is not claimed by you.");
                 }
                 if (location == null) {
-                    throw new CommandException("Primary home could not be found.");
+                    throw new Wrong("Primary home could not be found.");
                 }
                 player.teleport(location);
                 player.sendMessage(ChatColor.GREEN + "Welcome home :)");
@@ -83,25 +83,25 @@ public final class HomeCommand extends PlayerCommand {
                 String[] toks = arg.split(":", 2);
                 UUID targetId = GenericEvents.cachedPlayerUuid(toks[0]);
                 if (targetId == null) {
-                    throw new CommandException("Player not found: " + toks[0]);
+                    throw new Wrong("Player not found: " + toks[0]);
                 }
                 home = plugin.findHome(targetId, toks[1].isEmpty() ? null : toks[1]);
                 if (home == null) {
-                    throw new CommandException("Home not found.");
+                    throw new Wrong("Home not found.");
                 }
                 if (!player.hasMetadata(plugin.META_IGNORE)
                     && !home.isInvited(player.getUniqueId())) {
-                    throw new CommandException("Home not found.");
+                    throw new Wrong("Home not found.");
                 }
             } else {
                 home = plugin.findHome(player.getUniqueId(), arg);
             }
             if (home == null) {
-                throw new CommandException("Home not found: " + arg);
+                throw new Wrong("Home not found: " + arg);
             }
             Location location = home.createLocation();
             if (location == null) {
-                throw new CommandException("Home \"%s\" could not be found.");
+                throw new Wrong("Home \"%s\" could not be found.");
             }
             player.sendMessage(ChatColor.GREEN + "Going home.");
             player.sendTitle("", ChatColor.GREEN + "Going home.", 10, 60, 10);

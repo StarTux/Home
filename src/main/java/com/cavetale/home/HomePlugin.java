@@ -185,14 +185,14 @@ public final class HomePlugin extends JavaPlugin {
 
     // --- Player interactivity
 
-    void findPlaceToBuild(Player player) throws PlayerCommand.CommandException {
+    void findPlaceToBuild(Player player) throws PlayerCommand.Wrong {
         // Determine center and border
         String worldName = primaryHomeWorld; // Set up for future expansion
         World bworld = getServer().getWorld(worldName);
         if (bworld == null) {
             getLogger().warning("Home world not found: " + worldName);
             throw new PlayerCommand
-                .CommandException("Something went wrong. Please contact an administrator.");
+                .Wrong("Something went wrong. Please contact an administrator.");
         }
         WildTask wildTask = new WildTask(this, bworld, player);
         wildTask.withCooldown();

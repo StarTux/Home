@@ -16,8 +16,8 @@ import org.bukkit.entity.Player;
 
 abstract class PlayerCommand implements TabExecutor {
 
-    static final class CommandException extends Exception {
-        CommandException(final String msg) {
+    static final class Wrong extends Exception {
+        Wrong(final String msg) {
             super(msg);
         }
     }
@@ -31,13 +31,13 @@ abstract class PlayerCommand implements TabExecutor {
         Player player = (Player) sender;
         try {
             if (!onCommand(player, args)) commandHelp(player);
-        } catch (CommandException e) {
+        } catch (Wrong e) {
             player.sendMessage(ChatColor.RED + e.getMessage());
         }
         return true;
     }
 
-    abstract boolean onCommand(Player player, String[] args) throws CommandException;
+    abstract boolean onCommand(Player player, String[] args) throws Wrong;
 
     abstract void commandHelp(Player player);
 
@@ -56,8 +56,8 @@ abstract class PlayerCommand implements TabExecutor {
         return opt.filter(o -> o.startsWith(arg)).collect(Collectors.toList());
     }
 
-    protected void fail(String msg) throws CommandException {
-        throw new CommandException(msg);
+    protected void fail(String msg) throws Wrong {
+        throw new Wrong(msg);
     }
 
     protected ComponentBuilder frame(ComponentBuilder cb, String text) {

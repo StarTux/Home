@@ -16,7 +16,7 @@ public final class VisitCommand extends PlayerCommand {
     private final HomePlugin plugin;
 
     @Override
-    public boolean onCommand(Player player, String[] args) throws CommandException {
+    public boolean onCommand(Player player, String[] args) throws Wrong {
         if (args.length == 1 && args[0].equals("help")) return false;
         if (args.length == 0) {
             List<Home> publicHomes = plugin.getHomes().stream().filter(h -> h.getPublicName() != null).collect(Collectors.toList());
@@ -41,11 +41,11 @@ public final class VisitCommand extends PlayerCommand {
         }
         Home home = plugin.findPublicHome(args[0]);
         if (home == null) {
-            throw new CommandException("Public home not found: " + args[0]);
+            throw new Wrong("Public home not found: " + args[0]);
         }
         Location location = home.createLocation();
         if (location == null) {
-            throw new CommandException("Could not take you to this home.");
+            throw new Wrong("Could not take you to this home.");
         }
         player.teleport(location);
         player.sendMessage(ChatColor.GREEN + "Teleported to " + home.getOwnerName() + "'s public home \"" + home.getPublicName() + "\"");

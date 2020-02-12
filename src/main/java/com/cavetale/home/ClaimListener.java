@@ -98,7 +98,7 @@ final class ClaimListener implements Listener {
         if (claim.canBuild(player)) return true;
         if (claim.getBoolSetting(Claim.Setting.PUBLIC)) return true;
         // Visitors may interact and do combat.
-        if (claim.canVisit(player) || claim.getBoolSetting(Claim.Setting.PUBLIC_INVITE)) {
+        if (claim.canVisit(player)) {
             switch (action) {
             case COMBAT:
             case INTERACT:

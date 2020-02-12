@@ -12,16 +12,16 @@ public final class SetHomeCommand extends PlayerCommand {
     private final HomePlugin plugin;
 
     @Override
-    public boolean onCommand(Player player, String[] args) throws CommandException {
+    public boolean onCommand(Player player, String[] args) throws Wrong {
         if (args.length > 1) return false;
         if (args.length == 1 && args[0].equals("help")) return false;
         UUID playerId = player.getUniqueId();
         if (!plugin.isHomeWorld(player.getWorld())) {
-            throw new CommandException("You cannot set homes in this world");
+            throw new Wrong("You cannot set homes in this world");
         }
         Claim claim = plugin.getClaimAt(player.getLocation().getBlock());
         if (claim != null && !claim.canBuild(playerId)) {
-            throw new CommandException("You cannot set homes in this claim");
+            throw new Wrong("You cannot set homes in this claim");
         }
         String playerWorld = player.getWorld().getName();
         int playerX = player.getLocation().getBlockX();
@@ -34,9 +34,9 @@ public final class SetHomeCommand extends PlayerCommand {
                 && Math.abs(playerX - (int) home.getX()) < settings.homeMargin
                 && Math.abs(playerZ - (int) home.getZ()) < settings.homeMargin) {
                 if (home.getName() == null) {
-                    throw new CommandException("Your primary home is nearby");
+                    throw new Wrong("Your primary home is nearby");
                 } else {
-                    throw new CommandException("You have a home named \""
+                    throw new Wrong("You have a home named \""
                                                + home.getName() + "\" nearby");
                 }
             }

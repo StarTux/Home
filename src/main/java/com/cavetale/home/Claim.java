@@ -181,6 +181,7 @@ final class Claim {
 
     boolean canVisit(Player player) {
         if (plugin.doesIgnoreClaims(player)) return true;
+        if (getBoolSetting(Setting.PUBLIC_INVITE)) return true;
         if (isAdminClaim() && isAdmin(player)) return true;
         return canVisit(player.getUniqueId());
     }
@@ -206,5 +207,9 @@ final class Claim {
         String lwn = location.getWorld().getName();
         if (!world.equals(lwn) && !world.equals(plugin.getMirrorWorlds().get(lwn))) return false;
         return area.contains(location.getBlockX(), location.getBlockZ());
+    }
+
+    boolean isHidden() {
+        return getBoolSetting(Setting.HIDDEN);
     }
 }

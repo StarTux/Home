@@ -187,13 +187,14 @@ public final class ClaimCommand extends PlayerCommand {
             }
             claim = plugin.findClaimWithId(claimId);
             if (claim == null) return true;
+            if (!claim.isOwner(player) && claim.isHidden()) return true;
+            if (!claim.canVisit(player)) return true;
         } else {
             claim = plugin.findPrimaryClaim(player.getUniqueId());
             if (claim == null) {
                 throw new Wrong("You don't have a claim yet.");
             }
         }
-        if (!claim.canVisit(player)) return true;
         World world = plugin.getServer().getWorld(claim.getWorld());
         if (world == null) return true;
         int x = (claim.getArea().ax + claim.getArea().bx) / 2;

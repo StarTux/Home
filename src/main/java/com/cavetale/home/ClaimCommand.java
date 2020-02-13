@@ -1,6 +1,7 @@
 package com.cavetale.home;
 
 import com.winthier.generic_events.GenericEvents;
+import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
@@ -51,9 +52,7 @@ public final class ClaimCommand extends PlayerCommand {
         switch (args[0]) {
         case "info": return infoCommand(player, args);
         case "new": return newCommand(player, args);
-        case "list":
-            listClaims(player);
-            return true;
+        case "list": return listCommand(player, args);
         case "port": return portCommand(player, args);
         case "buy": return buyCommand(player, args);
         case "confirm": return confirmCommand(player, args);
@@ -93,7 +92,7 @@ public final class ClaimCommand extends PlayerCommand {
         return true;
     }
 
-    public boolean newCommand(Player player, String[] args) throws Wrong {
+    private boolean newCommand(Player player, String[] args) throws Wrong {
         if (args.length != 1) return false;
         boolean isHomeWorld = false;
         boolean isHomeEndWorld = false;
@@ -737,12 +736,6 @@ public final class ClaimCommand extends PlayerCommand {
             txt = TextComponent.fromLegacyText(buttonColor + "Teleport to this claim.");
             cb.event(new HoverEvent(HoverEvent.Action.SHOW_TEXT, txt));
         }
-        cb.append("  ").append("[List]").color(buttonColor);
-        cb.event(new ClickEvent(ClickEvent.Action.RUN_COMMAND, "/claim list"));
-        txt = TextComponent
-            .fromLegacyText(buttonColor + "/claim list\n"
-                            + ChatColor.WHITE + ChatColor.ITALIC + "List all your claims.");
-        cb.event(new HoverEvent(HoverEvent.Action.SHOW_TEXT, txt));
         if (claim.isOwner(player)) {
             cb.append("  ").append("[Abandon]").color(ChatColor.DARK_RED);
             cb.event(new ClickEvent(ClickEvent.Action.RUN_COMMAND, "/claim abandon"));
@@ -815,13 +808,14 @@ public final class ClaimCommand extends PlayerCommand {
         plugin.highlightClaim(claim, player);
     }
 
-    public void listClaims(Player player) throws Wrong {
+    private boolean listCommand(Player player, String[] args) throws Wrong {
+        if (args.length != 1) return false;
         UUID playerId = player.getUniqueId();
         player.sendMessage("");
         ComponentBuilder cb = new ComponentBuilder("");
         frame(cb, "Claim List");
         player.spigot().sendMessage(cb.create());
-        List<Claim> playerClaims = plugin.findClaims(playerId);
+        List<Claim> playerClaims = plugin.findClaims(player);
         int ci = 0;
         if (playerClaims.isEmpty()) {
             throw new Wrong("You don't have any claims of your own.");
@@ -841,7 +835,7 @@ public final class ClaimCommand extends PlayerCommand {
             }
             player.spigot().sendMessage(cb.create());
         }
-        playerClaims.clear();
+        playerClaims = new ArrayList<>();
         for (Claim claim : plugin.getClaims()) {
             if (!claim.isOwner(player) && !claim.isHidden() && claim.canVisit(player)) {
                 playerClaims.add(claim);
@@ -875,9 +869,10 @@ public final class ClaimCommand extends PlayerCommand {
             player.spigot().sendMessage(cb.create());
         }
         player.sendMessage("");
+        return true;
     }
 
-    public void showClaimSettings(Claim claim, Player player) {
+    private void showClaimSettings(Claim claim, Player player) {
         player.sendMessage("");
         BaseComponent[] txt;
         ComponentBuilder cb = new ComponentBuilder("");

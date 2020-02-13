@@ -418,6 +418,10 @@ public final class HomePlugin extends JavaPlugin {
         return claims.stream().filter(c -> c.isOwner(owner)).collect(Collectors.toList());
     }
 
+    public List<Claim> findClaims(Player player) {
+        return claims.stream().filter(c -> c.isOwner(player)).collect(Collectors.toList());
+    }
+
     public List<Claim> findClaimsInWorld(UUID owner, String w) {
         final String world = mirrorWorlds.containsKey(w) ? mirrorWorlds.get(w) : w;
         return claims.stream()

@@ -11,6 +11,7 @@ import org.bukkit.SoundCategory;
 import org.bukkit.block.Block;
 import org.bukkit.block.BlockState;
 import org.bukkit.block.DoubleChest;
+import org.bukkit.block.Lectern;
 import org.bukkit.entity.AnimalTamer;
 import org.bukkit.entity.Entity;
 import org.bukkit.entity.EntityType;
@@ -511,6 +512,10 @@ final class ClaimListener implements Listener {
             if (isOwner(player, (Entity) holder)) return;
             Block block = ((Entity) holder).getLocation().getBlock();
             checkPlayerAction(player, block, Action.BUILD, event);
+        } else if (holder instanceof Lectern) {
+            Block block = ((Lectern) holder).getBlock();
+            if (block == null) return; // @NotNull
+            checkPlayerAction(player, block, Action.INTERACT, event);
         } else if (holder instanceof BlockState) {
             Block block = ((BlockState) holder).getBlock();
             checkPlayerAction(player, block, Action.BUILD, event);

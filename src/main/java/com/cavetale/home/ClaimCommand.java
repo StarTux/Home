@@ -389,7 +389,7 @@ public final class ClaimCommand extends PlayerCommand {
         }
         ClaimTrust ct = new ClaimTrust(claim, ClaimTrust.Type.VISIT, targetId);
         plugin.getDb().insertAsync(ct, null);
-        claim.getMembers().add(targetId);
+        claim.getVisitors().add(targetId);
         player.sendMessage(ChatColor.GREEN + "Player invited: " + targetName + ".");
         return true;
     }

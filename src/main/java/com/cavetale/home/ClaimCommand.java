@@ -822,7 +822,6 @@ public final class ClaimCommand extends PlayerCommand {
         frame(cb, "Claim List");
         player.spigot().sendMessage(cb.create());
         List<Claim> playerClaims = plugin.findClaims(playerId);
-        ChatColor[] colors = {ChatColor.BLUE, ChatColor.GREEN, ChatColor.GOLD, ChatColor.AQUA};
         int ci = 0;
         if (playerClaims.isEmpty()) {
             throw new Wrong("You don't have any claims of your own.");
@@ -831,13 +830,12 @@ public final class ClaimCommand extends PlayerCommand {
             cb.append("Owned").color(ChatColor.GRAY);
             for (Claim claim : playerClaims) {
                 cb.append("  ");
-                ci = (ci + 1) % colors.length;
-                ChatColor color = colors[ci];
-                cb.append("[" + plugin.worldDisplayName(claim.getWorld()) + "]").color(color);
+                cb.append("[" + plugin.worldDisplayName(claim.getWorld()) + "]")
+                    .color(ChatColor.BLUE);
                 cb.event(new ClickEvent(ClickEvent.Action.RUN_COMMAND,
                                         "/claim info " + claim.getId()));
                 BaseComponent[] txt = TextComponent
-                    .fromLegacyText(color + "Your claim in "
+                    .fromLegacyText(ChatColor.BLUE + "Your claim in "
                                     + plugin.worldDisplayName(claim.getWorld()));
                 cb.event(new HoverEvent(HoverEvent.Action.SHOW_TEXT, txt));
             }
@@ -854,13 +852,12 @@ public final class ClaimCommand extends PlayerCommand {
             cb.append("Invited").color(ChatColor.GRAY);
             for (Claim claim : playerClaims) {
                 cb.append("  ");
-                ci = (ci + 1) % colors.length;
-                ChatColor color = colors[ci];
-                cb.append("[" + claim.getOwnerName() + "]").color(color);
+                cb.append("[" + claim.getOwnerName() + "]").color(ChatColor.GREEN);
                 cb.event(new ClickEvent(ClickEvent.Action.RUN_COMMAND,
                                         "/claim info " + claim.getId()));
                 BaseComponent[] txt = TextComponent
-                    .fromLegacyText(color + claim.getOwnerName() + " invited you to this claim.");
+                    .fromLegacyText(ChatColor.GREEN + claim.getOwnerName()
+                                    + " invited you to this claim.");
                 cb.event(new HoverEvent(HoverEvent.Action.SHOW_TEXT, txt));
             }
             player.spigot().sendMessage(cb.create());

@@ -1,7 +1,7 @@
 <project>
   <modelVersion>4.0.0</modelVersion>
 
-  <groupId>com.winthier.home</groupId>
+  <groupId>com.cavetale.home</groupId>
   <artifactId>home</artifactId>
   <packaging>jar</packaging>
   <version>0.1-SNAPSHOT</version>

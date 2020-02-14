@@ -57,7 +57,7 @@ public final class Home {
         this.yaw = (double) location.getYaw();
     }
 
-    Location createLocation() {
+    public Location createLocation() {
         World bw = Bukkit.getServer().getWorld(world);
         if (bw == null) return null;
         return new Location(bw, x, y, z, (float) yaw, (float) pitch);
@@ -82,7 +82,7 @@ public final class Home {
         return name.equals(homeName);
     }
 
-    String getOwnerName() {
+    public String getOwnerName() {
         if (owner == null) return "N/A";
         String result = GenericEvents.cachedPlayerName(owner);
         if (result != null) return result;

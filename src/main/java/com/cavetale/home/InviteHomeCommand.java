@@ -6,6 +6,7 @@ import java.util.List;
 import java.util.UUID;
 import lombok.RequiredArgsConstructor;
 import net.md_5.bungee.api.ChatColor;
+import net.md_5.bungee.api.chat.BaseComponent;
 import net.md_5.bungee.api.chat.ClickEvent;
 import net.md_5.bungee.api.chat.ComponentBuilder;
 import net.md_5.bungee.api.chat.HoverEvent;
@@ -43,19 +44,29 @@ public final class InviteHomeCommand extends PlayerCommand {
         if (target != null) {
             if (home.getName() == null) {
                 String cmd = "/home " + player.getName() + ":";
-                ComponentBuilder cb = new ComponentBuilder("")
-                    .append(player.getName() + " invited you to their primary home: ").color(ChatColor.WHITE)
-                    .append("[Visit]").color(ChatColor.GREEN)
-                    .event(new ClickEvent(ClickEvent.Action.RUN_COMMAND, cmd))
-                    .event(new HoverEvent(HoverEvent.Action.SHOW_TEXT, TextComponent.fromLegacyText(ChatColor.GREEN + cmd + "\n" + ChatColor.WHITE + ChatColor.ITALIC + "Visit this home")));
+                ComponentBuilder cb = new ComponentBuilder("");
+                cb.append(player.getName() + " invited you to their primary home: ")
+                    .color(ChatColor.WHITE);
+                cb.append("[Visit]").color(ChatColor.GREEN);
+                cb.event(new ClickEvent(ClickEvent.Action.RUN_COMMAND, cmd));
+                BaseComponent[] txt = TextComponent
+                    .fromLegacyText(ChatColor.GREEN + cmd + "\n"
+                                    + ChatColor.WHITE + ChatColor.ITALIC
+                                    + "Visit this home");
+                cb.event(new HoverEvent(HoverEvent.Action.SHOW_TEXT, txt));
                 target.spigot().sendMessage(cb.create());
             } else {
                 String cmd = "/home " + player.getName() + ":" + home.getName();
-                ComponentBuilder cb = new ComponentBuilder("")
-                    .append(player.getName() + " invited you to their home: ").color(ChatColor.WHITE)
-                    .append("[" + home.getName() + "]").color(ChatColor.GREEN)
-                    .event(new ClickEvent(ClickEvent.Action.RUN_COMMAND, cmd))
-                    .event(new HoverEvent(HoverEvent.Action.SHOW_TEXT, TextComponent.fromLegacyText(ChatColor.GREEN + cmd + "\n" + ChatColor.WHITE + ChatColor.ITALIC + "Visit this home")));
+                ComponentBuilder cb = new ComponentBuilder("");
+                cb.append(player.getName() + " invited you to their home: ")
+                    .color(ChatColor.WHITE);
+                cb.append("[" + home.getName() + "]").color(ChatColor.GREEN);
+                cb.event(new ClickEvent(ClickEvent.Action.RUN_COMMAND, cmd));
+                BaseComponent[] txt = TextComponent
+                    .fromLegacyText(ChatColor.GREEN + cmd + "\n"
+                                    + ChatColor.WHITE + ChatColor.ITALIC
+                                    + "Visit this home");
+                cb.event(new HoverEvent(HoverEvent.Action.SHOW_TEXT, txt));
                 target.spigot().sendMessage(cb.create());
             }
         }
@@ -69,7 +80,9 @@ public final class InviteHomeCommand extends PlayerCommand {
 
     @Override
     public void commandHelp(Player player) {
-        commandHelp(player, "/invitehome", new String[]{"<player>"}, "Invite to primary home.");
-        commandHelp(player, "/invitehome", new String[]{"<player>", "<name>"}, "Invite to named home.");
+        commandHelp(player, "/invitehome", new String[]{"<player>"},
+                    "Invite to primary home.");
+        commandHelp(player, "/invitehome", new String[]{"<player>", "<name>"},
+                    "Invite to named home.");
     }
 }

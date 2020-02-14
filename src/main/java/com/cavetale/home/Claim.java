@@ -73,7 +73,7 @@ final class Claim {
         }
 
         boolean isAdminOnly() {
-            switch(this) {
+            switch (this) {
             case HIDDEN:
             case ELYTRA:
             case ENDER_PEARL:

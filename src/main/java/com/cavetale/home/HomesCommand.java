@@ -115,7 +115,12 @@ public final class HomesCommand extends PlayerCommand {
                 for (UUID inviteId : home.getInvites()) {
                     sb.append(" ").append(GenericEvents.cachedPlayerName(inviteId));
                 }
-                player.sendMessage(ChatColor.GRAY + " Location: " + ChatColor.WHITE + String.format("%s %d,%d,%d", plugin.worldDisplayName(home.getWorld()), (int)Math.floor(home.getX()), (int)Math.floor(home.getY()), (int)Math.floor(home.getZ())));
+                player.sendMessage(ChatColor.GRAY + " Location: " + ChatColor.WHITE
+                                   + String.format("%s %d,%d,%d",
+                                                   plugin.worldDisplayName(home.getWorld()),
+                                                   (int) Math.floor(home.getX()),
+                                                   (int) Math.floor(home.getY()),
+                                                   (int) Math.floor(home.getZ())));
                 ComponentBuilder cb = new ComponentBuilder("");
                 cb.append(" Invited: " + home.getInvites().size()).color(ChatColor.GRAY);
                 for (UUID invitee : home.getInvites()) {
@@ -186,7 +191,9 @@ public final class HomesCommand extends PlayerCommand {
             if (home.getPublicName() != null) cb.append(" public").reset().color(ChatColor.AQUA);
             player.spigot().sendMessage(cb.create());
         }
-        int homeInvites = (int)plugin.getHomes().stream().filter(h -> h.isInvited(playerId)).count();
+        int homeInvites = (int) plugin.getHomes().stream()
+            .filter(h -> h.isInvited(playerId))
+            .count();
         if (homeInvites > 0) {
             ComponentBuilder cb = new ComponentBuilder(" ");
             if (homeInvites == 1) {

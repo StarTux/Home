@@ -4,6 +4,7 @@ import java.util.List;
 import java.util.stream.Collectors;
 import lombok.RequiredArgsConstructor;
 import net.md_5.bungee.api.ChatColor;
+import net.md_5.bungee.api.chat.BaseComponent;
 import net.md_5.bungee.api.chat.ClickEvent;
 import net.md_5.bungee.api.chat.ComponentBuilder;
 import net.md_5.bungee.api.chat.HoverEvent;
@@ -18,22 +19,32 @@ public final class VisitCommand extends PlayerCommand {
     @Override
     public boolean onCommand(Player player, String[] args) throws Wrong {
         if (args.length == 1 && args[0].equals("help")) return false;
+        ComponentBuilder cb;
+        BaseComponent[] txt;
         if (args.length == 0) {
-            List<Home> publicHomes = plugin.getHomes().stream().filter(h -> h.getPublicName() != null).collect(Collectors.toList());
+            List<Home> publicHomes = plugin.getHomes().stream()
+                .filter(h -> h.getPublicName() != null)
+                .collect(Collectors.toList());
             player.sendMessage("");
             if (publicHomes.size() == 1) {
-                player.spigot().sendMessage(frame(new ComponentBuilder(""), "One public home").create());
+                cb = frame(new ComponentBuilder(""), "One public home");
+                player.spigot().sendMessage(cb.create());
             } else {
-                player.spigot().sendMessage(frame(new ComponentBuilder(""), publicHomes.size() + " public homes").create());
+                cb = frame(new ComponentBuilder(""), publicHomes.size() + " public homes");
+                player.spigot().sendMessage(cb.create());
             }
             for (Home home : publicHomes) {
                 String cmd = "/visit " + home.getPublicName();
-                ComponentBuilder cb = new ComponentBuilder("")
-                    .append(" + ").color(ChatColor.AQUA)
-                    .append(home.getPublicName()).color(ChatColor.WHITE)
-                    .event(new ClickEvent(ClickEvent.Action.RUN_COMMAND, cmd))
-                    .event(new HoverEvent(HoverEvent.Action.SHOW_TEXT, TextComponent.fromLegacyText(ChatColor.BLUE + cmd + "\n" + ChatColor.WHITE + ChatColor.ITALIC + "Visit this home")))
-                    .append(" by " + home.getOwnerName()).color(ChatColor.GRAY);
+                cb = new ComponentBuilder("");
+                cb.append(" + ").color(ChatColor.AQUA);
+                cb.append(home.getPublicName()).color(ChatColor.WHITE);
+                cb.event(new ClickEvent(ClickEvent.Action.RUN_COMMAND, cmd));
+                txt = TextComponent
+                    .fromLegacyText(ChatColor.BLUE + cmd + "\n"
+                                    + ChatColor.WHITE + ChatColor.ITALIC
+                                    + "Visit this home");
+                cb.event(new HoverEvent(HoverEvent.Action.SHOW_TEXT, txt));
+                cb.append(" by " + home.getOwnerName()).color(ChatColor.GRAY);
                 player.spigot().sendMessage(cb.create());
             }
             player.sendMessage("");
@@ -48,7 +59,9 @@ public final class VisitCommand extends PlayerCommand {
             throw new Wrong("Could not take you to this home.");
         }
         player.teleport(location);
-        player.sendMessage(ChatColor.GREEN + "Teleported to " + home.getOwnerName() + "'s public home \"" + home.getPublicName() + "\"");
+        player.sendMessage(ChatColor.GREEN + "Teleported to "
+                           + home.getOwnerName() + "'s public home \""
+                           + home.getPublicName() + "\"");
         return true;
     }
 
@@ -57,7 +70,10 @@ public final class VisitCommand extends PlayerCommand {
         String arg = args.length == 0 ? "" : args[args.length - 1];
         String cmd = args.length == 0 ? "" : args[0];
         if (args.length == 1) {
-            return plugin.getHomes().stream().filter(h -> h.getPublicName() != null && h.getPublicName().startsWith(arg)).map(Home::getPublicName).collect(Collectors.toList());
+            return plugin.getHomes().stream()
+                .filter(h -> h.getPublicName() != null
+                        && h.getPublicName().startsWith(arg))
+                .map(Home::getPublicName).collect(Collectors.toList());
         }
         return null;
     }

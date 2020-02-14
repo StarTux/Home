@@ -452,6 +452,9 @@ public final class ClaimCommand extends PlayerCommand {
             } catch (IllegalArgumentException iae) {
                 throw new Wrong("Unknown claim setting: " + args[1]);
             }
+            if (setting.isAdminOnly() && !isAdmin(player)) {
+                throw new Wrong("Unknown claim setting: " + args[1]);
+            }
             Object value;
             switch (args[2]) {
             case "on": case "true": case "enabled": value = true; break;

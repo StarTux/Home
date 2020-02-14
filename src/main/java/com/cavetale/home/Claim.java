@@ -57,7 +57,10 @@ final class Claim {
         PUBLIC_INVITE("Anyone can interact with blocks such as doors", false),
         SHOW_BORDERS("Show claim borders as you enter or leave", true),
         // Admin only
-        HIDDEN("Hide this claim", false);
+        HIDDEN("Hide this claim", false),
+        ELYTRA("Allow elytra flight", true),
+        ENDER_PEARL("Allow ender pearls", true),
+        MOB_SPAWNING("Allow mob spawning", true);
 
         final String key;
         final String displayName;
@@ -70,7 +73,15 @@ final class Claim {
         }
 
         boolean isAdminOnly() {
-            return this == HIDDEN;
+            switch(this) {
+            case HIDDEN:
+            case ELYTRA:
+            case ENDER_PEARL:
+            case MOB_SPAWNING:
+                return true;
+            default:
+                return false;
+            }
         }
     }
 

@@ -39,6 +39,7 @@ import org.bukkit.event.entity.EntityChangeBlockEvent;
 import org.bukkit.event.entity.EntityCombustByEntityEvent;
 import org.bukkit.event.entity.EntityDamageByEntityEvent;
 import org.bukkit.event.entity.EntityExplodeEvent;
+import org.bukkit.event.entity.EntityToggleGlideEvent;
 import org.bukkit.event.entity.PlayerLeashEntityEvent;
 import org.bukkit.event.hanging.HangingBreakByEntityEvent;
 import org.bukkit.event.hanging.HangingBreakEvent;
@@ -52,6 +53,7 @@ import org.bukkit.event.player.PlayerInteractEntityEvent;
 import org.bukkit.event.player.PlayerInteractEvent;
 import org.bukkit.event.player.PlayerShearEntityEvent;
 import org.bukkit.event.player.PlayerTakeLecternBookEvent;
+import org.bukkit.event.player.PlayerTeleportEvent;
 import org.bukkit.event.server.PluginDisableEvent;
 import org.bukkit.event.server.PluginEnableEvent;
 import org.bukkit.event.vehicle.VehicleCreateEvent;
@@ -568,12 +570,18 @@ final class ClaimListener implements Listener {
     @EventHandler(ignoreCancelled = true, priority = EventPriority.LOWEST)
     public void onCreatureSpawn(CreatureSpawnEvent event) {
         if (!plugin.isHomeWorld(event.getEntity().getLocation().getWorld())) return;
-        if (event.getEntity().getType() == EntityType.PHANTOM
+        LivingEntity entity = event.getEntity();
+        if (entity.getType() == EntityType.PHANTOM
             && event.getSpawnReason() != CreatureSpawnEvent.SpawnReason.CUSTOM) {
             event.setCancelled(true);
         }
-        if (event.getEntity().getType() == EntityType.WITHER
+        if (entity.getType() == EntityType.WITHER
             && event.getSpawnReason() != CreatureSpawnEvent.SpawnReason.CUSTOM) {
+            event.setCancelled(true);
+        }
+        Claim claim = plugin.getClaimAt(entity.getLocation());
+        if (claim == null) return;
+        if (!claim.getBoolSetting(Claim.Setting.MOB_SPAWNING)) {
             event.setCancelled(true);
         }
     }
@@ -598,5 +606,32 @@ final class ClaimListener implements Listener {
         Block block = event.getLectern().getBlock();
         if (block == null) return; // says @NotNull
         checkPlayerAction(player, block, Action.BUILD, event);
+    }
+
+    @EventHandler(ignoreCancelled = true)
+    void onPlayerTeleport(PlayerTeleportEvent event) {
+        if (event.getCause() != PlayerTeleportEvent.TeleportCause.ENDER_PEARL) {
+            return;
+        }
+        Player player = event.getPlayer();
+        Claim claim = plugin.getClaimAt(player.getLocation());
+        if (claim == null) return;
+        if (!claim.getBoolSetting(Claim.Setting.ENDER_PEARL)) {
+            event.setCancelled(true);
+        }
+    }
+
+    @EventHandler(ignoreCancelled = true)
+    void onEntityToggleGlide(EntityToggleGlideEvent event) {
+        if (!(event.getEntity() instanceof Player)) return;
+        Player player = (Player) event.getEntity();
+        Claim claim = plugin.getClaimAt(player.getLocation());
+        if (!claim.getBoolSetting(Claim.Setting.ELYTRA)) {
+            if (event.isGliding()) {
+                event.setCancelled(true);
+                plugin.getServer().getScheduler().runTask(plugin,
+                                                          () -> player.setGliding(false));
+            }
+        }
     }
 }

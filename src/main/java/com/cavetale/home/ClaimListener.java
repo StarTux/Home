@@ -393,7 +393,9 @@ final class ClaimListener implements Listener {
             return;
         case RIGHT_CLICK_BLOCK:
             switch (block.getType()) {
-            case ANVIL: checkPlayerAction(player, block, Action.BUILD, event); break;
+            case ANVIL:
+            case CAKE:
+                checkPlayerAction(player, block, Action.BUILD, event); break;
             default: checkPlayerAction(player, block, Action.INTERACT, event); break;
             }
             return;

@@ -626,6 +626,7 @@ final class ClaimListener implements Listener {
         if (!(event.getEntity() instanceof Player)) return;
         Player player = (Player) event.getEntity();
         Claim claim = plugin.getClaimAt(player.getLocation());
+        if (claim == null) return;
         if (!claim.getBoolSetting(Claim.Setting.ELYTRA)) {
             if (event.isGliding()) {
                 event.setCancelled(true);

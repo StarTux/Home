@@ -123,12 +123,15 @@ public final class HomePlugin extends JavaPlugin {
         }
         Location pl = player.getLocation();
         Claim claim = getClaimAt(pl);
-        if (claim != null
-            && claim.isOwner(player) && (ticks % 100) == 0
-            && claim.getBlocks() > claim.getArea().size()
-            && claim.getBoolSetting(Claim.Setting.AUTOGROW)) {
-            if (autoGrowClaim(claim)) {
+        if (claim != null) {
+            if (claim.isOwner(player) && (ticks % 100) == 0
+                && claim.getBlocks() > claim.getArea().size()
+                && claim.getBoolSetting(Claim.Setting.AUTOGROW)
+                && autoGrowClaim(claim)) {
                 highlightClaim(claim, player);
+            }
+            if (player.isGliding() && !claim.getBoolSetting(Claim.Setting.ELYTRA)) {
+                player.setGliding(false);
             }
         }
         CachedLocation cl1 = getMetadata(player, META_LOCATION, CachedLocation.class)

@@ -19,6 +19,8 @@ import net.md_5.bungee.api.chat.TextComponent;
 import org.bukkit.GameMode;
 import org.bukkit.Location;
 import org.bukkit.Particle;
+import org.bukkit.Sound;
+import org.bukkit.SoundCategory;
 import org.bukkit.World;
 import org.bukkit.block.Block;
 import org.bukkit.configuration.ConfigurationSection;
@@ -117,12 +119,29 @@ public final class HomePlugin extends JavaPlugin {
 
     void tickPlayer(Player player) {
         if (player.getGameMode() == GameMode.SPECTATOR) return;
-        if (!isHomeWorld(player.getWorld())) {
+        Location loc = player.getLocation();
+        final World world = loc.getWorld();
+        final String worldName = world.getName();
+        if (!isHomeWorld(world)) {
             player.removeMetadata(META_LOCATION, this);
             return;
         }
-        Location pl = player.getLocation();
-        Claim claim = getClaimAt(pl);
+        int x = loc.getBlockX();
+        int z = loc.getBlockZ();
+        if (player.isGliding() && ticks % 10 == 0) {
+            if (claims.stream()
+                .filter(c -> c.isInWorld(worldName))
+                .filter(c -> c.area.isWithin(x, z, 64))
+                .anyMatch(c -> !c.getBoolSetting(Claim.Setting.ELYTRA))) {
+                player.sendTitle("" + ChatColor.RED + ChatColor.BOLD + "WARNING",
+                                 "" + ChatColor.RED + ChatColor.BOLD + "Approaching No-Fly Zone!",
+                                 0, 11, 0);
+                player.playSound(player.getEyeLocation(),
+                                 Sound.ENTITY_ARROW_HIT_PLAYER, SoundCategory.MASTER,
+                                 1.0f, 2.0f);
+            }
+        }
+        Claim claim = getClaimAt(loc);
         if (claim != null) {
             if (claim.isOwner(player) && (ticks % 100) == 0
                 && claim.getBlocks() > claim.getArea().size()
@@ -136,10 +155,10 @@ public final class HomePlugin extends JavaPlugin {
         }
         CachedLocation cl1 = getMetadata(player, META_LOCATION, CachedLocation.class)
             .orElse(null);
-        if (cl1 == null || !cl1.world.equals(pl.getWorld().getName())
-            || cl1.x != pl.getBlockX() || cl1.z != pl.getBlockZ()) {
-            CachedLocation cl2 = new CachedLocation(pl.getWorld().getName(),
-                                                    pl.getBlockX(), pl.getBlockZ(),
+        if (cl1 == null || !cl1.world.equals(worldName)
+            || cl1.x != loc.getBlockX() || cl1.z != loc.getBlockZ()) {
+            CachedLocation cl2 = new CachedLocation(worldName,
+                                                    loc.getBlockX(), loc.getBlockZ(),
                                                     claim == null ? -1 : claim.getId());
             if (cl1 == null) cl1 = cl2; // Taking the easy way out
             player.setMetadata(META_LOCATION, new FixedMetadataValue(this, cl2));

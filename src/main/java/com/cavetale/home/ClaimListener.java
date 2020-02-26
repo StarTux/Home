@@ -8,6 +8,7 @@ import org.bukkit.Material;
 import org.bukkit.Particle;
 import org.bukkit.Sound;
 import org.bukkit.SoundCategory;
+import org.bukkit.World;
 import org.bukkit.block.Block;
 import org.bukkit.block.BlockState;
 import org.bukkit.block.DoubleChest;
@@ -589,7 +590,9 @@ final class ClaimListener implements Listener {
         }
         if (!claim.isAdminClaim()
             && event.getSpawnReason() == CreatureSpawnEvent.SpawnReason.NATURAL
-            && isHostileMob(event.getEntity())) {
+            && isHostileMob(event.getEntity())
+            && event.getEntity().getWorld().getEnvironment() == World.Environment.NORMAL
+            && event.getEntity().getType() != EntityType.SLIME) {
             int light = event.getEntity().getLocation().getBlock().getLightLevel();
             if (light > 0) {
                 event.setCancelled(true);

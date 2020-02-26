@@ -585,6 +585,16 @@ final class ClaimListener implements Listener {
         if (claim == null) return;
         if (!claim.getBoolSetting(Claim.Setting.MOB_SPAWNING)) {
             event.setCancelled(true);
+            return;
+        }
+        if (!claim.isAdminClaim()
+            && event.getSpawnReason() == CreatureSpawnEvent.SpawnReason.NATURAL
+            && isHostileMob(event.getEntity())) {
+            int light = event.getEntity().getLocation().getBlock().getLightLevel();
+            if (light > 0) {
+                event.setCancelled(true);
+                return;
+            }
         }
     }
 

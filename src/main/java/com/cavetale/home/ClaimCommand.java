@@ -87,7 +87,10 @@ public final class ClaimCommand extends PlayerCommand {
             claim = plugin.findClaimWithId(claimId);
             if (claim == null) return true;
         }
+        player.sendMessage("");
         printClaimInfo(player, claim);
+        sendClaimButtons(player, claim);
+        player.sendMessage("");
         plugin.highlightClaim(claim, player);
         return true;
     }
@@ -651,7 +654,6 @@ public final class ClaimCommand extends PlayerCommand {
     }
 
     public void printClaimInfo(Player player, Claim claim) {
-        player.sendMessage("");
         ComponentBuilder cb = new ComponentBuilder("");
         frame(cb, "Claim Info");
         player.spigot().sendMessage(cb.create());
@@ -717,10 +719,13 @@ public final class ClaimCommand extends PlayerCommand {
             }
         }
         player.spigot().sendMessage(cb.create());
+    }
+
+    public void sendClaimButtons(Player player, Claim claim) {
         // Buttons
         Location playerLocation = player.getLocation();
         UUID playerId = player.getUniqueId();
-        cb = new ComponentBuilder("");
+        ComponentBuilder cb = new ComponentBuilder("");
         cb.append("General").color(ChatColor.GRAY);
         final ChatColor buttonColor = ChatColor.GREEN;
         cb.append("  ").append("[Info]").color(buttonColor);
@@ -804,8 +809,6 @@ public final class ClaimCommand extends PlayerCommand {
             cb.event(new HoverEvent(HoverEvent.Action.SHOW_TEXT, txt));
             player.spigot().sendMessage(cb.create());
         }
-        player.sendMessage("");
-        plugin.highlightClaim(claim, player);
     }
 
     private boolean listCommand(Player player, String[] args) throws Wrong {

@@ -555,9 +555,6 @@ public final class ClaimCommand extends PlayerCommand {
             by = z;
         }
         Area newArea = new Area(ax, ay, bx, by);
-        if (!newArea.contains(claim.centerX, claim.centerY)) {
-            throw new Wrong("Your cannot move a claim from its origin.");
-        }
         claim.setArea(newArea);
         claim.saveToDatabase();
         player.sendMessage(ChatColor.BLUE + "Shrunk your claim to where you are standing");

@@ -593,7 +593,7 @@ final class ClaimListener implements Listener {
             && isHostileMob(event.getEntity())
             && event.getEntity().getWorld().getEnvironment() == World.Environment.NORMAL
             && event.getEntity().getType() != EntityType.SLIME) {
-            int light = event.getEntity().getLocation().getBlock().getLightLevel();
+            int light = event.getEntity().getLocation().getBlock().getLightFromBlocks();
             if (light > 0) {
                 event.setCancelled(true);
                 return;

@@ -201,7 +201,7 @@ public final class ClaimCommand extends PlayerCommand {
         if (world == null) return true;
         int x = (claim.getArea().ax + claim.getArea().bx) / 2;
         int z = (claim.getArea().ay + claim.getArea().by) / 2;
-        Location target = world.getHighestBlockAt(x, z).getLocation().add(0.5, 0.0, 0.5);
+        Location target = world.getHighestBlockAt(x, z).getLocation().add(0.5, 1.0, 0.5);
         player.teleport(target);
         player.sendMessage(ChatColor.BLUE + "Teleported to claim.");
         return true;

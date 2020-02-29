@@ -435,53 +435,82 @@ public final class ClaimCommand extends PlayerCommand {
     }
 
     private boolean setCommand(Player player, String[] args) throws Wrong {
-        if (args.length == 1) {
-            Claim claim = plugin.getClaimAt(player.getLocation());
-            if (claim == null) {
-                throw new Wrong("Stand in the claim you wish to edit");
-            }
-            if (!claim.isOwner(player)) {
-                throw new Wrong("Only the claim owner can do this");
-            }
-            showClaimSettings(claim, player);
-            return true;
-        } else if (args.length == 3) {
-            Claim claim = plugin.getClaimAt(player.getLocation());
-            if (claim == null) {
-                throw new Wrong("Stand in the claim you wish to edit");
-            }
-            if (!claim.isOwner(player)) {
-                throw new Wrong("Only the claim owner can do this");
-            }
-            Claim.Setting setting;
-            try {
-                setting = Claim.Setting.valueOf(args[1].toUpperCase());
-            } catch (IllegalArgumentException iae) {
-                throw new Wrong("Unknown claim setting: " + args[1]);
-            }
-            if (setting.isAdminOnly() && !isAdmin(player)) {
-                throw new Wrong("Unknown claim setting: " + args[1]);
-            }
-            Object value;
-            switch (args[2]) {
-            case "on": case "true": case "enabled": value = true; break;
-            case "off": case "false": case "disabled": value = false; break;
-            default:
-                throw new Wrong("Unknown settings value: " + args[2]);
-            }
-            if (!value.equals(claim.getSetting(setting))) {
-                if (value.equals(setting.defaultValue)) {
-                    claim.getSettings().remove(setting);
-                } else {
-                    claim.getSettings().put(setting, value);
-                }
-            }
-            claim.saveToDatabase();
-            showClaimSettings(claim, player);
-            return true;
-        } else {
-            return false;
+        if (args.length != 1 && args.length != 3) return false;
+        Claim claim = plugin.getClaimAt(player.getLocation());
+        if (claim == null) {
+            throw new Wrong("Stand in the claim you wish to edit");
         }
+        if (!claim.isOwner(player)) {
+            throw new Wrong("Only the claim owner can do this");
+        }
+        if (args.length == 1) {
+            showClaimSettings(claim, player);
+            return true;
+        }
+        Claim.Setting setting;
+        try {
+            setting = Claim.Setting.valueOf(args[1].toUpperCase());
+        } catch (IllegalArgumentException iae) {
+            throw new Wrong("Unknown claim setting: " + args[1]);
+        }
+        if (setting.isAdminOnly() && !isAdmin(player)) {
+            throw new Wrong("Unknown claim setting: " + args[1]);
+        }
+        Object value;
+        switch (args[2]) {
+        case "on": case "true": case "enabled": value = true; break;
+        case "off": case "false": case "disabled": value = false; break;
+        default:
+            throw new Wrong("Unknown settings value: " + args[2]);
+        }
+        if (!value.equals(claim.getSetting(setting))) {
+            if (value.equals(setting.defaultValue)) {
+                claim.getSettings().remove(setting);
+            } else {
+                claim.getSettings().put(setting, value);
+            }
+        }
+        claim.saveToDatabase();
+        showClaimSettings(claim, player);
+        return true;
+    }
+
+    private void showClaimSettings(Claim claim, Player player) {
+        player.sendMessage("");
+        BaseComponent[] txt;
+        ComponentBuilder cb = new ComponentBuilder("");
+        frame(cb, "Claim Settings");
+        player.spigot().sendMessage(cb.create());
+        for (Claim.Setting setting : Claim.Setting.values()) {
+            if (setting.isAdminOnly() && !isAdmin(player)) continue;
+            cb = new ComponentBuilder(" ");
+            Object value = claim.getSetting(setting);
+            String key = setting.name().toLowerCase();
+            if (value == Boolean.TRUE) {
+                cb.append("[ON]").color(ChatColor.BLUE);
+                cb.append("  ", ComponentBuilder.FormatRetention.NONE);
+                cb.append("[OFF]").color(ChatColor.GRAY);
+                cb.event(new ClickEvent(ClickEvent.Action.RUN_COMMAND,
+                                        "/claim set " + key + " off"));
+                txt = TextComponent
+                    .fromLegacyText(ChatColor.RED + "Disable " + setting.displayName);
+                cb.event(new HoverEvent(HoverEvent.Action.SHOW_TEXT, txt));
+            } else if (value == Boolean.FALSE) {
+                cb.append("[ON]").color(ChatColor.GRAY);
+                cb.event(new ClickEvent(ClickEvent.Action.RUN_COMMAND,
+                                        "/claim set " + key + " on"));
+                txt = TextComponent
+                    .fromLegacyText(ChatColor.GREEN + "Enable " + setting.displayName);
+                cb.event(new HoverEvent(HoverEvent.Action.SHOW_TEXT, txt));
+                cb.append("  ", ComponentBuilder.FormatRetention.NONE);
+                cb.append("[OFF]").color(ChatColor.RED);
+            }
+            cb.append(" " + setting.displayName).color(setting.isAdminOnly()
+                                                       ? ChatColor.RED
+                                                       : ChatColor.WHITE);
+            player.spigot().sendMessage(cb.create());
+        }
+        player.sendMessage("");
     }
 
     private boolean growCommand(Player player, String[] args) throws Wrong {
@@ -877,43 +906,5 @@ public final class ClaimCommand extends PlayerCommand {
         }
         player.sendMessage("");
         return true;
-    }
-
-    private void showClaimSettings(Claim claim, Player player) {
-        player.sendMessage("");
-        BaseComponent[] txt;
-        ComponentBuilder cb = new ComponentBuilder("");
-        frame(cb, "Claim Settings");
-        player.spigot().sendMessage(cb.create());
-        for (Claim.Setting setting : Claim.Setting.values()) {
-            if (setting.isAdminOnly() && !isAdmin(player)) continue;
-            cb = new ComponentBuilder(" ");
-            Object value = claim.getSetting(setting);
-            String key = setting.name().toLowerCase();
-            if (value == Boolean.TRUE) {
-                cb.append("[ON]").color(ChatColor.BLUE);
-                cb.append("  ", ComponentBuilder.FormatRetention.NONE);
-                cb.append("[OFF]").color(ChatColor.GRAY);
-                cb.event(new ClickEvent(ClickEvent.Action.RUN_COMMAND,
-                                        "/claim set " + key + " off"));
-                txt = TextComponent
-                    .fromLegacyText(ChatColor.RED + "Disable " + setting.displayName);
-                cb.event(new HoverEvent(HoverEvent.Action.SHOW_TEXT, txt));
-            } else if (value == Boolean.FALSE) {
-                cb.append("[ON]").color(ChatColor.GRAY);
-                cb.event(new ClickEvent(ClickEvent.Action.RUN_COMMAND,
-                                        "/claim set " + key + " on"));
-                txt = TextComponent
-                    .fromLegacyText(ChatColor.GREEN + "Enable " + setting.displayName);
-                cb.event(new HoverEvent(HoverEvent.Action.SHOW_TEXT, txt));
-                cb.append("  ", ComponentBuilder.FormatRetention.NONE);
-                cb.append("[OFF]").color(ChatColor.RED);
-            }
-            cb.append(" " + setting.displayName).color(setting.isAdminOnly()
-                                                       ? ChatColor.RED
-                                                       : ChatColor.WHITE);
-            player.spigot().sendMessage(cb.create());
-        }
-        player.sendMessage("");
     }
 }

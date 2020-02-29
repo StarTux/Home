@@ -87,8 +87,9 @@ final class Claim {
 
     Object getSetting(Setting setting) {
         Object result = settings.get(setting);
-        if (result != null) return result;
-        return setting.defaultValue;
+        return result != null
+            ? result
+            : setting.defaultValue;
     }
 
     boolean getBoolSetting(Setting setting) {

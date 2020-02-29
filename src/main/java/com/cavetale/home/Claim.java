@@ -192,8 +192,10 @@ final class Claim {
 
     boolean canVisit(Player player) {
         if (plugin.doesIgnoreClaims(player)) return true;
-        if (getBoolSetting(Setting.PUBLIC_INVITE)) return true;
-        if (isAdminClaim() && isAdmin(player)) return true;
+        if (isOwner(player)) return true;
+        if (!isAdminClaim() && getBoolSetting(Setting.PUBLIC_INVITE)) {
+            return true;
+        }
         return canVisit(player.getUniqueId());
     }
 

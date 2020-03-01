@@ -8,6 +8,7 @@ import java.util.Map;
 import java.util.Optional;
 import java.util.Random;
 import java.util.UUID;
+import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ThreadLocalRandom;
 import java.util.stream.Collectors;
 import lombok.Getter;
@@ -16,6 +17,8 @@ import net.md_5.bungee.api.ChatColor;
 import net.md_5.bungee.api.ChatMessageType;
 import net.md_5.bungee.api.chat.BaseComponent;
 import net.md_5.bungee.api.chat.TextComponent;
+import org.bukkit.Bukkit;
+import org.bukkit.Chunk;
 import org.bukkit.GameMode;
 import org.bukkit.Location;
 import org.bukkit.Particle;
@@ -516,10 +519,22 @@ public final class HomePlugin extends JavaPlugin {
         World world = loc.getWorld();
         int cx = loc.getBlockX() >> 4;
         int cz = loc.getBlockZ() >> 4;
-        world.getChunkAtAsync(cx, cz, chunk -> {
-                if (!player.isValid()) return;
-                player.teleport(loc, TeleportCause.COMMAND);
-                if (task != null) task.run();
+        int vdist = world.getViewDistance();
+        final List<CompletableFuture<Chunk>> ls = new ArrayList<>();
+        for (int dz = -vdist; dz <= vdist; dz += 1) {
+            for (int dx = -vdist; dx <= vdist; dx += 1) {
+                ls.add(world.getChunkAtAsync(cx, cz));
+            }
+        }
+        getServer().getScheduler().runTaskAsynchronously(this, () -> {
+                for (CompletableFuture<Chunk> future : ls) {
+                    future.join();
+                }
+                Bukkit.getScheduler().runTask(this, () -> {
+                        if (!player.isValid()) return;
+                        player.teleport(loc, TeleportCause.COMMAND);
+                        if (task != null) task.run();
+                    });
             });
     }
 }

@@ -523,7 +523,7 @@ public final class HomePlugin extends JavaPlugin {
         final List<CompletableFuture<Chunk>> ls = new ArrayList<>();
         for (int dz = -vdist; dz <= vdist; dz += 1) {
             for (int dx = -vdist; dx <= vdist; dx += 1) {
-                ls.add(world.getChunkAtAsync(cx, cz));
+                ls.add(world.getChunkAtAsync(cx + dx, cz + dz));
             }
         }
         getServer().getScheduler().runTaskAsynchronously(this, () -> {

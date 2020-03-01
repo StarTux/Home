@@ -30,9 +30,10 @@ public final class HomeCommand extends PlayerCommand {
                 if (location == null) {
                     throw new Wrong("Primary home could not be found.");
                 }
-                player.teleport(location);
-                player.sendMessage(ChatColor.GREEN + "Welcome home :)");
-                player.sendTitle("", ChatColor.GREEN + "Welcome home :)", 10, 20, 10);
+                plugin.warpTo(player, location, () -> {
+                        player.sendMessage(ChatColor.GREEN + "Welcome home :)");
+                        player.sendTitle("", ChatColor.GREEN + "Welcome home :)", 10, 20, 10);
+                    });
                 return true;
             }
             // No home was found, so if the player has no claim in the
@@ -50,8 +51,9 @@ public final class HomeCommand extends PlayerCommand {
             if (bedSpawn != null) {
                 Claim claim = plugin.getClaimAt(bedSpawn.getBlock());
                 if (claim != null && claim.canVisit(playerId)) {
-                    player.teleport(bedSpawn.add(0.5, 0.0, 0.5));
-                    player.sendMessage(ChatColor.BLUE + "Welcome to your bed. :)");
+                    plugin.warpTo(player, bedSpawn.add(0.5, 0.0, 0.5), () -> {
+                            player.sendMessage(ChatColor.BLUE + "Welcome to your bed. :)");
+                        });
                     return true;
                 }
             }
@@ -67,8 +69,9 @@ public final class HomeCommand extends PlayerCommand {
                 Location location = bworld.getHighestBlockAt((area.ax + area.bx) / 2,
                                                              (area.ay + area.by) / 2)
                     .getLocation().add(0.5, 0.0, 0.5);
-                player.teleport(location);
-                player.sendMessage(ChatColor.GREEN + "Welcome to your claim. :)");
+                plugin.warpTo(player, location, () -> {
+                        player.sendMessage(ChatColor.GREEN + "Welcome to your claim. :)");
+                    });
                 plugin.highlightClaim(claim, player);
                 return true;
             }
@@ -103,9 +106,10 @@ public final class HomeCommand extends PlayerCommand {
             if (location == null) {
                 throw new Wrong("Home \"%s\" could not be found.");
             }
-            player.sendMessage(ChatColor.GREEN + "Going home.");
-            player.sendTitle("", ChatColor.GREEN + "Going home.", 10, 60, 10);
-            player.teleport(location);
+            plugin.warpTo(player, location, () -> {
+                    player.sendMessage(ChatColor.GREEN + "Welcome home.");
+                    player.sendTitle("", ChatColor.GREEN + "Welcome home.", 10, 20, 10);
+                });
             return true;
         }
         return false;

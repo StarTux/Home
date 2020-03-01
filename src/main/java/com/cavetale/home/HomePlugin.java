@@ -25,6 +25,7 @@ import org.bukkit.World;
 import org.bukkit.block.Block;
 import org.bukkit.configuration.ConfigurationSection;
 import org.bukkit.entity.Player;
+import org.bukkit.event.player.PlayerTeleportEvent.TeleportCause;
 import org.bukkit.metadata.FixedMetadataValue;
 import org.bukkit.metadata.MetadataValue;
 import org.bukkit.metadata.Metadatable;
@@ -509,5 +510,16 @@ public final class HomePlugin extends JavaPlugin {
             dynmapClaims.disable();
             dynmapClaims = null;
         }
+    }
+
+    void warpTo(Player player, final Location loc, Runnable task) {
+        World world = loc.getWorld();
+        int cx = loc.getBlockX() >> 4;
+        int cz = loc.getBlockZ() >> 4;
+        world.getChunkAtAsync(cx, cz, chunk -> {
+                if (!player.isValid()) return;
+                player.teleport(loc, TeleportCause.COMMAND);
+                if (task != null) task.run();
+            });
     }
 }

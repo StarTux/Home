@@ -118,25 +118,26 @@ final class WildTask {
         location.setPitch(ploc.getPitch());
         location.setYaw(ploc.getYaw());
         // Teleport, notify, and set cooldown
-        player.teleport(location);
-        ComponentBuilder cb = new ComponentBuilder("");
-        cb.append("Found you a place to build. ").color(ChatColor.WHITE);
-        cb.append("[Claim]").color(ChatColor.GREEN);
-        cb.event(new ClickEvent(ClickEvent.Action.SUGGEST_COMMAND, "/claim new"));
-        String endl = "\n" + ChatColor.WHITE + ChatColor.ITALIC;
-        BaseComponent[] tooltip = TextComponent
-            .fromLegacyText(ChatColor.GREEN + "/claim new"
-                            + endl + "Create a claim and set a home"
-                            + endl + "at this location so you can"
-                            + endl + "build and return any time.");
-        cb.event(new HoverEvent(HoverEvent.Action.SHOW_TEXT, tooltip));
-        cb.append("  ", ComponentBuilder.FormatRetention.NONE);
-        cb.append("[Retry]").color(ChatColor.YELLOW);
-        cb.event(new ClickEvent(ClickEvent.Action.SUGGEST_COMMAND, "/wild"));
-        tooltip = TextComponent
-            .fromLegacyText(ChatColor.GREEN + "/wild"
-                            + endl + "Find another place to build.");
-        cb.event(new HoverEvent(HoverEvent.Action.SHOW_TEXT, tooltip));
-        player.spigot().sendMessage(cb.create());
+        plugin.warpTo(player, location, () -> {
+                ComponentBuilder cb = new ComponentBuilder("");
+                cb.append("Found you a place to build. ").color(ChatColor.WHITE);
+                cb.append("[Claim]").color(ChatColor.GREEN);
+                cb.event(new ClickEvent(ClickEvent.Action.SUGGEST_COMMAND, "/claim new"));
+                String endl = "\n" + ChatColor.WHITE + ChatColor.ITALIC;
+                BaseComponent[] tooltip = TextComponent
+                    .fromLegacyText(ChatColor.GREEN + "/claim new"
+                                    + endl + "Create a claim and set a home"
+                                    + endl + "at this location so you can"
+                                    + endl + "build and return any time.");
+                cb.event(new HoverEvent(HoverEvent.Action.SHOW_TEXT, tooltip));
+                cb.append("  ", ComponentBuilder.FormatRetention.NONE);
+                cb.append("[Retry]").color(ChatColor.YELLOW);
+                cb.event(new ClickEvent(ClickEvent.Action.SUGGEST_COMMAND, "/wild"));
+                tooltip = TextComponent
+                    .fromLegacyText(ChatColor.GREEN + "/wild"
+                                    + endl + "Find another place to build.");
+                cb.event(new HoverEvent(HoverEvent.Action.SHOW_TEXT, tooltip));
+                player.spigot().sendMessage(cb.create());
+            });
     }
 }

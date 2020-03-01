@@ -58,10 +58,13 @@ public final class VisitCommand extends PlayerCommand {
         if (location == null) {
             throw new Wrong("Could not take you to this home.");
         }
-        player.teleport(location);
-        player.sendMessage(ChatColor.GREEN + "Teleported to "
-                           + home.getOwnerName() + "'s public home \""
-                           + home.getPublicName() + "\"");
+        final String ownerName = home.getOwnerName();
+        final String publicName = home.getPublicName();
+        plugin.warpTo(player, location, () -> {
+                player.sendMessage(ChatColor.GREEN + "Teleported to "
+                                   + ownerName + "'s public home \""
+                                   + publicName + "\"");
+            });
         return true;
     }
 

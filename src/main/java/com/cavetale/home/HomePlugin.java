@@ -527,8 +527,12 @@ public final class HomePlugin extends JavaPlugin {
             }
         }
         getServer().getScheduler().runTaskAsynchronously(this, () -> {
-                for (CompletableFuture<Chunk> future : ls) {
-                    future.join();
+                try {
+                    for (CompletableFuture<Chunk> future : ls) {
+                        Chunk chunk = future.get();
+                    }
+                } catch (Exception e) {
+                    e.printStackTrace();
                 }
                 Bukkit.getScheduler().runTask(this, () -> {
                         if (!player.isValid()) return;

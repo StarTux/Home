@@ -8,7 +8,6 @@ import java.util.Map;
 import java.util.Optional;
 import java.util.Random;
 import java.util.UUID;
-import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ThreadLocalRandom;
 import java.util.stream.Collectors;
 import lombok.Getter;
@@ -17,8 +16,6 @@ import net.md_5.bungee.api.ChatColor;
 import net.md_5.bungee.api.ChatMessageType;
 import net.md_5.bungee.api.chat.BaseComponent;
 import net.md_5.bungee.api.chat.TextComponent;
-import org.bukkit.Bukkit;
-import org.bukkit.Chunk;
 import org.bukkit.GameMode;
 import org.bukkit.Location;
 import org.bukkit.Particle;
@@ -516,29 +513,13 @@ public final class HomePlugin extends JavaPlugin {
     }
 
     void warpTo(Player player, final Location loc, Runnable task) {
-        World world = loc.getWorld();
+        final World world = loc.getWorld();
         int cx = loc.getBlockX() >> 4;
         int cz = loc.getBlockZ() >> 4;
-        int vdist = world.getViewDistance();
-        final List<CompletableFuture<Chunk>> ls = new ArrayList<>();
-        for (int dz = -vdist; dz <= vdist; dz += 1) {
-            for (int dx = -vdist; dx <= vdist; dx += 1) {
-                ls.add(world.getChunkAtAsync(cx + dx, cz + dz));
-            }
-        }
-        getServer().getScheduler().runTaskAsynchronously(this, () -> {
-                try {
-                    for (CompletableFuture<Chunk> future : ls) {
-                        Chunk chunk = future.get();
-                    }
-                } catch (Exception e) {
-                    e.printStackTrace();
-                }
-                Bukkit.getScheduler().runTask(this, () -> {
-                        if (!player.isValid()) return;
-                        player.teleport(loc, TeleportCause.COMMAND);
-                        if (task != null) task.run();
-                    });
+        world.getChunkAtAsync(cx, cz, chunk -> {
+                if (!player.isValid()) return;
+                player.teleport(loc, TeleportCause.COMMAND);
+                if (task != null) task.run();
             });
     }
 }

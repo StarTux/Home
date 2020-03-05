@@ -399,6 +399,12 @@ final class ClaimListener implements Listener {
                 if (item != null && item.getType() == Material.SLIME_BALL) {
                     if (block.getChunk().isSlimeChunk()) {
                         player.sendMessage(ChatColor.GREEN + "Slime chunk!");
+                        Location loc = block.getRelative(event.getBlockFace())
+                            .getLocation().add(0.5, 0.5, 0.5);
+                        player.playSound(loc, Sound.BLOCK_SLIME_BLOCK_BREAK,
+                                         SoundCategory.BLOCKS, 1.0f, 1.0f);
+                        player.spawnParticle(Particle.SLIME, loc, 4,
+                                             0.1, 0.1, 0.1, 0);
                     } else {
                         player.sendMessage(ChatColor.RED + "Not a slime chunk.");
                     }

@@ -385,6 +385,7 @@ final class ClaimListener implements Listener {
         if (plugin.doesIgnoreClaims(player)) return;
         final Block block = event.getClickedBlock();
         if (block == null) return;
+        Claim claim = plugin.getClaimAt(block);
         // Consider soil trampling
         switch (event.getAction()) {
         case PHYSICAL:
@@ -395,9 +396,12 @@ final class ClaimListener implements Listener {
             }
             return;
         case RIGHT_CLICK_BLOCK:
+            // Slime chunk detector
             if (block.getType().isSolid()
                 && event.getBlockFace() == BlockFace.UP
-                && block.getY() <= 40) {
+                && block.getY() <= 40
+                && claim != null
+                && claim.canBuild(player)) {
                 ItemStack item = event.getItem();
                 if (item != null && item.getType() == Material.SLIME_BALL) {
                     if (block.getChunk().isSlimeChunk()) {

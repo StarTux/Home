@@ -407,7 +407,7 @@ final class ClaimListener implements Listener {
                         player.playSound(loc, Sound.BLOCK_SLIME_BLOCK_BREAK,
                                          SoundCategory.BLOCKS, 1.0f, 1.0f);
                         player.spawnParticle(Particle.SLIME, loc, 8,
-                                             0.1, 0.1, 0.1, 0);
+                                             0.25, 0.0, 0.25, 0);
                     } else {
                         player.sendMessage(ChatColor.RED + "Not a slime chunk.");
                     }

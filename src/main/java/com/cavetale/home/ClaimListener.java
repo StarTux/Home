@@ -61,6 +61,7 @@ import org.bukkit.event.vehicle.VehicleCreateEvent;
 import org.bukkit.event.vehicle.VehicleDamageEvent;
 import org.bukkit.event.vehicle.VehicleDestroyEvent;
 import org.bukkit.inventory.InventoryHolder;
+import org.bukkit.inventory.ItemStack;
 import org.spigotmc.event.entity.EntityMountEvent;
 
 @RequiredArgsConstructor
@@ -393,6 +394,16 @@ final class ClaimListener implements Listener {
             }
             return;
         case RIGHT_CLICK_BLOCK:
+            if (block.getType().isSolid() && block.getY() <= 40) {
+                ItemStack item = event.getItem();
+                if (item != null && item.getType() == Material.SLIME_BALL) {
+                    if (block.getChunk().isSlimeChunk()) {
+                        player.sendMessage(ChatColor.GREEN + "Slime chunk!");
+                    } else {
+                        player.sendMessage(ChatColor.RED + "Not a slime chunk.");
+                    }
+                }
+            }
             switch (block.getType()) {
             case ANVIL:
             case CAKE:

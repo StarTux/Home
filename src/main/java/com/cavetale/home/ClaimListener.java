@@ -10,6 +10,7 @@ import org.bukkit.Sound;
 import org.bukkit.SoundCategory;
 import org.bukkit.World;
 import org.bukkit.block.Block;
+import org.bukkit.block.BlockFace;
 import org.bukkit.block.BlockState;
 import org.bukkit.block.DoubleChest;
 import org.bukkit.block.Lectern;
@@ -394,16 +395,18 @@ final class ClaimListener implements Listener {
             }
             return;
         case RIGHT_CLICK_BLOCK:
-            if (block.getType().isSolid() && block.getY() <= 40) {
+            if (block.getType().isSolid()
+                && event.getBlockFace() == BlockFace.UP
+                && block.getY() <= 40) {
                 ItemStack item = event.getItem();
                 if (item != null && item.getType() == Material.SLIME_BALL) {
                     if (block.getChunk().isSlimeChunk()) {
                         player.sendMessage(ChatColor.GREEN + "Slime chunk!");
                         Location loc = block.getRelative(event.getBlockFace())
-                            .getLocation().add(0.5, 0.5, 0.5);
+                            .getLocation().add(0.5, 0.05, 0.5);
                         player.playSound(loc, Sound.BLOCK_SLIME_BLOCK_BREAK,
                                          SoundCategory.BLOCKS, 1.0f, 1.0f);
-                        player.spawnParticle(Particle.SLIME, loc, 4,
+                        player.spawnParticle(Particle.SLIME, loc, 8,
                                              0.1, 0.1, 0.1, 0);
                     } else {
                         player.sendMessage(ChatColor.RED + "Not a slime chunk.");

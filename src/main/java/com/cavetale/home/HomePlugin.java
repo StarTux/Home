@@ -113,6 +113,24 @@ public final class HomePlugin extends JavaPlugin {
         for (Player player : getServer().getOnlinePlayers()) {
             tickPlayer(player);
         }
+        for (World world : getServer().getWorlds()) {
+            if (!(isHomeWorld(world))) continue;
+            if (world.getEnvironment() == World.Environment.NORMAL
+                && !world.isDayTime()) {
+                int total = 0;
+                int sleeping = 0;
+                for (Player player : world.getPlayers()) {
+                    total += 1;
+                    if (player.isSleeping() && player.getSleepTicks() >= 100) {
+                        sleeping += 1;
+                    }
+                }
+                if (total > 0 && sleeping > 0 && sleeping >= total / 2) {
+                    getLogger().info("Skipping night in " + world.getName());
+                    world.setTime(0L);
+                }
+            }
+        }
         if ((ticks % 200L) == 0L) {
             if (dynmapClaims != null) dynmapClaims.update();
         }

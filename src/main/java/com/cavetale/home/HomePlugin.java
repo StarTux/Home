@@ -116,7 +116,7 @@ public final class HomePlugin extends JavaPlugin {
         for (World world : getServer().getWorlds()) {
             if (!(isHomeWorld(world))) continue;
             if (world.getEnvironment() == World.Environment.NORMAL
-                && !world.isDayTime()) {
+                && world.getTime() > 13000L && world.getTime() < 23000L) {
                 int total = 0;
                 int sleeping = 0;
                 for (Player player : world.getPlayers()) {
@@ -125,9 +125,14 @@ public final class HomePlugin extends JavaPlugin {
                         sleeping += 1;
                     }
                 }
-                if (total > 0 && sleeping > 0 && sleeping >= total / 2) {
+                int half = (total - 1) / 2 + 1;
+                if (total > 0 && sleeping > 0 && sleeping >= half) {
                     getLogger().info("Skipping night in " + world.getName());
                     world.setTime(0L);
+                    for (Player player : world.getPlayers()) {
+                        // false = seSpawnLocation
+                        if (player.isSleeping()) player.wakeup(false);
+                    }
                 }
             }
         }

@@ -613,14 +613,20 @@ final class ClaimListener implements Listener {
             return;
         }
         if (!claim.isAdminClaim()
-            && event.getSpawnReason() == CreatureSpawnEvent.SpawnReason.NATURAL
             && isHostileMob(event.getEntity())
             && event.getEntity().getWorld().getEnvironment() == World.Environment.NORMAL
             && event.getEntity().getType() != EntityType.SLIME) {
-            int light = event.getEntity().getLocation().getBlock().getLightFromBlocks();
-            if (light > 0) {
-                event.setCancelled(true);
-                return;
+            switch (event.getSpawnReason()) {
+            case NATURAL:
+            case REINFORCEMENTS:
+            case VILLAGE_INVASION:
+                int light = event.getEntity().getLocation().getBlock().getLightFromBlocks();
+                if (light > 0) {
+                    event.setCancelled(true);
+                    return;
+                }
+                break;
+            default: break;
             }
         }
     }

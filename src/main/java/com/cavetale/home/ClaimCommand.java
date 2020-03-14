@@ -851,24 +851,20 @@ public final class ClaimCommand extends PlayerCommand {
         player.spigot().sendMessage(cb.create());
         List<Claim> playerClaims = plugin.findClaims(player);
         int ci = 0;
-        if (playerClaims.isEmpty()) {
-            throw new Wrong("You don't have any claims of your own.");
-        } else {
-            cb = new ComponentBuilder("");
-            cb.append("Owned").color(ChatColor.GRAY);
-            for (Claim claim : playerClaims) {
-                cb.append("  ");
-                cb.append("[" + plugin.worldDisplayName(claim.getWorld()) + "]")
-                    .color(ChatColor.BLUE);
-                cb.event(new ClickEvent(ClickEvent.Action.RUN_COMMAND,
-                                        "/claim info " + claim.getId()));
-                BaseComponent[] txt = TextComponent
-                    .fromLegacyText(ChatColor.BLUE + "Your claim in "
-                                    + plugin.worldDisplayName(claim.getWorld()));
-                cb.event(new HoverEvent(HoverEvent.Action.SHOW_TEXT, txt));
-            }
-            player.spigot().sendMessage(cb.create());
+        cb = new ComponentBuilder("");
+        cb.append("Owned").color(ChatColor.GRAY);
+        for (Claim claim : playerClaims) {
+            cb.append("  ");
+            cb.append("[" + plugin.worldDisplayName(claim.getWorld()) + "]")
+                .color(ChatColor.BLUE);
+            cb.event(new ClickEvent(ClickEvent.Action.RUN_COMMAND,
+                                    "/claim info " + claim.getId()));
+            BaseComponent[] txt = TextComponent
+                .fromLegacyText(ChatColor.BLUE + "Your claim in "
+                                + plugin.worldDisplayName(claim.getWorld()));
+            cb.event(new HoverEvent(HoverEvent.Action.SHOW_TEXT, txt));
         }
+        player.spigot().sendMessage(cb.create());
         playerClaims = new ArrayList<>();
         for (Claim claim : plugin.getClaims()) {
             if (!claim.isOwner(player) && !claim.isHidden() && claim.canVisit(player)) {

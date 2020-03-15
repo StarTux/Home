@@ -79,7 +79,7 @@ public final class Home {
     boolean isNamed(String homeName) {
         if ((name == null) != (homeName == null)) return false;
         if (name == null) return true;
-        return name.equals(homeName);
+        return name.equalsIgnoreCase(homeName);
     }
 
     public String getOwnerName() {

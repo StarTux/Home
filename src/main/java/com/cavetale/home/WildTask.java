@@ -134,7 +134,7 @@ final class WildTask {
                                     + endl + "build and return any time.");
                 cb.event(new HoverEvent(HoverEvent.Action.SHOW_TEXT, tooltip));
                 cb.append(" ", ComponentBuilder.FormatRetention.NONE).reset();
-                cb.append(" or here: ").color(ChatColor.WHITE);
+                cb.append("or here: ").color(ChatColor.WHITE);
                 cb.append("[Retry]").color(ChatColor.YELLOW);
                 cb.event(new ClickEvent(ClickEvent.Action.SUGGEST_COMMAND, "/wild"));
                 tooltip = TextComponent

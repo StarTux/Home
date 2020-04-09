@@ -113,14 +113,17 @@ final class WildTask {
             plugin.getServer().getScheduler().runTask(plugin, this::findPlaceToBuild);
             return;
         }
-        Location location = block.getLocation().add(0.5, 0, 0.5);
+        Location location = block.getLocation().add(0.5, 1.0, 0.5);
         Location ploc = player.getLocation();
         location.setPitch(ploc.getPitch());
         location.setYaw(ploc.getYaw());
         // Teleport, notify, and set cooldown
         plugin.warpTo(player, location, () -> {
                 ComponentBuilder cb = new ComponentBuilder("");
-                cb.append("Found you a place to build. ").color(ChatColor.WHITE);
+                cb.append("Found you a place to build.").color(ChatColor.WHITE);
+                player.spigot().sendMessage(cb.create());
+                cb = new ComponentBuilder("");
+                cb.append("Click here: ").color(ChatColor.WHITE);
                 cb.append("[Claim]").color(ChatColor.GREEN);
                 cb.event(new ClickEvent(ClickEvent.Action.SUGGEST_COMMAND, "/claim new"));
                 String endl = "\n" + ChatColor.WHITE + ChatColor.ITALIC;
@@ -130,7 +133,8 @@ final class WildTask {
                                     + endl + "at this location so you can"
                                     + endl + "build and return any time.");
                 cb.event(new HoverEvent(HoverEvent.Action.SHOW_TEXT, tooltip));
-                cb.append("  ", ComponentBuilder.FormatRetention.NONE);
+                cb.append(" ", ComponentBuilder.FormatRetention.NONE).reset();
+                cb.append(" or here: ").color(ChatColor.WHITE);
                 cb.append("[Retry]").color(ChatColor.YELLOW);
                 cb.event(new ClickEvent(ClickEvent.Action.SUGGEST_COMMAND, "/wild"));
                 tooltip = TextComponent

@@ -61,4 +61,12 @@ final class Area {
         }
         return dx + dy;
     }
+
+    int centerX() {
+        return (ax + bx) / 2;
+    }
+
+    int centerY() {
+        return (ay + by) / 2;
+    }
 }

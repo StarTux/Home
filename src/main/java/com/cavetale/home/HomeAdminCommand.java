@@ -17,7 +17,7 @@ import org.bukkit.entity.Player;
 public final class HomeAdminCommand implements TabExecutor {
     private final HomePlugin plugin;
     static final List<String> COMMANDS = Arrays
-        .asList("claims", "ignore", "reload", "debug", "giveclaimblocks",
+        .asList("claims", "homes", "ignore", "reload", "debug", "giveclaimblocks",
                 "deleteclaim", "adminclaim", "transferclaim", "claiminfo");
 
     @Override
@@ -25,16 +25,10 @@ public final class HomeAdminCommand implements TabExecutor {
         if (args.length == 0) return false;
         if (args.length == 1 && args[0].equals("help")) return false;
         Player player = sender instanceof Player ? (Player) sender : null;
+        String[] argl = Arrays.copyOfRange(args, 1, args.length);
         switch (args[0]) {
-        case "claims":
-            if (args.length == 1) {
-                int i = 0;
-                for (Claim claim : plugin.getClaims()) {
-                    sender.sendMessage(i++ + " " + claim);
-                }
-                return true;
-            }
-            break;
+        case "claims": return claimsCommand(sender, argl);
+        case "homes": return homesCommand(sender, argl);
         case "ignore":
             if (args.length == 1) {
                 if (player.hasMetadata(plugin.META_IGNORE)) {
@@ -168,5 +162,63 @@ public final class HomeAdminCommand implements TabExecutor {
                                   .filter(arg -> arg.startsWith(args[0]))
                                   .collect(Collectors.toList());
         return null;
+    }
+
+    boolean claimsCommand(CommandSender sender, String[] args) {
+        if (args.length > 1) return false;
+        if (args.length == 0) {
+            int i = 0;
+            for (Claim claim : plugin.getClaims()) {
+                sender.sendMessage(i++ + " " + claim);
+            }
+            return true;
+        }
+        String name = args[0];
+        UUID uuid = GenericEvents.cachedPlayerUuid(name);
+        if (uuid == null) {
+            sender.sendMessage(ChatColor.RED + "Player not found: " + name);
+            return true;
+        }
+        name = GenericEvents.cachedPlayerName(uuid);
+        List<Claim> claims = plugin.findClaims(uuid);
+        int count = claims.size();
+        sender.sendMessage(ChatColor.YELLOW + name + " has " + count
+                           + (count == 1 ? " claim:" : "claims:"));
+        int id = 0;
+        for (Claim claim : claims) {
+            String brief = "" + ChatColor.YELLOW
+                + " id=" + claim.id
+                + (" loc=" + claim.world + ":"
+                   + claim.area.centerX() + "," + claim.area.centerY())
+                + " blocks=" + claim.blocks;
+            sender.sendMessage(brief);
+        }
+        return true;
+    }
+
+    boolean homesCommand(CommandSender sender, String[] args) {
+        if (args.length != 1) return false;
+        String name = args[0];
+        UUID uuid = GenericEvents.cachedPlayerUuid(name);
+        if (uuid == null) {
+            sender.sendMessage(ChatColor.RED + "Player not found: " + name);
+            return true;
+        }
+        name = GenericEvents.cachedPlayerName(uuid);
+        List<Home> homes = plugin.findHomes(uuid);
+        int count = homes.size();
+        sender.sendMessage(ChatColor.YELLOW + name + " has " + count
+                           + (count == 1 ? " home:" : "homes:"));
+        for (Home home : homes) {
+            String brief = "" + ChatColor.YELLOW
+                + " id=" + home.id
+                + " name=" + (home.name != null ? home.name : "-")
+                + (" loc=" + home.world + ":"
+                   + home.x + "," + home.y + "," + home.z)
+                + " public=" + (home.publicName != null
+                                ? home.publicName : "-");
+            sender.sendMessage(brief);
+        }
+        return true;
     }
 }

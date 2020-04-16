@@ -22,14 +22,14 @@ public final class Home {
     @Id Integer id;
     @Column(nullable = false) UUID owner;
     @Column(nullable = true, length = 32) String name;
-    @Column(nullable = false) private Date created;
-    @Column(nullable = false, length = 32) private String world;
-    @Column(nullable = false) private double x;
-    @Column(nullable = false) private double y;
-    @Column(nullable = false) private double z;
-    @Column(nullable = false) private double pitch;
-    @Column(nullable = false) private double yaw;
-    @Column(nullable = true, length = 32) private String publicName;
+    @Column(nullable = false) Date created;
+    @Column(nullable = false, length = 32) String world;
+    @Column(nullable = false) double x;
+    @Column(nullable = false) double y;
+    @Column(nullable = false) double z;
+    @Column(nullable = false) double pitch;
+    @Column(nullable = false) double yaw;
+    @Column(nullable = true, length = 32) String publicName;
     final transient List<UUID> invites = new ArrayList<>();
 
     public Home() { }

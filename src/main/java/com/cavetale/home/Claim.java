@@ -151,8 +151,8 @@ final class Claim {
         @SuppressWarnings("unchecked")
         List<Number> center = (List<Number>) settingsMap.get("center");
         if (center == null) {
-            centerX = (area.ax + area.bx) / 2;
-            centerY = (area.ay + area.by) / 2;
+            centerX = area.centerX();
+            centerY = area.centerY();
         } else {
             centerX = center.get(0).intValue();
             centerY = center.get(1).intValue();

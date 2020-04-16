@@ -187,10 +187,10 @@ public final class HomeAdminCommand implements TabExecutor {
         int id = 0;
         for (Claim claim : claims) {
             String brief = "-" + ChatColor.YELLOW
-                + " id=" + claim.id
-                + ("  loc=" + claim.world + ":"
+                + "id=" + claim.id
+                + (" loc=" + claim.world + ":"
                    + claim.area.centerX() + "," + claim.area.centerY())
-                + "  blocks=" + claim.blocks;
+                + " blocks=" + claim.blocks;
             sender.sendMessage(brief);
         }
         return true;
@@ -215,11 +215,11 @@ public final class HomeAdminCommand implements TabExecutor {
                            + (count == 1 ? " home:" : "homes:"));
         for (Home home : homes) {
             String brief = "-" + ChatColor.YELLOW
-                + " id=" + home.id
-                + "  name=" + (home.name != null ? home.name : "-")
-                + ("  loc=" + home.world + ":"
+                + "id=" + home.id
+                + " name=" + (home.name != null ? home.name : "-")
+                + (" loc=" + home.world + ":"
                    + blk(home.x) + "," + blk(home.y) + "," + blk(home.z))
-                + "  public=" + (home.publicName != null
+                + " public=" + (home.publicName != null
                                  ? home.publicName : "-");
             sender.sendMessage(brief);
         }

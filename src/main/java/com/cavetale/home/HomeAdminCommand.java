@@ -186,14 +186,18 @@ public final class HomeAdminCommand implements TabExecutor {
                            + (count == 1 ? " claim:" : "claims:"));
         int id = 0;
         for (Claim claim : claims) {
-            String brief = "" + ChatColor.YELLOW
+            String brief = "-" + ChatColor.YELLOW
                 + " id=" + claim.id
-                + (" loc=" + claim.world + ":"
+                + ("  loc=" + claim.world + ":"
                    + claim.area.centerX() + "," + claim.area.centerY())
-                + " blocks=" + claim.blocks;
+                + "  blocks=" + claim.blocks;
             sender.sendMessage(brief);
         }
         return true;
+    }
+
+    private static int blk(double c) {
+        return (int) Math.floor(c);
     }
 
     boolean homesCommand(CommandSender sender, String[] args) {
@@ -210,13 +214,13 @@ public final class HomeAdminCommand implements TabExecutor {
         sender.sendMessage(ChatColor.YELLOW + name + " has " + count
                            + (count == 1 ? " home:" : "homes:"));
         for (Home home : homes) {
-            String brief = "" + ChatColor.YELLOW
+            String brief = "-" + ChatColor.YELLOW
                 + " id=" + home.id
-                + " name=" + (home.name != null ? home.name : "-")
-                + (" loc=" + home.world + ":"
-                   + home.x + "," + home.y + "," + home.z)
-                + " public=" + (home.publicName != null
-                                ? home.publicName : "-");
+                + "  name=" + (home.name != null ? home.name : "-")
+                + ("  loc=" + home.world + ":"
+                   + blk(home.x) + "," + blk(home.y) + "," + blk(home.z))
+                + "  public=" + (home.publicName != null
+                                 ? home.publicName : "-");
             sender.sendMessage(brief);
         }
         return true;

@@ -183,7 +183,7 @@ public final class HomeAdminCommand implements TabExecutor {
         List<Claim> claims = plugin.findClaims(uuid);
         int count = claims.size();
         sender.sendMessage(ChatColor.YELLOW + name + " has " + count
-                           + (count == 1 ? " claim:" : "claims:"));
+                           + (count == 1 ? " claim:" : " claims:"));
         int id = 0;
         for (Claim claim : claims) {
             String brief = "-" + ChatColor.YELLOW
@@ -212,7 +212,7 @@ public final class HomeAdminCommand implements TabExecutor {
         List<Home> homes = plugin.findHomes(uuid);
         int count = homes.size();
         sender.sendMessage(ChatColor.YELLOW + name + " has " + count
-                           + (count == 1 ? " home:" : "homes:"));
+                           + (count == 1 ? " home:" : " homes:"));
         for (Home home : homes) {
             String brief = "-" + ChatColor.YELLOW
                 + "id=" + home.id

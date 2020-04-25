@@ -602,13 +602,11 @@ final class ClaimListener implements Listener {
             && event.getSpawnReason() != CreatureSpawnEvent.SpawnReason.CUSTOM) {
             event.setCancelled(true);
         }
-        Claim claim = plugin.getClaimAt(entity.getLocation());
         if (entity.getType() == EntityType.WITHER
             && event.getSpawnReason() != CreatureSpawnEvent.SpawnReason.CUSTOM) {
-            if (claim == null || !claim.getBoolSetting(Claim.Setting.WITHER_SPAWNING)) {
-                event.setCancelled(true);
-            }
+            event.setCancelled(true);
         }
+        Claim claim = plugin.getClaimAt(entity.getLocation());
         if (claim == null) return;
         if (!claim.getBoolSetting(Claim.Setting.MOB_SPAWNING)) {
             event.setCancelled(true);

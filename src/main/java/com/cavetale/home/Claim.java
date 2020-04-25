@@ -56,6 +56,7 @@ final class Claim {
         PUBLIC("Anyone can build", false),
         PUBLIC_INVITE("Anyone can interact with blocks such as doors", false),
         SHOW_BORDERS("Show claim borders as you enter or leave", true),
+        WITHER_SPAWNING("Allow the wither to be constructed", false),
         // Admin only
         HIDDEN("Hide this claim", false),
         ELYTRA("Allow elytra flight", true),

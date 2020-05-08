@@ -420,6 +420,7 @@ final class ClaimListener implements Listener {
             switch (block.getType()) {
             case ANVIL:
             case CAKE:
+            case SWEET_BERRY_BUSH:
                 checkPlayerAction(player, block, Action.BUILD, event); break;
             default: checkPlayerAction(player, block, Action.INTERACT, event); break;
             }

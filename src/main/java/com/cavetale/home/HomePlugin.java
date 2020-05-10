@@ -14,9 +14,6 @@ import java.util.stream.Collectors;
 import lombok.Getter;
 import lombok.Value;
 import net.md_5.bungee.api.ChatColor;
-import net.md_5.bungee.api.ChatMessageType;
-import net.md_5.bungee.api.chat.BaseComponent;
-import net.md_5.bungee.api.chat.TextComponent;
 import org.bukkit.Chunk;
 import org.bukkit.GameMode;
 import org.bukkit.Location;
@@ -194,14 +191,10 @@ public final class HomePlugin extends JavaPlugin {
                     if (oldClaim != null) {
                         if (!oldClaim.getBoolSetting(Claim.Setting.HIDDEN)) {
                             if (oldClaim.isOwner(player)) {
-                                BaseComponent[] txt = TextComponent
-                                    .fromLegacyText(ChatColor.GRAY + "Leaving your claim");
-                                player.sendMessage(ChatMessageType.ACTION_BAR, txt);
+                                player.sendActionBar(ChatColor.GRAY + "Leaving your claim");
                             } else {
-                                BaseComponent[] txt = TextComponent
-                                    .fromLegacyText(ChatColor.GRAY + "Leaving "
-                                                    + oldClaim.getOwnerName() + "'s claim");
-                                player.sendMessage(ChatMessageType.ACTION_BAR, txt);
+                                player.sendActionBar(ChatColor.GRAY + "Leaving "
+                                                     + oldClaim.getOwnerName() + "'s claim");
                             }
                             if (oldClaim.getBoolSetting(Claim.Setting.SHOW_BORDERS)) {
                                 highlightClaim(oldClaim, player);
@@ -213,14 +206,10 @@ public final class HomePlugin extends JavaPlugin {
                 if (cl1.claimId != cl2.claimId) {
                     if (!claim.getBoolSetting(Claim.Setting.HIDDEN)) {
                         if (claim.isOwner(player)) {
-                            BaseComponent[] txt = TextComponent
-                                .fromLegacyText(ChatColor.GRAY + "Entering your claim");
-                            player.sendMessage(ChatMessageType.ACTION_BAR, txt);
+                            player.sendActionBar(ChatColor.GRAY + "Entering your claim");
                         } else {
-                            BaseComponent[] txt = TextComponent
-                                .fromLegacyText(ChatColor.GRAY + "Entering "
-                                                + claim.getOwnerName() + "'s claim");
-                            player.sendMessage(ChatMessageType.ACTION_BAR, txt);
+                            player.sendActionBar(ChatColor.GRAY + "Entering "
+                                                 + claim.getOwnerName() + "'s claim");
                         }
                         if (claim.getBoolSetting(Claim.Setting.SHOW_BORDERS)) {
                             highlightClaim(claim, player);

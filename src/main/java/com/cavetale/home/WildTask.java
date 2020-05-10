@@ -1,6 +1,7 @@
 package com.cavetale.home;
 
 import java.util.List;
+import java.util.function.Consumer;
 import lombok.RequiredArgsConstructor;
 import net.md_5.bungee.api.ChatColor;
 import net.md_5.bungee.api.chat.BaseComponent;
@@ -87,7 +88,7 @@ final class WildTask {
             player.sendMessage(ChatColor.RED
                                + "Could not find a place to build. Please try again");
         }
-        world.getChunkAtAsync(x >> 4, z >> 4, this::onChunkLoaded);
+        world.getChunkAtAsync(x >> 4, z >> 4, (Consumer<Chunk>) this::onChunkLoaded);
     }
 
     boolean findUnclaimedSpot(List<Claim> worldClaims,

@@ -9,6 +9,7 @@ import java.util.Optional;
 import java.util.Random;
 import java.util.UUID;
 import java.util.concurrent.ThreadLocalRandom;
+import java.util.function.Consumer;
 import java.util.stream.Collectors;
 import lombok.Getter;
 import lombok.Value;
@@ -16,6 +17,7 @@ import net.md_5.bungee.api.ChatColor;
 import net.md_5.bungee.api.ChatMessageType;
 import net.md_5.bungee.api.chat.BaseComponent;
 import net.md_5.bungee.api.chat.TextComponent;
+import org.bukkit.Chunk;
 import org.bukkit.GameMode;
 import org.bukkit.Location;
 import org.bukkit.Particle;
@@ -194,12 +196,12 @@ public final class HomePlugin extends JavaPlugin {
                             if (oldClaim.isOwner(player)) {
                                 BaseComponent[] txt = TextComponent
                                     .fromLegacyText(ChatColor.GRAY + "Leaving your claim");
-                                player.spigot().sendMessage(ChatMessageType.ACTION_BAR, txt);
+                                player.sendMessage(ChatMessageType.ACTION_BAR, txt);
                             } else {
                                 BaseComponent[] txt = TextComponent
                                     .fromLegacyText(ChatColor.GRAY + "Leaving "
                                                     + oldClaim.getOwnerName() + "'s claim");
-                                player.spigot().sendMessage(ChatMessageType.ACTION_BAR, txt);
+                                player.sendMessage(ChatMessageType.ACTION_BAR, txt);
                             }
                             if (oldClaim.getBoolSetting(Claim.Setting.SHOW_BORDERS)) {
                                 highlightClaim(oldClaim, player);
@@ -213,12 +215,12 @@ public final class HomePlugin extends JavaPlugin {
                         if (claim.isOwner(player)) {
                             BaseComponent[] txt = TextComponent
                                 .fromLegacyText(ChatColor.GRAY + "Entering your claim");
-                            player.spigot().sendMessage(ChatMessageType.ACTION_BAR, txt);
+                            player.sendMessage(ChatMessageType.ACTION_BAR, txt);
                         } else {
                             BaseComponent[] txt = TextComponent
                                 .fromLegacyText(ChatColor.GRAY + "Entering "
                                                 + claim.getOwnerName() + "'s claim");
-                            player.spigot().sendMessage(ChatMessageType.ACTION_BAR, txt);
+                            player.sendMessage(ChatMessageType.ACTION_BAR, txt);
                         }
                         if (claim.getBoolSetting(Claim.Setting.SHOW_BORDERS)) {
                             highlightClaim(claim, player);
@@ -539,7 +541,7 @@ public final class HomePlugin extends JavaPlugin {
         final World world = loc.getWorld();
         int cx = loc.getBlockX() >> 4;
         int cz = loc.getBlockZ() >> 4;
-        world.getChunkAtAsync(cx, cz, chunk -> {
+        world.getChunkAtAsync(cx, cz, (Consumer<Chunk>) chunk -> {
                 if (!player.isValid()) return;
                 player.teleport(loc, TeleportCause.COMMAND);
                 if (task != null) task.run();

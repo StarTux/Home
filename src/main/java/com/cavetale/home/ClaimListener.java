@@ -1,5 +1,6 @@
 package com.cavetale.home;
 
+import com.winthier.generic_events.PlayerCanBuildEvent;
 import java.util.Iterator;
 import lombok.RequiredArgsConstructor;
 import net.md_5.bungee.api.ChatColor;
@@ -689,5 +690,11 @@ final class ClaimListener implements Listener {
                                                           () -> player.setGliding(false));
             }
         }
+    }
+
+    @EventHandler(ignoreCancelled = true)
+    public void onPlayerCanBuild(PlayerCanBuildEvent event) {
+        checkPlayerAction(event.getPlayer(), event.getBlock(),
+                          Action.BUILD, event);
     }
 }

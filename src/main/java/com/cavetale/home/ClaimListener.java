@@ -44,6 +44,7 @@ import org.bukkit.event.entity.EntityDamageByEntityEvent;
 import org.bukkit.event.entity.EntityExplodeEvent;
 import org.bukkit.event.entity.EntityToggleGlideEvent;
 import org.bukkit.event.entity.PlayerLeashEntityEvent;
+import org.bukkit.event.entity.SpawnerSpawnEvent;
 import org.bukkit.event.hanging.HangingBreakByEntityEvent;
 import org.bukkit.event.hanging.HangingBreakEvent;
 import org.bukkit.event.hanging.HangingPlaceEvent;
@@ -696,5 +697,46 @@ final class ClaimListener implements Listener {
     public void onPlayerCanBuild(PlayerCanBuildEvent event) {
         checkPlayerAction(event.getPlayer(), event.getBlock(),
                           Action.BUILD, event);
+    }
+
+    public void onSpawnerSpawn(SpawnerSpawnEvent event) {
+        EntityType entityType = event.getEntityType();
+        Location loc;
+        World world;
+        switch (event.getEntityType()) {
+        case ZOMBIE:
+        case SKELETON:
+        case CAVE_SPIDER:
+        case SPIDER:
+        case SILVERFISH:
+            loc = event.getLocation();
+            world = loc.getWorld();
+            if (world.getEnvironment() == World.Environment.NORMAL) {
+                return;
+            }
+            break;
+        case BLAZE:
+        case MAGMA_CUBE: // 1.16
+            loc = event.getLocation();
+            world = loc.getWorld();
+            if (world.getEnvironment() == World.Environment.NETHER) {
+                return;
+            }
+            break;
+        default:
+            loc = event.getLocation();
+            world = loc.getWorld();
+            break;
+        }
+        String msg = "Spawner spawned " + event.getEntityType().name().toLowerCase()
+            + " at " + world.getName()
+            + " " + loc.getBlockX()
+            + " " + loc.getBlockY()
+            + " " + loc.getBlockZ();
+        plugin.getLogger().warning(msg);
+        for (Player player : plugin.getServer().getOnlinePlayers()) {
+            if (!(player.hasPermission("home.admin"))) continue;
+            player.sendMessage(ChatColor.RED + "[Home] " + msg);
+        }
     }
 }

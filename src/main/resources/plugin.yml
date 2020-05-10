@@ -97,4 +97,7 @@ permissions:
     default: op
   home.admin:
     description: Use /homeadmin
+    default: op
+  home.adminclaims:
+    description: Own all admin claims
     default: false

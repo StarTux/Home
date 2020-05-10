@@ -168,7 +168,7 @@ final class Claim {
     // Utility
 
     static boolean isAdmin(Player player) {
-        return player.hasPermission("home.admin");
+        return player.hasPermission("home.adminclaims");
     }
 
     boolean isOwner(Player player) {

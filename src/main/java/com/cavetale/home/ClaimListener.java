@@ -699,34 +699,29 @@ final class ClaimListener implements Listener {
                           Action.BUILD, event);
     }
 
+    @EventHandler(ignoreCancelled = true, priority = EventPriority.MONITOR)
     public void onSpawnerSpawn(SpawnerSpawnEvent event) {
         EntityType entityType = event.getEntityType();
-        Location loc;
-        World world;
+        Location loc = event.getLocation();
+        World world = loc.getWorld();
+        if (!plugin.isHomeWorld(world)) return;
         switch (event.getEntityType()) {
         case ZOMBIE:
         case SKELETON:
         case CAVE_SPIDER:
         case SPIDER:
         case SILVERFISH:
-            loc = event.getLocation();
-            world = loc.getWorld();
             if (world.getEnvironment() == World.Environment.NORMAL) {
                 return;
             }
             break;
         case BLAZE:
         case MAGMA_CUBE: // 1.16
-            loc = event.getLocation();
-            world = loc.getWorld();
             if (world.getEnvironment() == World.Environment.NETHER) {
                 return;
             }
             break;
-        default:
-            loc = event.getLocation();
-            world = loc.getWorld();
-            break;
+        default: break;
         }
         String msg = "Spawner spawned " + event.getEntityType().name().toLowerCase()
             + " at " + world.getName()

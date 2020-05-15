@@ -630,6 +630,7 @@ final class ClaimListener implements Listener {
                 case NATURAL:
                 case REINFORCEMENTS:
                 case VILLAGE_INVASION:
+                case TRAP: // Skeleton riders(?)
                     int light = event.getEntity().getLocation().getBlock().getLightFromBlocks();
                     if (light > 0) {
                         event.setCancelled(true);

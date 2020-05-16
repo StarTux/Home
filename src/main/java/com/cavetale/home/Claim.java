@@ -167,13 +167,13 @@ final class Claim {
 
     // Utility
 
-    static boolean isAdmin(Player player) {
+    static boolean ownsAdminClaims(Player player) {
         return player.hasPermission("home.adminclaims");
     }
 
     boolean isOwner(Player player) {
         if (plugin.doesIgnoreClaims(player)) return true;
-        if (isAdminClaim() && isAdmin(player)) return true;
+        if (isAdminClaim() && ownsAdminClaims(player)) return true;
         return isOwner(player.getUniqueId());
     }
 
@@ -183,7 +183,7 @@ final class Claim {
 
     boolean canBuild(Player player) {
         if (plugin.doesIgnoreClaims(player)) return true;
-        if (isAdminClaim() && isAdmin(player)) return true;
+        if (isAdminClaim() && ownsAdminClaims(player)) return true;
         return canBuild(player.getUniqueId());
     }
 

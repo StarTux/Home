@@ -451,7 +451,7 @@ public final class ClaimCommand extends PlayerCommand {
         } catch (IllegalArgumentException iae) {
             throw new Wrong("Unknown claim setting: " + args[1]);
         }
-        if (setting.isAdminOnly() && !isAdmin(player)) {
+        if (setting.isAdminOnly() && !Claim.ownsAdminClaims(player)) {
             throw new Wrong("Unknown claim setting: " + args[1]);
         }
         Object value;
@@ -480,7 +480,7 @@ public final class ClaimCommand extends PlayerCommand {
         frame(cb, "Claim Settings");
         player.spigot().sendMessage(cb.create());
         for (Claim.Setting setting : Claim.Setting.values()) {
-            if (setting.isAdminOnly() && !isAdmin(player)) continue;
+            if (setting.isAdminOnly() && !Claim.ownsAdminClaims(player)) continue;
             cb = new ComponentBuilder(" ");
             Object value = claim.getSetting(setting);
             String key = setting.name().toLowerCase();
@@ -680,10 +680,6 @@ public final class ClaimCommand extends PlayerCommand {
         commandHelp(player, "/claim abandon", new String[]{}, "Abandon your claim.");
     }
 
-    static boolean isAdmin(Player player) {
-        return player.hasPermission("home.admin");
-    }
-
     public void printClaimInfo(Player player, Claim claim) {
         ComponentBuilder cb = new ComponentBuilder("");
         frame(cb, "Claim Info");
@@ -730,7 +726,7 @@ public final class ClaimCommand extends PlayerCommand {
         cb = new ComponentBuilder("");
         cb.append("Settings").color(ChatColor.GRAY);
         for (Claim.Setting setting : Claim.Setting.values()) {
-            if (setting.isAdminOnly() && !isAdmin(player)) continue;
+            if (setting.isAdminOnly() && !Claim.ownsAdminClaims(player)) continue;
             Object value = claim.getSetting(setting);
             if (value == null) continue;
             cb.append(" ").reset();

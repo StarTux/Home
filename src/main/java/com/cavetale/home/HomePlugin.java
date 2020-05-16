@@ -120,6 +120,7 @@ public final class HomePlugin extends JavaPlugin {
                 int sleeping = 0;
                 for (Player player : world.getPlayers()) {
                     if (player.isSleepingIgnored()) continue;
+                    if (player.getGameMode() == GameMode.SPECTATOR) continue;
                     total += 1;
                     if (player.isSleeping() && player.getSleepTicks() >= 100) {
                         sleeping += 1;

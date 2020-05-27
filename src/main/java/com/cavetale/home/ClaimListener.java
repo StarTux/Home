@@ -420,7 +420,18 @@ final class ClaimListener implements Listener {
                 }
             }
             if (block.getType().isInteractable()) {
-                checkPlayerAction(player, block, Action.BUILD, event); break;
+                switch (block.getType()) {
+                case ENCHANTING_TABLE:
+                case CRAFTING_TABLE:
+                case ENDER_CHEST:
+                case GRINDSTONE:
+                case STONECUTTER:
+                    checkPlayerAction(player, block, Action.INTERACT, event);
+                    break;
+                default:
+                    checkPlayerAction(player, block, Action.BUILD, event);
+                    break;
+                }
             } else {
                 checkPlayerAction(player, block, Action.INTERACT, event);
             }

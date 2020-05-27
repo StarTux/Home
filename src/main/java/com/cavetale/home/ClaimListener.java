@@ -42,6 +42,7 @@ import org.bukkit.event.entity.EntityChangeBlockEvent;
 import org.bukkit.event.entity.EntityCombustByEntityEvent;
 import org.bukkit.event.entity.EntityDamageByEntityEvent;
 import org.bukkit.event.entity.EntityExplodeEvent;
+import org.bukkit.event.entity.EntityPlaceEvent;
 import org.bukkit.event.entity.EntityToggleGlideEvent;
 import org.bukkit.event.entity.PlayerLeashEntityEvent;
 import org.bukkit.event.entity.SpawnerSpawnEvent;
@@ -399,32 +400,29 @@ final class ClaimListener implements Listener {
             return;
         case RIGHT_CLICK_BLOCK:
             // Slime chunk detector
-            if (block.getType().isSolid()
+            ItemStack item = event.getItem();
+            if (item != null && item.getType() == Material.SLIME_BALL
+                && block.getType().isSolid()
                 && event.getBlockFace() == BlockFace.UP
                 && block.getY() <= 40
                 && claim != null
                 && claim.canBuild(player)) {
-                ItemStack item = event.getItem();
-                if (item != null && item.getType() == Material.SLIME_BALL) {
-                    if (block.getChunk().isSlimeChunk()) {
-                        player.sendMessage(ChatColor.GREEN + "Slime chunk!");
-                        Location loc = block.getRelative(event.getBlockFace())
-                            .getLocation().add(0.5, 0.05, 0.5);
-                        player.playSound(loc, Sound.BLOCK_SLIME_BLOCK_BREAK,
-                                         SoundCategory.BLOCKS, 1.0f, 1.0f);
-                        player.spawnParticle(Particle.SLIME, loc, 8,
-                                             0.25, 0.0, 0.25, 0);
-                    } else {
-                        player.sendMessage(ChatColor.RED + "Not a slime chunk.");
-                    }
+                if (block.getChunk().isSlimeChunk()) {
+                    player.sendMessage(ChatColor.GREEN + "Slime chunk!");
+                    Location loc = block.getRelative(event.getBlockFace())
+                        .getLocation().add(0.5, 0.05, 0.5);
+                    player.playSound(loc, Sound.BLOCK_SLIME_BLOCK_BREAK,
+                                     SoundCategory.BLOCKS, 1.0f, 1.0f);
+                    player.spawnParticle(Particle.SLIME, loc, 8,
+                                         0.25, 0.0, 0.25, 0);
+                } else {
+                    player.sendMessage(ChatColor.RED + "Not a slime chunk.");
                 }
             }
-            switch (block.getType()) {
-            case ANVIL:
-            case CAKE:
-            case SWEET_BERRY_BUSH:
+            if (block.getType().isInteractable()) {
                 checkPlayerAction(player, block, Action.BUILD, event); break;
-            default: checkPlayerAction(player, block, Action.INTERACT, event); break;
+            } else {
+                checkPlayerAction(player, block, Action.INTERACT, event);
             }
             return;
         case LEFT_CLICK_BLOCK:
@@ -433,6 +431,11 @@ final class ClaimListener implements Listener {
         default:
             break;
         }
+    }
+
+    @EventHandler(ignoreCancelled = true, priority = EventPriority.LOW)
+    public void onEntityPlace(EntityPlaceEvent event) {
+        checkPlayerAction(event.getPlayer(), event.getBlock(), Action.BUILD, event);
     }
 
     @EventHandler(ignoreCancelled = true, priority = EventPriority.LOW)

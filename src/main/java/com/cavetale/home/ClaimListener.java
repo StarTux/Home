@@ -9,6 +9,7 @@ import org.bukkit.Material;
 import org.bukkit.Particle;
 import org.bukkit.Sound;
 import org.bukkit.SoundCategory;
+import org.bukkit.Tag;
 import org.bukkit.World;
 import org.bukkit.block.Block;
 import org.bukkit.block.BlockFace;
@@ -420,17 +421,25 @@ final class ClaimListener implements Listener {
                 }
             }
             if (block.getType().isInteractable()) {
-                switch (block.getType()) {
-                case ENCHANTING_TABLE:
-                case CRAFTING_TABLE:
-                case ENDER_CHEST:
-                case GRINDSTONE:
-                case STONECUTTER:
+                Material mat = block.getType();
+                if (Tag.DOORS.isTagged(mat)
+                    || Tag.BUTTONS.isTagged(mat)
+                    || Tag.TRAPDOORS.isTagged(mat)) {
                     checkPlayerAction(player, block, Action.INTERACT, event);
-                    break;
-                default:
-                    checkPlayerAction(player, block, Action.BUILD, event);
-                    break;
+                } else {
+                    switch (mat) {
+                    case ENCHANTING_TABLE:
+                    case CRAFTING_TABLE:
+                    case ENDER_CHEST:
+                    case GRINDSTONE:
+                    case STONECUTTER:
+                    case LEVER:
+                        checkPlayerAction(player, block, Action.INTERACT, event);
+                        break;
+                    default:
+                        checkPlayerAction(player, block, Action.BUILD, event);
+                        break;
+                    }
                 }
             } else {
                 checkPlayerAction(player, block, Action.INTERACT, event);

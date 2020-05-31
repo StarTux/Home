@@ -43,6 +43,7 @@ import org.bukkit.event.entity.EntityChangeBlockEvent;
 import org.bukkit.event.entity.EntityCombustByEntityEvent;
 import org.bukkit.event.entity.EntityDamageByEntityEvent;
 import org.bukkit.event.entity.EntityExplodeEvent;
+import org.bukkit.event.entity.EntityInteractEvent;
 import org.bukkit.event.entity.EntityPlaceEvent;
 import org.bukkit.event.entity.EntityToggleGlideEvent;
 import org.bukkit.event.entity.PlayerLeashEntityEvent;
@@ -389,12 +390,13 @@ final class ClaimListener implements Listener {
         if (plugin.doesIgnoreClaims(player)) return;
         final Block block = event.getClickedBlock();
         if (block == null) return;
+        Material mat = block.getType();
         Claim claim = plugin.getClaimAt(block);
         // Consider soil trampling
         switch (event.getAction()) {
         case PHYSICAL:
-            if (block.getType() == Material.FARMLAND) {
-                checkPlayerAction(event.getPlayer(), block, Action.BUILD, event);
+            if (mat == Material.FARMLAND || mat == Material.TURTLE_EGG) {
+                event.setCancelled(true);
             } else {
                 checkPlayerAction(event.getPlayer(), block, Action.INTERACT, event);
             }
@@ -403,7 +405,7 @@ final class ClaimListener implements Listener {
             // Slime chunk detector
             ItemStack item = event.getItem();
             if (item != null && item.getType() == Material.SLIME_BALL
-                && block.getType().isSolid()
+                && mat.isSolid()
                 && event.getBlockFace() == BlockFace.UP
                 && block.getY() <= 40
                 && claim != null
@@ -420,8 +422,7 @@ final class ClaimListener implements Listener {
                     player.sendMessage(ChatColor.RED + "Not a slime chunk.");
                 }
             }
-            if (block.getType().isInteractable()) {
-                Material mat = block.getType();
+            if (mat.isInteractable()) {
                 if (Tag.DOORS.isTagged(mat)
                     || Tag.BUTTONS.isTagged(mat)
                     || Tag.TRAPDOORS.isTagged(mat)) {
@@ -450,6 +451,17 @@ final class ClaimListener implements Listener {
             return;
         default:
             break;
+        }
+    }
+
+    @EventHandler(ignoreCancelled = true, priority = EventPriority.LOW)
+    public void onEntityInteract(EntityInteractEvent event) {
+        Block block = event.getBlock();
+        Claim claim = plugin.getClaimAt(block);
+        if (claim == null) return;
+        Material mat = block.getType();
+        if (mat == Material.FARMLAND || mat == Material.TURTLE_EGG) {
+            event.setCancelled(true);
         }
     }
 

@@ -667,26 +667,18 @@ final class ClaimListener implements Listener {
                 case REINFORCEMENTS:
                 case VILLAGE_INVASION:
                 case TRAP: // Skeleton riders(?)
-                    int light = event.getEntity().getLocation().getBlock().getLightFromBlocks();
+                    Location loc = event.getLocation();
+                    Block block = loc.getBlock();
+                    int light = block.getLightFromBlocks();
                     if (light > 0) {
                         event.setCancelled(true);
                         return;
                     }
-                    Block baseBlock = event.getLocation().getBlock().getRelative(0, -1, 0);
-                    if (!baseBlock.isEmpty() && !baseBlock.isLiquid() && Exploits.isPlayerPlaced(baseBlock)) {
-                        switch (baseBlock.getType()) {
-                        case STONE:
-                        case DIRT:
-                        case GRASS_BLOCK:
-                        case COARSE_DIRT:
-                        case PODZOL:
-                        case DIORITE:
-                        case ANDESITE:
-                        case GRANITE:
-                            break;
-                        default:
+                    int sunlight = block.getLightFromSky();
+                    if (sunlight > 0) {
+                        Block baseBlock = loc.getBlock().getRelative(0, -1, 0);
+                        if (!baseBlock.isEmpty() && !baseBlock.isLiquid() && Exploits.isPlayerPlaced(baseBlock)) {
                             event.setCancelled(true);
-                            return;
                         }
                     }
                     break;

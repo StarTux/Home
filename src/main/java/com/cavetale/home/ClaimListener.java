@@ -1,5 +1,6 @@
 package com.cavetale.home;
 
+import com.winthier.exploits.Exploits;
 import com.winthier.generic_events.PlayerCanBuildEvent;
 import java.util.Iterator;
 import lombok.RequiredArgsConstructor;
@@ -671,6 +672,23 @@ final class ClaimListener implements Listener {
                         event.setCancelled(true);
                         return;
                     }
+                    Block baseBlock = event.getLocation().getBlock().getRelative(0, -1, 0);
+                    if (!baseBlock.isEmpty() && !baseBlock.isLiquid() && Exploits.isPlayerPlaced(baseBlock)) {
+                        switch (baseBlock.getType()) {
+                        case STONE:
+                        case DIRT:
+                        case GRASS_BLOCK:
+                        case COARSE_DIRT:
+                        case PODZOL:
+                        case DIORITE:
+                        case ANDESITE:
+                        case GRANITE:
+                            break;
+                        default:
+                            event.setCancelled(true);
+                            return;
+                        }
+                    }
                     break;
                 default: break;
                 }
@@ -731,8 +749,7 @@ final class ClaimListener implements Listener {
 
     @EventHandler(ignoreCancelled = true)
     public void onPlayerCanBuild(PlayerCanBuildEvent event) {
-        checkPlayerAction(event.getPlayer(), event.getBlock(),
-                          Action.BUILD, event);
+        checkPlayerAction(event.getPlayer(), event.getBlock(), Action.BUILD, event);
     }
 
     @EventHandler(ignoreCancelled = true, priority = EventPriority.MONITOR)

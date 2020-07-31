@@ -729,6 +729,7 @@ public final class ClaimCommand extends PlayerCommand {
             if (setting.isAdminOnly() && !Claim.ownsAdminClaims(player)) continue;
             Object value = claim.getSetting(setting);
             if (value == null) continue;
+            if (value == setting.defaultValue) continue;
             cb.append(" ").reset();
             cb.append(setting.name().toLowerCase()).color(setting.isAdminOnly()
                                                           ? ChatColor.RED

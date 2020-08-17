@@ -73,7 +73,7 @@ public final class HomeAdminCommand implements TabExecutor {
                 if (newblocks < 0) newblocks = 0;
                 claim.setBlocks(newblocks);
                 claim.saveToDatabase();
-                player.sendMessage(ChatColor.YELLOW + "Claim owner by " + claim.getOwnerName()
+                player.sendMessage(ChatColor.YELLOW + "Claim owned by " + claim.getOwnerName()
                                    + " now has " + newblocks + " claim blocks.");
                 return true;
             }

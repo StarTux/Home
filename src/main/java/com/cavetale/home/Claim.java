@@ -9,11 +9,14 @@ import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
+import java.util.stream.Collectors;
 import javax.persistence.Column;
 import javax.persistence.Id;
 import javax.persistence.Table;
 import lombok.Data;
 import org.bukkit.Location;
+import org.bukkit.World;
+import org.bukkit.block.Block;
 import org.bukkit.entity.Player;
 import org.json.simple.JSONValue;
 
@@ -26,6 +29,7 @@ final class Claim {
     Area area;
     final List<UUID> members = new ArrayList<>(); // Can build
     final List<UUID> visitors = new ArrayList<>(); // Can visit
+    final List<Subclaim> subclaims = new ArrayList<>();
     int blocks;
     long created;
     final Map<Setting, Object> settings = new EnumMap<>(Setting.class);
@@ -225,5 +229,46 @@ final class Claim {
 
     boolean isHidden() {
         return getBoolSetting(Setting.HIDDEN);
+    }
+
+    public List<Subclaim> getSubclaims() {
+        return new ArrayList<>(subclaims);
+    }
+
+    public List<Subclaim> getSubclaims(World inWorld) {
+        return getSubclaims(inWorld.getName());
+    }
+
+    public List<Subclaim> getSubclaims(String inWorld) {
+        return subclaims.stream()
+            .filter(s -> s.getWorld().equals(inWorld))
+            .collect(Collectors.toList());
+    }
+
+    public Subclaim getSubclaimAt(Location loc) {
+        return getSubclaimAt(loc.getWorld().getName(), loc.getBlockX(), loc.getBlockZ());
+    }
+
+    public Subclaim getSubclaimAt(Block block) {
+        return getSubclaimAt(block.getWorld().getName(), block.getX(), block.getZ());
+    }
+
+    public Subclaim getSubclaimAt(String inWorld, int x, int z) {
+        for (Subclaim subclaim : subclaims) {
+            if (!subclaim.getWorld().equals(inWorld)) continue;
+            if (subclaim.getArea().contains(x, z)) return subclaim;
+        }
+        return null;
+    }
+
+    /**
+     * Used for subclaim creation or loading at startup.
+     */
+    public void addSubclaim(Subclaim subclaim) {
+        subclaims.add(subclaim);
+    }
+
+    public boolean removeSubclaim(Subclaim subclaim) {
+        return subclaims.remove(subclaim);
     }
 }

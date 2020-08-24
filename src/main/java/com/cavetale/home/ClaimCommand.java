@@ -92,6 +92,9 @@ public final class ClaimCommand extends PlayerCommand {
         sendClaimButtons(player, claim);
         player.sendMessage("");
         plugin.highlightClaim(claim, player);
+        for (Subclaim subclaim : claim.getSubclaims(player.getWorld())) {
+            plugin.highlightSubclaim(subclaim, player);
+        }
         return true;
     }
 
@@ -722,6 +725,15 @@ public final class ClaimCommand extends PlayerCommand {
             }
             player.spigot().sendMessage(cb.create());
         }
+        // Subclaims
+        List<Subclaim> subclaims = claim.getSubclaims(player.getWorld());
+        cb = new ComponentBuilder("Subclaims").color(ChatColor.GRAY)
+            .event(new ClickEvent(ClickEvent.Action.SUGGEST_COMMAND, "/subclaim "))
+            .event(new HoverEvent(HoverEvent.Action.SHOW_TEXT, TextComponent
+                                  .fromLegacyText(ChatColor.AQUA + "/subclaim")))
+            .append(" ")
+            .append("" + subclaims.size()).color(ChatColor.WHITE);
+        player.sendMessage(cb.create());
         // Settings
         cb = new ComponentBuilder("");
         cb.append("Settings").color(ChatColor.GRAY);

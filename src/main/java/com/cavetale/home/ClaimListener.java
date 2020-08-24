@@ -76,11 +76,17 @@ final class ClaimListener implements Listener {
     private final HomePlugin plugin;
 
     enum Action {
+        // Build group, more or less
         BUILD,
-        INTERACT,
-        COMBAT,
+        BUCKET,
         VEHICLE,
-        BUCKET;
+        // Inventory modification
+        CONTAINER,
+        // Use doors and buttons and such
+        INTERACT,
+        // Combat; claims allow it if pvp is on, subclaims require USE
+        // trust.
+        PVP;
     }
 
     // Utilty
@@ -92,8 +98,7 @@ final class ClaimListener implements Listener {
      *
      * @return True if the event is permitted, false otherwise.
      */
-    private boolean checkPlayerAction(Player player, Block block,
-                                      Action action, Cancellable cancellable) {
+    private boolean checkPlayerAction(Player player, Block block, Action action, Cancellable cancellable) {
         if (plugin.doesIgnoreClaims(player)) return true;
         String w = block.getWorld().getName();
         if (!plugin.getHomeWorlds().contains(w)) return true;
@@ -106,28 +111,9 @@ final class ClaimListener implements Listener {
             .findFirst().orElse(null);
         if (claim == null) return true;
         // We know there is a claim, so return on the player is
-        // privileged here.  The owner and members can do anything.
-        if (claim.canBuild(player)) return true;
-        if (claim.getBoolSetting(Claim.Setting.PUBLIC)) return true;
-        // Visitors may interact and do combat.
-        if (claim.canVisit(player)) {
-            switch (action) {
-            case COMBAT:
-            case INTERACT:
-                return true;
-            case BUILD:
-            case VEHICLE:
-            case BUCKET:
-            default:
-                // Forbidden actions are cancelled further down.
-                break;
-            }
-        } else {
-            switch (action) {
-            case COMBAT: return true;
-            default: break;
-            }
-        }
+        // privileged here.  Claim perms override subclaim ones.
+        if (hasClaimTrust(player, claim, action)) return true;
+        if (hasSubclaimTrust(player, claim, block, action)) return true;
         // Action is not covered by visitor, member, or owner
         // privilege.  Therefore, nothing is allowed.
         if (cancellable instanceof PlayerInteractEvent) {
@@ -137,6 +123,49 @@ final class ClaimListener implements Listener {
             cancellable.setCancelled(true);
         }
         return false;
+    }
+
+    /**
+     * Check for the given action based on claim permissions (trust or
+     * invite).
+     */
+    public boolean hasClaimTrust(Player player, Claim claim, Action action) {
+        if (claim.canBuild(player)) return true;
+        switch (action) {
+        case BUILD:
+        case BUCKET:
+        case VEHICLE:
+        case CONTAINER:
+            return claim.getBoolSetting(Claim.Setting.PUBLIC) || claim.canBuild(player);
+        case INTERACT:
+            return claim.canVisit(player);
+        case PVP:
+            return claim.getBoolSetting(Claim.Setting.PVP) && claim.canVisit(player);
+        default:
+            return false;
+        }
+    }
+
+    public boolean hasSubclaimTrust(Player player, Claim claim, Block block, Action action) {
+        Subclaim subclaim = claim.getSubclaimAt(block);
+        if (subclaim == null) return false;
+        Subclaim.Trust trust = subclaim.getTrust(player);
+        if (trust == Subclaim.Trust.NONE) return false;
+        if (trust.entails(Subclaim.Trust.OWNER)) return true;
+        switch (action) {
+        case BUILD:
+        case VEHICLE:
+        case BUCKET:
+            return trust.entails(Subclaim.Trust.BUILD);
+        case CONTAINER:
+            return trust.entails(Subclaim.Trust.CHEST);
+        case INTERACT:
+        case PVP:
+            // TODO: combat requires pvp setting
+            return subclaim.getParent().getBoolSetting(Claim.Setting.PVP) && trust.entails(Subclaim.Trust.USE);
+        default:
+            return false;
+        }
     }
 
     void warnNoBuild(Player player, Block block) {
@@ -232,45 +261,43 @@ final class ClaimListener implements Listener {
 
     @EventHandler(ignoreCancelled = true, priority = EventPriority.LOW)
     public void onEntityDamageByEntity(EntityDamageByEntityEvent event) {
-        final Entity entity = event.getEntity();
-        if (!plugin.isHomeWorld(entity.getWorld())) return;
+        final Entity damaged = event.getEntity();
+        if (!plugin.isHomeWorld(damaged.getWorld())) return;
         final Player player = getPlayerDamager(event.getDamager());
-        if (player != null && entity instanceof Player) {
-            if (plugin.doesIgnoreClaims(player)) return;
-            // PvP
-            if (player.equals(entity)) return;
-            Claim claim = plugin.getClaimAt(entity.getLocation().getBlock());
-            if (claim == null) {
-                // PvP is disabled in claim worlds, outside of claims
-                event.setCancelled(true);
-                return;
-            }
-            if (claim.getBoolSetting(Claim.Setting.PVP)) return;
-            event.setCancelled(true);
+        if (player != null && damaged instanceof Player) {
+            // PVP
+            if (player.equals(damaged)) return;
+            Block block = damaged.getLocation().getBlock();
+            checkPlayerAction(player, block, Action.PVP, event);
+            return;
         } else if (player != null) {
-            boolean claimed = plugin.getClaimAt(entity.getLocation().getBlock()) != null;
+            // Player damaged a non-player
+            boolean claimed = plugin.getClaimAt(damaged.getLocation().getBlock()) != null;
             Action action;
-            if (claimed && entity.getType() == EntityType.SHULKER) {
+            if (claimed && damaged.getType() == EntityType.SHULKER) {
                 // Some extra code for hostile, yet valuable mobs in
                 // claims.
                 action = Action.BUILD;
-            } else if (isHostileMob(entity)) {
-                action = Action.COMBAT;
+            } else if (isHostileMob(damaged)) {
+                // Always allowed
+                return;
             } else {
+                // Must be an animal
                 action = Action.BUILD;
             }
-            checkPlayerAction(player, entity.getLocation().getBlock(), action, event);
+            checkPlayerAction(player, damaged.getLocation().getBlock(), action, event);
         } else {
+            // Non-player damages something
             switch (event.getCause()) {
             case BLOCK_EXPLOSION:
             case ENTITY_EXPLOSION:
-                Claim claim = plugin.getClaimAt(entity.getLocation().getBlock());
+                Claim claim = plugin.getClaimAt(damaged.getLocation().getBlock());
                 if (claim == null) {
                     return;
                 }
                 if (claim.getBoolSetting(Claim.Setting.EXPLOSIONS)) return;
-                if (entity instanceof Player) return;
-                if (entity instanceof Mob) return;
+                if (damaged instanceof Player) return;
+                if (damaged instanceof Mob) return;
                 event.setCancelled(true);
                 break;
             default:
@@ -285,18 +312,24 @@ final class ClaimListener implements Listener {
         Player damager = getPlayerDamager(event.getCombuster());
         if (damager == null) return;
         if (damager.hasMetadata(plugin.META_IGNORE)) return;
-        Entity entity = event.getEntity();
-        if (entity instanceof Player) {
-            if (damager.equals(entity)) return;
-            Claim claim = plugin.getClaimAt(event.getEntity().getLocation().getBlock());
-            if (claim == null || !claim.getBoolSetting(Claim.Setting.PVP)) {
-                event.setCancelled(true);
-            }
+        Entity damaged = event.getEntity();
+        if (damaged instanceof Player) {
+            // PVP
+            if (damager.equals(damaged)) return;
+            Block block = damaged.getLocation().getBlock();
+            checkPlayerAction(damager, block, Action.PVP, event);
             return;
         }
-        if (isHostileMob(entity)) return;
-        if (isOwner(damager, entity)) return;
-        checkPlayerAction(damager, entity.getLocation().getBlock(), Action.BUILD, event);
+        if (isHostileMob(damaged)) {
+            // always allowed
+            return;
+        }
+        if (isOwner(damager, damaged)) {
+            // tamed animals
+            return;
+        }
+        Block block = damaged.getLocation().getBlock();
+        checkPlayerAction(damager, block, Action.BUILD, event);
     }
 
     @EventHandler(ignoreCancelled = true, priority = EventPriority.LOW)
@@ -388,6 +421,7 @@ final class ClaimListener implements Listener {
     @EventHandler(ignoreCancelled = true, priority = EventPriority.LOW)
     public void onPlayerInteract(PlayerInteractEvent event) {
         final Player player = event.getPlayer();
+        if (plugin.sessions.of(player).onPlayerInteract(event)) return;
         if (plugin.doesIgnoreClaims(player)) return;
         final Block block = event.getClickedBlock();
         if (block == null) return;
@@ -403,30 +437,9 @@ final class ClaimListener implements Listener {
             }
             return;
         case RIGHT_CLICK_BLOCK:
-            // Slime chunk detector
-            ItemStack item = event.getItem();
-            if (item != null && item.getType() == Material.SLIME_BALL
-                && mat.isSolid()
-                && event.getBlockFace() == BlockFace.UP
-                && block.getY() <= 40
-                && claim != null
-                && claim.canBuild(player)) {
-                if (block.getChunk().isSlimeChunk()) {
-                    player.sendMessage(ChatColor.GREEN + "Slime chunk!");
-                    Location loc = block.getRelative(event.getBlockFace())
-                        .getLocation().add(0.5, 0.05, 0.5);
-                    player.playSound(loc, Sound.BLOCK_SLIME_BLOCK_BREAK,
-                                     SoundCategory.BLOCKS, 1.0f, 1.0f);
-                    player.spawnParticle(Particle.SLIME, loc, 8,
-                                         0.25, 0.0, 0.25, 0);
-                } else {
-                    player.sendMessage(ChatColor.RED + "Not a slime chunk.");
-                }
-            }
+            if (slimeballUse(player, event, block, claim)) return;
             if (mat.isInteractable()) {
-                if (Tag.DOORS.isTagged(mat)
-                    || Tag.BUTTONS.isTagged(mat)
-                    || Tag.TRAPDOORS.isTagged(mat)) {
+                if (Tag.DOORS.isTagged(mat) || Tag.BUTTONS.isTagged(mat) || Tag.TRAPDOORS.isTagged(mat)) {
                     checkPlayerAction(player, block, Action.INTERACT, event);
                 } else {
                     switch (mat) {
@@ -453,6 +466,31 @@ final class ClaimListener implements Listener {
         default:
             break;
         }
+    }
+
+    /**
+     * @return true if this is the valid use of a slimeball, false otherwise.
+     */
+    boolean slimeballUse(Player player, PlayerInteractEvent event, Block block, Claim claim) {
+        if (claim == null) return false;
+        ItemStack item = event.getItem();
+        if (item == null || item.getType() != Material.SLIME_BALL) return false;
+        if (!block.getType().isSolid()) return false;
+        if (event.getBlockFace() != BlockFace.UP) return false;
+        if (block.getY() > 40) return false;
+        if (!claim.canBuild(player)) return false;
+        if (block.getChunk().isSlimeChunk()) {
+            player.sendMessage(ChatColor.GREEN + "Slime chunk!");
+            Location loc = block.getRelative(event.getBlockFace())
+                .getLocation().add(0.5, 0.05, 0.5);
+            player.playSound(loc, Sound.BLOCK_SLIME_BLOCK_BREAK,
+                             SoundCategory.BLOCKS, 1.0f, 1.0f);
+            player.spawnParticle(Particle.SLIME, loc, 8,
+                                 0.25, 0.0, 0.25, 0);
+        } else {
+            player.sendMessage(ChatColor.RED + "Not a slime chunk.");
+        }
+        return true;
     }
 
     @EventHandler(ignoreCancelled = true, priority = EventPriority.LOW)
@@ -579,17 +617,18 @@ final class ClaimListener implements Listener {
             if (holder.equals(player)) return;
             if (isOwner(player, (Entity) holder)) return;
             Block block = ((Entity) holder).getLocation().getBlock();
-            checkPlayerAction(player, block, Action.BUILD, event);
+            checkPlayerAction(player, block, Action.CONTAINER, event);
         } else if (holder instanceof Lectern) {
             Block block = ((Lectern) holder).getBlock();
             if (block == null) return; // @NotNull
             checkPlayerAction(player, block, Action.INTERACT, event);
         } else if (holder instanceof BlockState) {
+            // One block containers, as opposed to double chest
             Block block = ((BlockState) holder).getBlock();
-            checkPlayerAction(player, block, Action.BUILD, event);
+            checkPlayerAction(player, block, Action.CONTAINER, event);
         } else if (holder instanceof DoubleChest) {
             Block block = ((DoubleChest) holder).getLocation().getBlock();
-            checkPlayerAction(player, block, Action.BUILD, event);
+            checkPlayerAction(player, block, Action.CONTAINER, event);
         }
     }
 

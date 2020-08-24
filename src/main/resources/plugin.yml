@@ -5,7 +5,7 @@ version: 0.1
 api-version: 1.13
 website: https://cavetale.com
 main: com.cavetale.home.HomePlugin
-depend: [SQL, GenericEvents, Exploits]
+depend: [Core, SQL, GenericEvents, Exploits]
 softdepend: [dynmap]
 commands:
   homeadmin:
@@ -77,6 +77,11 @@ commands:
       /claim grow - Grow claim to your location
       /claim shrink - Grow claim to your location
       /claim abandon - Abandon your claim
+  subclaim:
+    aliases: []
+    description: Subclaim management
+    permission: home.claim
+    usage: /subclaim
   build:
     aliases: [wild]
     description: Find a place to build.

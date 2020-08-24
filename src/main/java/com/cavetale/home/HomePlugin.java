@@ -9,6 +9,7 @@ import java.util.Optional;
 import java.util.Random;
 import java.util.UUID;
 import java.util.concurrent.ThreadLocalRandom;
+import java.util.function.BiConsumer;
 import java.util.function.Consumer;
 import java.util.stream.Collectors;
 import lombok.Getter;
@@ -22,6 +23,7 @@ import org.bukkit.Sound;
 import org.bukkit.SoundCategory;
 import org.bukkit.World;
 import org.bukkit.block.Block;
+import org.bukkit.block.BlockFace;
 import org.bukkit.configuration.ConfigurationSection;
 import org.bukkit.entity.Player;
 import org.bukkit.event.player.PlayerTeleportEvent.TeleportCause;
@@ -47,8 +49,9 @@ public final class HomePlugin extends JavaPlugin {
     // Homes
     final List<Home> homes = new ArrayList<>();
     final List<String> homeWorlds = new ArrayList<>();
-    // Claims
     final List<Claim> claims = new ArrayList<>();
+    final Sessions sessions = new Sessions(this);
+    final EventListener eventListener = new EventListener(this);
     // Utilty
     long ticks;
     Random random = ThreadLocalRandom.current();
@@ -63,15 +66,17 @@ public final class HomePlugin extends JavaPlugin {
     final SetHomeCommand setHomeCommand = new SetHomeCommand(this);
     final BuildCommand buildCommand = new BuildCommand(this);
     final InviteHomeCommand inviteHomeCommand = new InviteHomeCommand(this);
+    final SubclaimCommand subclaimCommand = new SubclaimCommand(this);
 
     @Override
     public void onEnable() {
         saveDefaultConfig();
         db = new SQLDatabase(this);
-        db.registerTables(Claim.SQLRow.class, ClaimTrust.class, Home.class,
-                          HomeInvite.class);
+        db.registerTables(Claim.SQLRow.class, Subclaim.SQLRow.class, ClaimTrust.class,
+                          Home.class, HomeInvite.class);
         db.createAllTables();
         getServer().getPluginManager().registerEvents(new ClaimListener(this), this);
+        eventListener.enable();
         getCommand("homeadmin").setExecutor(homeAdminCommand);
         getCommand("claim").setExecutor(claimCommand);
         getCommand("home").setExecutor(homeCommand);
@@ -80,6 +85,7 @@ public final class HomePlugin extends JavaPlugin {
         getCommand("sethome").setExecutor(setHomeCommand);
         getCommand("invitehome").setExecutor(inviteHomeCommand);
         getCommand("build").setExecutor(buildCommand);
+        subclaimCommand.enable();
         loadFromConfig();
         loadFromDatabase();
         getServer().getScheduler().runTaskTimer(this, this::onTick, 1, 1);
@@ -300,6 +306,15 @@ public final class HomePlugin extends JavaPlugin {
                 }
             }
         }
+        for (Subclaim.SQLRow row : db.find(Subclaim.SQLRow.class).findList()) {
+            Claim claim = getClaimById(row.getClaimId());
+            if (claim == null) {
+                getLogger().warning("Subclaim lacks parent claim: id=" + row.getId() + " claim_id=" + row.getClaimId());
+                continue;
+            }
+            Subclaim subclaim = new Subclaim(this, claim, row);
+            claim.addSubclaim(subclaim);
+        }
         homes.addAll(db.find(Home.class).findList());
         for (HomeInvite invite : db.find(HomeInvite.class).findList()) {
             for (Home home : homes) {
@@ -379,52 +394,63 @@ public final class HomePlugin extends JavaPlugin {
             .findFirst().orElse(null);
     }
 
-    void highlightClaim(Claim claim, Player player) {
-        List<Block> blocks = new ArrayList<>();
-        Area area = claim.getArea();
-        Location playerLocation = player.getLocation();
-        int playerX = playerLocation.getBlockX();
-        int playerY = playerLocation.getBlockY();
-        int playerZ = playerLocation.getBlockZ();
-        World world = player.getWorld();
-        final int maxd = 16 * 6;
-        // Upper X axies
-        if (Math.abs(area.ay - playerZ) <= maxd) {
-            for (int x = area.ax; x <= area.bx; x += 1) {
-                if (Math.abs(x - playerX) <= maxd && world.isChunkLoaded(x >> 4, area.ay >> 4)) {
-                    blocks.add(world.getBlockAt(x, playerY, area.ay));
+    public void highlightClaim(Claim claim, Player player) {
+        highlightClaimHelper(claim.getArea(), player.getWorld(), player.getLocation().getBlockY(), (block, bf) -> {
+                player.spawnParticle(Particle.BARRIER, block.getLocation().add(0.5, 0.5, 0.5), 1, 0.0, 0.0, 0.0, 0.0);
+            });
+    }
+
+    public void highlightSubclaim(Subclaim subclaim, Player player) {
+        if (!subclaim.isInWorld(player.getWorld())) throw new IllegalArgumentException("Subclaim in wrong world!");
+        highlightSubclaim(subclaim.getArea(), player);
+    }
+
+    public void highlightSubclaim(Area area, Player player) {
+        highlightClaimHelper(area, player.getWorld(), player.getLocation().getBlockY(), (block, face) -> {
+                BlockFace move;
+                double dx;
+                double dz;
+                switch (face) {
+                case NORTH: dx = 0; dz = 0; move = BlockFace.EAST; break;
+                case EAST: dx = 1; dz = 0; move = BlockFace.SOUTH; break;
+                case SOUTH: dx = 1; dz = 1; move = BlockFace.WEST; break;
+                case WEST: dx = 0; dz = 1; move = BlockFace.NORTH; break;
+                default: dx = 0; dz = 0; move = BlockFace.UP; break;
                 }
-            }
+                player.spawnParticle(Particle.END_ROD, block.getLocation().add(dx, 0.125, dz), 1, 0.0, 0.0, 0.0, 0.0);
+                dx += move.getModX() * 0.5;
+                dz += move.getModZ() * 0.5;
+                player.spawnParticle(Particle.END_ROD, block.getLocation().add(dx, 0.125, dz), 1, 0.0, 0.0, 0.0, 0.0);
+            });
+    }
+
+    /**
+     * Inner loop of highlightClaimHelper().
+     */
+    private void highlightClaimHandleBlock(World world, int x, int y, int z, BlockFace face, BiConsumer<Block, BlockFace> callback) {
+        if (!world.isChunkLoaded(x >> 4, z >> 4)) return;
+        Block block = world.getBlockAt(x, y, z);
+        while (block.isEmpty() && block.getY() > 0) block = block.getRelative(0, -1, 0);
+        while (!block.isEmpty() && block.getY() < 127) block = block.getRelative(0, 1, 0);
+        callback.accept(block, face);
+    }
+
+    private void highlightClaimHelper(Area area, World world, int playerY, BiConsumer<Block, BlockFace> callback) {
+        // Upper X axis
+        for (int x = area.ax; x <= area.bx; x += 1) {
+            highlightClaimHandleBlock(world, x, playerY, area.ay, BlockFace.NORTH, callback);
         }
         // Lower X axis
-        if (Math.abs(area.by - playerZ) <= maxd) {
-            for (int x = area.ax; x <= area.bx; x += 1) {
-                if (Math.abs(x - playerX) <= maxd && world.isChunkLoaded(x >> 4, area.by >> 4)) {
-                    blocks.add(world.getBlockAt(x, playerY, area.by));
-                }
-            }
+        for (int x = area.ax; x <= area.bx; x += 1) {
+            highlightClaimHandleBlock(world, x, playerY, area.by, BlockFace.SOUTH, callback);
         }
         // Left Z axis
-        if (Math.abs(area.ax - playerX) <= maxd) {
-            for (int z = area.ay; z < area.by; z += 1) {
-                if (Math.abs(z - playerZ) <= maxd && world.isChunkLoaded(area.ax >> 4, z >> 4)) {
-                    blocks.add(world.getBlockAt(area.ax, playerY, z));
-                }
-            }
+        for (int z = area.ay; z <= area.by; z += 1) {
+            highlightClaimHandleBlock(world, area.ax, playerY, z, BlockFace.WEST, callback);
         }
         // Right Z axis
-        if (Math.abs(area.bx - playerX) <= maxd) {
-            for (int z = area.ay; z < area.by; z += 1) {
-                if (Math.abs(z - playerZ) <= maxd && world.isChunkLoaded(area.bx >> 4, z >> 4)) {
-                    blocks.add(world.getBlockAt(area.bx, playerY, z));
-                }
-            }
-        }
-        for (Block block : blocks) {
-            while (block.isEmpty() && block.getY() > 0) block = block.getRelative(0, -1, 0);
-            while (!block.isEmpty() && block.getY() < 127) block = block.getRelative(0, 1, 0);
-            player.spawnParticle(Particle.BARRIER, block.getLocation().add(0.5, 0.5, 0.5), 1,
-                                 0.0, 0.0, 0.0, 0.0);
+        for (int z = area.ay; z <= area.by; z += 1) {
+            highlightClaimHandleBlock(world, area.bx, playerY, z, BlockFace.EAST, callback);
         }
     }
 

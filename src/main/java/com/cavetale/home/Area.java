@@ -69,4 +69,9 @@ final class Area {
     int centerY() {
         return (ay + by) / 2;
     }
+
+    @Override
+    public String toString() {
+        return "(" + ax + ", " + ay + ")-(" + bx + ", " + by + ")";
+    }
 }

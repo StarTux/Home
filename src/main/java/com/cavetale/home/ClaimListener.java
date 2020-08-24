@@ -160,6 +160,7 @@ final class ClaimListener implements Listener {
         case CONTAINER:
             return trust.entails(Subclaim.Trust.CHEST);
         case INTERACT:
+            return trust.entails(Subclaim.Trust.USE);
         case PVP:
             // TODO: combat requires pvp setting
             return subclaim.getParent().getBoolSetting(Claim.Setting.PVP) && trust.entails(Subclaim.Trust.USE);

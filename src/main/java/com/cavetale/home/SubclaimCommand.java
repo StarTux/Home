@@ -208,7 +208,7 @@ public final class SubclaimCommand implements TabExecutor {
     }
 
     boolean trust(Player player, String[] args) {
-        if (args.length < 1 || args.length > 2) return false;
+        if (args.length != 2) return false;
         Subclaim subclaim = requireSubclaim(player);
         Subclaim.Trust playerTrust = subclaim.getTrust(player);
         if (!playerTrust.entails(Subclaim.Trust.MANAGER)) {

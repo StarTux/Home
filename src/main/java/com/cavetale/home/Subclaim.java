@@ -113,7 +113,9 @@ public final class Subclaim {
     }
 
     public void saveToDatabase() {
-        plugin.db.save(toSQLRow());
+        SQLRow row = toSQLRow();
+        plugin.db.save(row);
+        this.id = row.id;
     }
 
     public List<UUID> getTrustedUuids() {

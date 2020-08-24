@@ -1,6 +1,7 @@
 package com.cavetale.home;
 
 import com.cavetale.core.util.Json;
+import com.winthier.generic_events.GenericEvents;
 import java.util.ArrayList;
 import java.util.EnumMap;
 import java.util.HashMap;
@@ -150,5 +151,15 @@ public final class Subclaim {
 
     public Trust removeTrust(UUID uuid) {
         return tag.trusted.remove(uuid);
+    }
+
+    public static UUID cachedPlayerUuid(String name) {
+        if (name.startsWith("*")) return PUBLIC_UUID;
+        return GenericEvents.cachedPlayerUuid(name);
+    }
+
+    public static String cachedPlayerName(UUID uuid) {
+        if (uuid.equals(PUBLIC_UUID)) return "*Everybody*";
+        return GenericEvents.cachedPlayerName(uuid);
     }
 }

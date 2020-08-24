@@ -3,7 +3,6 @@ package com.cavetale.home;
 import com.cavetale.core.command.CommandContext;
 import com.cavetale.core.command.CommandNode;
 import com.cavetale.core.command.CommandWarn;
-import com.winthier.generic_events.GenericEvents;
 import java.util.Collections;
 import java.util.List;
 import java.util.Map;
@@ -200,7 +199,7 @@ public final class SubclaimCommand implements TabExecutor {
             if (set == null || set.isEmpty()) continue;
             Subclaim.Trust trust = entry.getKey();
             player.sendMessage("  " + ChatColor.AQUA + trust.displayName + " Trust " + ChatColor.WHITE + set.stream()
-                               .map(GenericEvents::cachedPlayerName)
+                               .map(Subclaim::cachedPlayerName)
                                .collect(Collectors.joining(", ")));
         }
         player.sendMessage("");
@@ -217,10 +216,11 @@ public final class SubclaimCommand implements TabExecutor {
         }
         String playerName = args[0];
         String trustName = args[1];
-        UUID uuid = GenericEvents.cachedPlayerUuid(playerName);
+        UUID uuid = Subclaim.cachedPlayerUuid(playerName);
         if (uuid == null) {
             throw new CommandWarn("Player not found: " + playerName);
         }
+        playerName = Subclaim.cachedPlayerName(uuid);
         if (subclaim.getTrust(uuid).exceeds(subclaim.getTrust(player))) {
             throw new CommandWarn("You cannot modify this player's trust level!");
         }
@@ -238,8 +238,13 @@ public final class SubclaimCommand implements TabExecutor {
 
     List<String> trustComplete(CommandContext context, CommandNode node, String[] args) {
         if (args.length == 0) return null; // impossible
-        if (args.length == 1) return null; // player list
         String arg = args[args.length - 1].toLowerCase();
+        if (args.length == 1) {
+            return Stream.concat(Stream.of("*Everybody*"),
+                                 plugin.getServer().getOnlinePlayers().stream().map(Player::getName))
+                .filter(s -> s.toLowerCase().startsWith(arg))
+                .collect(Collectors.toList());
+        }
         if (args.length == 2) {
             return Stream.of(Subclaim.Trust.values())
                 .map(t -> t.name().toLowerCase())
@@ -257,10 +262,11 @@ public final class SubclaimCommand implements TabExecutor {
             throw new CommandWarn("You cannot edit this subclaim!");
         }
         String playerName = args[0];
-        UUID uuid = GenericEvents.cachedPlayerUuid(playerName);
+        UUID uuid = Subclaim.cachedPlayerUuid(playerName);
         if (uuid == null) {
             throw new CommandWarn("Player not found: " + playerName);
         }
+        playerName = Subclaim.cachedPlayerName(uuid);
         if (subclaim.getTrust(uuid).exceeds(subclaim.getTrust(player))) {
             throw new CommandWarn("You cannot modify this player's trust level!");
         }
@@ -285,7 +291,7 @@ public final class SubclaimCommand implements TabExecutor {
             if (subclaim == null) return Collections.emptyList();
             String arg = args[0].toLowerCase();
             return subclaim.getTrustedUuids().stream()
-                .map(GenericEvents::cachedPlayerName)
+                .map(Subclaim::cachedPlayerName)
                 .filter(Objects::nonNull)
                 .filter(n -> n.toLowerCase().startsWith(arg))
                 .collect(Collectors.toList());

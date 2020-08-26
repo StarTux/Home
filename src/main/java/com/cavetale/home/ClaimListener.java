@@ -130,7 +130,6 @@ final class ClaimListener implements Listener {
      * invite).
      */
     public boolean hasClaimTrust(Player player, Claim claim, Action action) {
-        if (claim.canBuild(player)) return true;
         switch (action) {
         case BUILD:
         case BUCKET:
@@ -142,7 +141,7 @@ final class ClaimListener implements Listener {
         case PVP:
             return claim.getBoolSetting(Claim.Setting.PVP) && claim.canVisit(player);
         default:
-            return false;
+            return claim.isOwner(player);
         }
     }
 
@@ -151,7 +150,6 @@ final class ClaimListener implements Listener {
         if (subclaim == null) return false;
         Subclaim.Trust trust = subclaim.getTrust(player);
         if (trust == Subclaim.Trust.NONE) return false;
-        if (trust.entails(Subclaim.Trust.OWNER)) return true;
         switch (action) {
         case BUILD:
         case VEHICLE:
@@ -165,7 +163,7 @@ final class ClaimListener implements Listener {
             // TODO: combat requires pvp setting
             return subclaim.getParent().getBoolSetting(Claim.Setting.PVP) && trust.entails(Subclaim.Trust.USE);
         default:
-            return false;
+            return trust.entails(Subclaim.Trust.OWNER);
         }
     }
 

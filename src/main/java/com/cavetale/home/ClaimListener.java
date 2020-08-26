@@ -440,6 +440,8 @@ final class ClaimListener implements Listener {
             if (mat.isInteractable()) {
                 if (Tag.DOORS.isTagged(mat) || Tag.BUTTONS.isTagged(mat) || Tag.TRAPDOORS.isTagged(mat)) {
                     checkPlayerAction(player, block, Action.INTERACT, event);
+                } else if (Tag.ANVIL.isTagged(mat)) {
+                    checkPlayerAction(player, block, Action.CONTAINER, event);
                 } else {
                     switch (mat) {
                     case ENCHANTING_TABLE:

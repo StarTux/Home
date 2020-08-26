@@ -4,11 +4,10 @@ import java.util.List;
 import java.util.stream.Collectors;
 import lombok.RequiredArgsConstructor;
 import net.md_5.bungee.api.ChatColor;
-import net.md_5.bungee.api.chat.BaseComponent;
 import net.md_5.bungee.api.chat.ClickEvent;
 import net.md_5.bungee.api.chat.ComponentBuilder;
 import net.md_5.bungee.api.chat.HoverEvent;
-import net.md_5.bungee.api.chat.TextComponent;
+import net.md_5.bungee.api.chat.hover.content.Text;
 import org.bukkit.Location;
 import org.bukkit.entity.Player;
 
@@ -20,7 +19,6 @@ public final class VisitCommand extends PlayerCommand {
     public boolean onCommand(Player player, String[] args) throws Wrong {
         if (args.length == 1 && args[0].equals("help")) return false;
         ComponentBuilder cb;
-        BaseComponent[] txt;
         if (args.length == 0) {
             List<Home> publicHomes = plugin.getHomes().stream()
                 .filter(h -> h.getPublicName() != null)
@@ -39,10 +37,7 @@ public final class VisitCommand extends PlayerCommand {
                 cb.append(" + ").color(ChatColor.AQUA);
                 cb.append(home.getPublicName()).color(ChatColor.WHITE);
                 cb.event(new ClickEvent(ClickEvent.Action.RUN_COMMAND, cmd));
-                txt = TextComponent
-                    .fromLegacyText(ChatColor.BLUE + cmd + "\n"
-                                    + ChatColor.WHITE + ChatColor.ITALIC
-                                    + "Visit this home");
+                Text txt = new Text(ChatColor.BLUE + cmd + "\n" + ChatColor.WHITE + ChatColor.ITALIC + "Visit this home");
                 cb.event(new HoverEvent(HoverEvent.Action.SHOW_TEXT, txt));
                 cb.append(" by " + home.getOwnerName()).color(ChatColor.GRAY);
                 player.spigot().sendMessage(cb.create());

@@ -60,13 +60,17 @@ public final class Subclaim {
 
     public enum Trust {
         NONE,
-        USE,
-        CHEST,
+        ACCESS,
+        CONTAINER,
         BUILD,
-        MANAGER,
+        CO_OWNER("Co-owner"),
         OWNER;
 
         public final String displayName;
+
+        Trust(final String displayName) {
+            this.displayName = displayName;
+        }
 
         Trust() {
             displayName = name().substring(0, 1) + name().substring(1).toLowerCase();

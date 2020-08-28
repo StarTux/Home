@@ -211,7 +211,7 @@ public final class SubclaimCommand implements TabExecutor {
         if (args.length != 2) return false;
         Subclaim subclaim = requireSubclaim(player);
         Subclaim.Trust playerTrust = subclaim.getTrust(player);
-        if (!playerTrust.entails(Subclaim.Trust.MANAGER)) {
+        if (!playerTrust.entails(Subclaim.Trust.CO_OWNER)) {
             throw new CommandWarn("You cannot edit this subclaim!");
         }
         String playerName = args[0];

@@ -84,7 +84,7 @@ final class ClaimListener implements Listener {
         CONTAINER,
         // Use doors and buttons and such
         INTERACT,
-        // Combat; claims allow it if pvp is on, subclaims require USE
+        // Combat; claims allow it if pvp is on, subclaims require ACCESS
         // trust.
         PVP;
     }
@@ -112,8 +112,12 @@ final class ClaimListener implements Listener {
         if (claim == null) return true;
         // We know there is a claim, so return on the player is
         // privileged here.  Claim perms override subclaim ones.
-        if (hasClaimTrust(player, claim, action)) return true;
-        if (hasSubclaimTrust(player, claim, block, action)) return true;
+        Subclaim subclaim = claim.getSubclaimAt(block);
+        if (subclaim != null) {
+            if (hasSubclaimTrust(player, subclaim, action)) return true;
+        } else {
+            if (hasClaimTrust(player, claim, action)) return true;
+        }
         // Action is not covered by visitor, member, or owner
         // privilege.  Therefore, nothing is allowed.
         if (cancellable instanceof PlayerInteractEvent) {
@@ -139,15 +143,14 @@ final class ClaimListener implements Listener {
         case INTERACT:
             return claim.canVisit(player);
         case PVP:
-            return claim.getBoolSetting(Claim.Setting.PVP) && claim.canVisit(player);
+            return claim.getBoolSetting(Claim.Setting.PVP);
         default:
             return claim.isOwner(player);
         }
     }
 
-    public boolean hasSubclaimTrust(Player player, Claim claim, Block block, Action action) {
-        Subclaim subclaim = claim.getSubclaimAt(block);
-        if (subclaim == null) return false;
+    public boolean hasSubclaimTrust(Player player, Subclaim subclaim, Action action) {
+        if (subclaim.getParent().isOwner(player)) return true;
         Subclaim.Trust trust = subclaim.getTrust(player);
         if (trust == Subclaim.Trust.NONE) return false;
         switch (action) {
@@ -156,12 +159,12 @@ final class ClaimListener implements Listener {
         case BUCKET:
             return trust.entails(Subclaim.Trust.BUILD);
         case CONTAINER:
-            return trust.entails(Subclaim.Trust.CHEST);
+            return trust.entails(Subclaim.Trust.CONTAINER);
         case INTERACT:
-            return trust.entails(Subclaim.Trust.USE);
+            return trust.entails(Subclaim.Trust.ACCESS);
         case PVP:
             // TODO: combat requires pvp setting
-            return subclaim.getParent().getBoolSetting(Claim.Setting.PVP) && trust.entails(Subclaim.Trust.USE);
+            return subclaim.getParent().getBoolSetting(Claim.Setting.PVP);
         default:
             return trust.entails(Subclaim.Trust.OWNER);
         }

@@ -17,6 +17,7 @@ import net.md_5.bungee.api.chat.HoverEvent;
 import net.md_5.bungee.api.chat.TextComponent;
 import org.bukkit.Location;
 import org.bukkit.World;
+import org.bukkit.block.Block;
 import org.bukkit.entity.Player;
 
 @RequiredArgsConstructor
@@ -202,10 +203,21 @@ public final class ClaimCommand extends PlayerCommand {
         }
         World world = plugin.getServer().getWorld(claim.getWorld());
         if (world == null) return true;
-        int x = (claim.getArea().ax + claim.getArea().bx) / 2;
-        int z = (claim.getArea().ay + claim.getArea().by) / 2;
-        final Location target = world.getHighestBlockAt(x, z).getLocation()
-            .add(0.5, 1.0, 0.5);
+        int x = claim.centerX;
+        int z = claim.centerY;
+        final Location target;
+        if (world.getEnvironment() == World.Environment.NETHER) {
+            Block block = world.getBlockAt(x, 1, z);
+            while (!block.isEmpty() || !block.getRelative(0, 1, 0).isEmpty() || !block.getRelative(0, -1, 0).getType().isSolid()) {
+                block = block.getRelative(0, 1, 0);
+            }
+            target = block.getLocation().add(0.5, 0.0, 0.5);
+        } else {
+            target = world.getHighestBlockAt(x, z).getLocation().add(0.5, 1.0, 0.5);
+        }
+        Location ploc = player.getLocation();
+        target.setYaw(ploc.getYaw());
+        target.setPitch(ploc.getPitch());
         plugin.warpTo(player, target, () -> {
                 player.sendMessage(ChatColor.BLUE + "Teleporting to claim.");
             });

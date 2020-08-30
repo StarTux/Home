@@ -1,9 +1,13 @@
 package com.cavetale.home;
 
+import com.cavetale.core.util.Json;
 import com.winthier.generic_events.GenericEvents;
+import java.time.Instant;
 import java.util.ArrayList;
 import java.util.Date;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.UUID;
 import javax.persistence.Column;
 import javax.persistence.Id;
@@ -30,10 +34,23 @@ public final class Home {
     @Column(nullable = false) double pitch;
     @Column(nullable = false) double yaw;
     @Column(nullable = true, length = 32) String publicName;
+    @Column(nullable = true, length = 4096) String json;
     final transient List<UUID> invites = new ArrayList<>();
+    transient Tag tag = new Tag();
 
+    public static final class Tag {
+        Map<UUID, Long> visited = new HashMap<>(); // User=>Epoch
+        int visitScore = 0;
+    }
+
+    /**
+     * SQL constructor.
+     */
     public Home() { }
 
+    /**
+     * Constructor for new homes.
+     */
     Home(final UUID owner, final Location location, final String name) {
         this.owner = owner;
         this.name = name;
@@ -87,5 +104,33 @@ public final class Home {
         String result = GenericEvents.cachedPlayerName(owner);
         if (result != null) return result;
         return "N/A";
+    }
+
+    public void unpack() {
+        tag = Json.deserialize(json, Tag.class, Tag::new);
+    }
+
+    public void pack() {
+        json = Json.serialize(tag);
+    }
+
+    public void onVisit(HomePlugin plugin, UUID visitor) {
+        tag.visited.put(visitor, Instant.now().getEpochSecond());
+        tag.visitScore = tag.visited.size();
+        pack();
+        plugin.db.saveAsync(this, null);
+    }
+
+    public int getVisitScore() {
+        if (tag == null) return 0;
+        return tag.visitScore;
+    }
+
+    public static int rank(Home a, Home b) {
+        // Highest score
+        int v = Integer.compare(b.getVisitScore(), a.getVisitScore());
+        if (v != 0) return v;
+        // Earliest
+        return Long.compare(a.created.getTime(), b.created.getTime());
     }
 }

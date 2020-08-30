@@ -40,6 +40,7 @@ public final class HomesCommand extends PlayerCommand {
         case "delete": return deleteCommand(player, argl);
         case "info": return infoCommand(player, argl);
         case "invites": return invitesCommand(player, argl);
+        case "page": return pageCommand(player, argl);
         default:
             break;
         }
@@ -389,5 +390,16 @@ public final class HomesCommand extends PlayerCommand {
             player.sendMessage(ChatColor.YELLOW + "Home \"" + homeName + "\" deleted");
         }
         return true;
+    }
+
+    boolean pageCommand(Player player, String[] args) throws Wrong {
+        if (args.length != 1) return false;
+        switch (args[0]) {
+        case "next":
+            plugin.sessions.of(player).showStoredPage();
+            return true;
+        default:
+            throw new Wrong("Invalid: " + args[0]);
+        }
     }
 }

@@ -315,7 +315,10 @@ public final class HomePlugin extends JavaPlugin {
             Subclaim subclaim = new Subclaim(this, claim, row);
             claim.addSubclaim(subclaim);
         }
-        homes.addAll(db.find(Home.class).findList());
+        for (Home home : db.find(Home.class).findList()) {
+            home.unpack();
+            homes.add(home);
+        }
         for (HomeInvite invite : db.find(HomeInvite.class).findList()) {
             for (Home home : homes) {
                 if (home.id.equals(invite.homeId)) {

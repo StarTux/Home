@@ -45,9 +45,11 @@ public final class SetHomeCommand extends PlayerCommand {
         if (home == null) {
             home = new Home(playerId, player.getLocation(), homeName);
             plugin.getHomes().add(home);
+            home.pack();
             plugin.getDb().insertAsync(home, null);
         } else {
             home.setLocation(player.getLocation());
+            home.pack();
             plugin.getDb().saveAsync(home, null);
         }
         if (homeName == null) {

@@ -1,6 +1,8 @@
 package com.cavetale.home;
 
 import com.cavetale.core.command.CommandWarn;
+import java.util.ArrayList;
+import java.util.List;
 import java.util.function.Function;
 import lombok.RequiredArgsConstructor;
 import lombok.Setter;
@@ -9,6 +11,7 @@ import net.md_5.bungee.api.chat.ClickEvent;
 import net.md_5.bungee.api.chat.ComponentBuilder;
 import net.md_5.bungee.api.chat.HoverEvent;
 import net.md_5.bungee.api.chat.TextComponent;
+import net.md_5.bungee.api.chat.hover.content.Text;
 import org.bukkit.entity.Player;
 import org.bukkit.event.player.PlayerInteractEvent;
 
@@ -19,6 +22,7 @@ public final class Session {
     @Setter private Function<PlayerInteractEvent, Boolean> playerInteractCallback = null;
     private Runnable confirmCallback = null;
     private String confirmMessage;
+    private List<Page> storedPages = new ArrayList<>();
 
     void disable() {
         playerInteractCallback = null;
@@ -87,6 +91,29 @@ public final class Session {
             callback.run();
         } catch (CommandWarn warn) {
             player.sendMessage(ChatColor.RED + warn.getMessage());
+        }
+    }
+
+    public void setPages(List<Page> pages) {
+        storedPages = new ArrayList<>(pages);
+    }
+
+    public void showStoredPage() {
+        if (storedPages.isEmpty()) return;
+        Page first = storedPages.remove(0);
+        first.send(player);
+        if (!storedPages.isEmpty()) {
+            ComponentBuilder cb = new ComponentBuilder("");
+            cb.append(storedPages.size() == 1
+                      ? "There is 1 more page"
+                      : "There are " + storedPages.size() + " more pages")
+                .color(ChatColor.WHITE);
+            cb.append(" ").reset();
+            cb.append("[View Next]")
+                .color(ChatColor.GREEN)
+                .event(new ClickEvent(ClickEvent.Action.RUN_COMMAND, "/homes page next"))
+                .event(new HoverEvent(HoverEvent.Action.SHOW_TEXT, new Text(ChatColor.GREEN + "View Next Page")));
+            player.sendMessage(cb.create());
         }
     }
 }

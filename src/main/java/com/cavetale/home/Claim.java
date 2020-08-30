@@ -231,6 +231,13 @@ final class Claim {
         return getBoolSetting(Setting.HIDDEN);
     }
 
+    public Subclaim getSubclaim(int subclaimId) {
+        for (Subclaim subclaim : subclaims) {
+            if (subclaim.getId() == subclaimId) return subclaim;
+        }
+        return null;
+    }
+
     public List<Subclaim> getSubclaims() {
         return new ArrayList<>(subclaims);
     }

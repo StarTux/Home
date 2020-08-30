@@ -102,6 +102,10 @@ public final class Subclaim {
         @Column(nullable = false, length = 4096) private String tag;
     }
 
+    public int getId() {
+        return id != null ? id : -1;
+    }
+
     public String getListInfo() {
         return plugin.worldDisplayName(world) + " " + area;
     }
@@ -128,10 +132,11 @@ public final class Subclaim {
 
     public Map<Trust, Set<UUID>> getTrustedMap() {
         Map<Trust, Set<UUID>> map = new EnumMap<>(Trust.class);
+        for (Trust trust : Trust.values()) map.put(trust, new HashSet<>());
         for (Map.Entry<UUID, Trust> entry : tag.trusted.entrySet()) {
             UUID uuid = entry.getKey();
             Trust trust = entry.getValue();
-            Set<UUID> set = map.computeIfAbsent(trust, t -> new HashSet<>());
+            Set<UUID> set = map.get(trust);
             set.add(uuid);
         }
         return map;

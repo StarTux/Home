@@ -43,7 +43,7 @@ final class DynmapClaims {
             AreaMarker marker = createOrUpdateAreaMarker(markerSet, "claim-" + claim.getId(), claim.getWorld(), claim.getArea());
             if (claim.isAdminClaim()) {
                 marker.setLineStyle(2, 0.75, 0x0000FF);
-                marker.setFillStyle(0.1, 0x0000FF);
+                marker.setFillStyle(0.01, 0x0000FF);
                 String label = "<strong>Admin Claim</strong>";
                 marker.setLabel(label, true);
             } else {
@@ -59,7 +59,7 @@ final class DynmapClaims {
                     .collect(Collectors.joining(", "));
                 marker.setLabel(label, true);
                 marker.setLineStyle(3, 0.75, 0xFF0000);
-                marker.setFillStyle(0.1, 0xFF0000);
+                marker.setFillStyle(0.01, 0xFF0000);
             }
             marker.setBoostFlag(true);
             if (claim.isAdminClaim()) continue; // No subclaims in admin claims
@@ -78,7 +78,7 @@ final class DynmapClaims {
                     .collect(Collectors.joining(", "));
                 marker.setLabel(label, true);
                 marker.setLineStyle(2, 0.75, 0xFFFFFF);
-                marker.setFillStyle(0.0, 0x000000);
+                marker.setFillStyle(0.01, 0xFFFFFF);
             }
         }
         // Delete obsolete markers

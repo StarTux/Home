@@ -150,23 +150,20 @@ final class ClaimListener implements Listener {
     }
 
     public boolean hasSubclaimTrust(Player player, Subclaim subclaim, Action action) {
-        if (subclaim.getParent().isOwner(player)) return true;
-        Subclaim.Trust trust = subclaim.getTrust(player);
-        if (trust == Subclaim.Trust.NONE) return false;
         switch (action) {
         case BUILD:
         case VEHICLE:
         case BUCKET:
-            return trust.entails(Subclaim.Trust.BUILD);
+            return subclaim.getParent().isOwner(player) || subclaim.getTrust(player).entails(Subclaim.Trust.BUILD);
         case CONTAINER:
-            return trust.entails(Subclaim.Trust.CONTAINER);
+            return subclaim.getParent().isOwner(player) || subclaim.getTrust(player).entails(Subclaim.Trust.CONTAINER);
         case INTERACT:
-            return trust.entails(Subclaim.Trust.ACCESS);
+            return subclaim.getParent().isOwner(player) || subclaim.getTrust(player).entails(Subclaim.Trust.ACCESS);
         case PVP:
             // TODO: combat requires pvp setting
             return subclaim.getParent().getBoolSetting(Claim.Setting.PVP);
         default:
-            return trust.entails(Subclaim.Trust.OWNER);
+            return subclaim.getParent().isOwner(player) || subclaim.getTrust(player).entails(Subclaim.Trust.OWNER);
         }
     }
 

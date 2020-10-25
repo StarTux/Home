@@ -577,11 +577,11 @@ final class ClaimListener implements Listener {
     public void onBlockIgnite(BlockIgniteEvent event) {
         if (!plugin.isHomeWorld(event.getBlock().getWorld())) return;
         switch (event.getCause()) {
+        case FLINT_AND_STEEL:
+            return;
         case ENDER_CRYSTAL:
         case EXPLOSION:
         case FIREBALL:
-        case FLINT_AND_STEEL:
-            return;
         case LAVA:
         case LIGHTNING:
         case SPREAD:

@@ -471,7 +471,7 @@ public final class HomePlugin extends JavaPlugin {
 
     public Home findPublicHome(String name) {
         return homes.stream()
-            .filter(h -> name.equals(h.getPublicName()))
+            .filter(h -> name.equalsIgnoreCase(h.getPublicName()))
             .findFirst().orElse(null);
     }
 

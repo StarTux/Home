@@ -443,7 +443,11 @@ final class ClaimListener implements Listener {
                         checkPlayerAction(player, block, Action.INTERACT, event);
                         break;
                     default:
-                        checkPlayerAction(player, block, Action.BUILD, event);
+                        if (block.getState() instanceof InventoryHolder) {
+                            checkPlayerAction(player, block, Action.CONTAINER, event);
+                        } else {
+                            checkPlayerAction(player, block, Action.BUILD, event);
+                        }
                         break;
                     }
                 }

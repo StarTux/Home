@@ -189,7 +189,6 @@ public final class SubclaimCommand implements TabExecutor {
     boolean info(Player player, String[] args) {
         if (args.length != 0) return false;
         Subclaim subclaim = requireSubclaim(player);
-        if (!subclaim.getParent().canVisit(player)) throw new CommandWarn("No subclaim here");
         player.sendMessage("");
         player.sendMessage("" + ChatColor.AQUA + ChatColor.BOLD + "Subclaim Info");
         player.sendMessage("  " + ChatColor.AQUA + "Area " + ChatColor.WHITE + subclaim.getArea());

@@ -52,6 +52,7 @@ public final class HomePlugin extends JavaPlugin {
     final List<Claim> claims = new ArrayList<>();
     final Sessions sessions = new Sessions(this);
     final EventListener eventListener = new EventListener(this);
+    private ClaimListener claimListener;
     // Utilty
     long ticks;
     Random random = ThreadLocalRandom.current();
@@ -75,7 +76,7 @@ public final class HomePlugin extends JavaPlugin {
         db.registerTables(Claim.SQLRow.class, Subclaim.SQLRow.class, ClaimTrust.class,
                           Home.class, HomeInvite.class);
         db.createAllTables();
-        getServer().getPluginManager().registerEvents(new ClaimListener(this), this);
+        claimListener = new ClaimListener(this).enable();
         eventListener.enable();
         getCommand("homeadmin").setExecutor(homeAdminCommand);
         getCommand("claim").setExecutor(claimCommand);

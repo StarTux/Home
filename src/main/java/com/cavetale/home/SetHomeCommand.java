@@ -5,6 +5,7 @@ import java.util.List;
 import java.util.UUID;
 import lombok.RequiredArgsConstructor;
 import net.md_5.bungee.api.ChatColor;
+import org.bukkit.block.Block;
 import org.bukkit.entity.Player;
 
 @RequiredArgsConstructor
@@ -19,8 +20,9 @@ public final class SetHomeCommand extends PlayerCommand {
         if (!plugin.isHomeWorld(player.getWorld())) {
             throw new Wrong("You cannot set homes in this world");
         }
-        Claim claim = plugin.getClaimAt(player.getLocation().getBlock());
-        if (claim != null && !claim.canBuild(playerId)) {
+        Block block = player.getLocation().getBlock();
+        Claim claim = plugin.getClaimAt(block);
+        if (claim != null && !plugin.getClaimListener().checkPlayerAction(player, block, Action.BUILD, null)) {
             throw new Wrong("You cannot set homes in this claim");
         }
         String playerWorld = player.getWorld().getName();
@@ -36,8 +38,7 @@ public final class SetHomeCommand extends PlayerCommand {
                 if (home.getName() == null) {
                     throw new Wrong("Your primary home is nearby");
                 } else {
-                    throw new Wrong("You have a home named \""
-                                               + home.getName() + "\" nearby");
+                    throw new Wrong("You have a home named \"" + home.getName() + "\" nearby");
                 }
             }
         }

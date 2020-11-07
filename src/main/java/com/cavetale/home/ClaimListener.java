@@ -5,6 +5,7 @@ import com.winthier.generic_events.PlayerCanBuildEvent;
 import java.util.Iterator;
 import lombok.RequiredArgsConstructor;
 import net.md_5.bungee.api.ChatColor;
+import org.bukkit.Bukkit;
 import org.bukkit.Location;
 import org.bukkit.Material;
 import org.bukkit.Particle;
@@ -75,21 +76,10 @@ import org.spigotmc.event.entity.EntityMountEvent;
 final class ClaimListener implements Listener {
     private final HomePlugin plugin;
 
-    enum Action {
-        // Build group, more or less
-        BUILD,
-        BUCKET,
-        VEHICLE,
-        // Inventory modification
-        CONTAINER,
-        // Use doors and buttons and such
-        INTERACT,
-        // Combat; claims allow it if pvp is on, subclaims require ACCESS
-        // trust.
-        PVP;
+    public ClaimListener enable() {
+        Bukkit.getPluginManager().registerEvents(this, plugin);
+        return this;
     }
-
-    // Utilty
 
     /**
      * Check if a player action is permissible and cancel it if not.
@@ -98,7 +88,7 @@ final class ClaimListener implements Listener {
      *
      * @return True if the event is permitted, false otherwise.
      */
-    private boolean checkPlayerAction(Player player, Block block, Action action, Cancellable cancellable) {
+    public boolean checkPlayerAction(Player player, Block block, Action action, Cancellable cancellable) {
         if (plugin.doesIgnoreClaims(player)) return true;
         String w = block.getWorld().getName();
         if (!plugin.getHomeWorlds().contains(w)) return true;

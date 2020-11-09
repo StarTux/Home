@@ -52,6 +52,7 @@ public final class HomePlugin extends JavaPlugin {
     final List<Claim> claims = new ArrayList<>();
     final Sessions sessions = new Sessions(this);
     final EventListener eventListener = new EventListener(this);
+    private MagicMapListener magicMapListener;
     private ClaimListener claimListener;
     // Utilty
     long ticks;
@@ -92,6 +93,10 @@ public final class HomePlugin extends JavaPlugin {
         getServer().getScheduler().runTaskTimer(this, this::onTick, 1, 1);
         if (getServer().getPluginManager().isPluginEnabled("dynmap")) {
             enableDynmap();
+        }
+        if (getServer().getPluginManager().isPluginEnabled("MagicMap")) {
+            System.out.println(getClass().getSimpleName() + " MagicMap enable");
+            magicMapListener = new MagicMapListener(this).enable();
         }
     }
 

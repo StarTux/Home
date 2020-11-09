@@ -74,4 +74,25 @@ final class Area {
     public String toString() {
         return "(" + ax + ", " + ay + ")-(" + bx + ", " + by + ")";
     }
+
+    public int clampX(int x) {
+        if (x < ax) return ax;
+        if (x > bx) return bx;
+        return x;
+    }
+
+    public int clampY(int y) {
+        if (y < ay) return ay;
+        if (y > by) return by;
+        return y;
+    }
+
+    /**
+     * Fit this claim into another.
+     */
+    public Area fitWithin(Area outer) {
+        if (outer.contains(this)) return this;
+        return new Area(outer.clampX(ax), outer.clampY(ay),
+                        outer.clampX(bx), outer.clampY(by));
+    }
 }

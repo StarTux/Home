@@ -681,10 +681,24 @@ final class ClaimListener implements Listener {
         }
         Claim claim = plugin.getClaimAt(entity.getLocation());
         if (claim == null) return;
-        if (!claim.getBoolSetting(Claim.Setting.MOB_SPAWNING)
-            && event.getSpawnReason() != CreatureSpawnEvent.SpawnReason.CUSTOM) {
-            event.setCancelled(true);
-            return;
+        if (!claim.getBoolSetting(Claim.Setting.MOB_SPAWNING)) {
+            switch (event.getSpawnReason()) {
+            case BREEDING:
+            case BUILD_WITHER:
+            case JOCKEY:
+            case LIGHTNING:
+            case NATURAL:
+            case OCELOT_BABY:
+            case PATROL:
+            case RAID:
+            case REINFORCEMENTS:
+            case TRAP:
+            case VILLAGE_DEFENSE:
+            case VILLAGE_INVASION:
+                event.setCancelled(true);
+                return;
+            default: break;
+            }
         }
         if (!claim.isAdminClaim()
             && isHostileMob(event.getEntity())

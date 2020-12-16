@@ -203,6 +203,7 @@ final class ClaimListener implements Listener {
         case ENDER_DRAGON:
         case SHULKER:
         case SHULKER_BULLET:
+        case HOGLIN:
             return true;
         default:
             return entity instanceof Monster;

@@ -18,6 +18,7 @@ import org.bukkit.block.BlockFace;
 import org.bukkit.block.BlockState;
 import org.bukkit.block.DoubleChest;
 import org.bukkit.block.Lectern;
+import org.bukkit.block.data.type.RespawnAnchor;
 import org.bukkit.entity.AnimalTamer;
 import org.bukkit.entity.Entity;
 import org.bukkit.entity.EntityType;
@@ -477,7 +478,8 @@ final class ClaimListener implements Listener {
                         break;
                     case RESPAWN_ANCHOR:
                         if (block.getWorld().getEnvironment() != World.Environment.NETHER) {
-                            if (claim != null && !claim.getBoolSetting(Claim.Setting.EXPLOSIONS)) {
+                            RespawnAnchor data = (RespawnAnchor) block.getBlockData();
+                            if (data.getCharges() >= data.getMaximumCharges() && claim != null && !claim.getBoolSetting(Claim.Setting.EXPLOSIONS)) {
                                 event.setCancelled(true);
                                 return;
                             }

@@ -5,17 +5,16 @@ import com.cavetale.magicmap.MagicMapPostRenderEvent;
 import com.cavetale.magicmap.MapCache;
 import lombok.RequiredArgsConstructor;
 import org.bukkit.Bukkit;
-import org.bukkit.Material;
 import org.bukkit.event.EventHandler;
 import org.bukkit.event.Listener;
 
 @RequiredArgsConstructor
 public final class MagicMapListener implements Listener {
     private final HomePlugin plugin;
-    final static int CLAIM_COLOR = 28 * 4 + 2;
-    final static int SUBCLAIM_COLOR = 8 * 4 + 2;
-    final static int BLACK = 29 * 4 + 3;
-    final static int DARK_GRAY = 21 * 4 + 3;
+    static final int CLAIM_COLOR = 28 * 4 + 2;
+    static final int SUBCLAIM_COLOR = 8 * 4 + 2;
+    static final int BLACK = 29 * 4 + 3;
+    static final int DARK_GRAY = 21 * 4 + 3;
 
     public MagicMapListener enable() {
         Bukkit.getPluginManager().registerEvents(this, plugin);

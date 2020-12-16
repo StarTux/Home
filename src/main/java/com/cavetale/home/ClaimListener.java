@@ -562,8 +562,13 @@ final class ClaimListener implements Listener {
     @EventHandler(ignoreCancelled = true, priority = EventPriority.LOW)
     public void onBlockExplode(BlockExplodeEvent event) {
         if (!plugin.isHomeWorld(event.getBlock().getWorld())) return;
+        Claim claim = plugin.getClaimAt(event.getBlock());
+        if (claim != null && !claim.getBoolSetting(Claim.Setting.EXPLOSIONS)) {
+            event.setCancelled(true);
+            return;
+        }
         for (Iterator<Block> iter = event.blockList().iterator(); iter.hasNext();) {
-            Claim claim = plugin.getClaimAt(iter.next());
+            claim = plugin.getClaimAt(iter.next());
             if (claim == null || !claim.getBoolSetting(Claim.Setting.EXPLOSIONS)) {
                 iter.remove();
             }

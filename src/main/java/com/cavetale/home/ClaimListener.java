@@ -44,6 +44,7 @@ import org.bukkit.event.block.EntityBlockFormEvent;
 import org.bukkit.event.entity.CreatureSpawnEvent;
 import org.bukkit.event.entity.EntityChangeBlockEvent;
 import org.bukkit.event.entity.EntityCombustByEntityEvent;
+import org.bukkit.event.entity.EntityDamageByBlockEvent;
 import org.bukkit.event.entity.EntityDamageByEntityEvent;
 import org.bukkit.event.entity.EntityExplodeEvent;
 import org.bukkit.event.entity.EntityInteractEvent;
@@ -298,6 +299,28 @@ final class ClaimListener implements Listener {
     }
 
     @EventHandler(ignoreCancelled = true, priority = EventPriority.LOW)
+    public void onEntityDamageByBlock(EntityDamageByBlockEvent event) {
+        final Entity damaged = event.getEntity();
+        final Block block = event.getDamager();
+        if (!plugin.isHomeWorld(damaged.getWorld())) return;
+        switch (event.getCause()) {
+        case BLOCK_EXPLOSION:
+        case ENTITY_EXPLOSION:
+            Claim claim = plugin.getClaimAt(damaged.getLocation().getBlock());
+            if (claim == null) {
+                return;
+            }
+            if (claim.getBoolSetting(Claim.Setting.EXPLOSIONS)) return;
+            if (damaged instanceof Player) return;
+            if (damaged instanceof Mob) return;
+            event.setCancelled(true);
+            break;
+        default:
+            break;
+        }
+    }
+
+    @EventHandler(ignoreCancelled = true, priority = EventPriority.LOW)
     public void onEntityCombustByEntity(EntityCombustByEntityEvent event) {
         if (!plugin.isHomeWorld(event.getEntity().getWorld())) return;
         Player damager = getPlayerDamager(event.getCombuster());
@@ -434,6 +457,14 @@ final class ClaimListener implements Listener {
                     checkPlayerAction(player, block, Action.INTERACT, event);
                 } else if (Tag.ANVIL.isTagged(mat)) {
                     checkPlayerAction(player, block, Action.CONTAINER, event);
+                } else if (Tag.BEDS.isTagged(mat)) {
+                    if (block.getWorld().getEnvironment() != World.Environment.NORMAL) {
+                        if (claim != null && !claim.getBoolSetting(Claim.Setting.EXPLOSIONS)) {
+                            event.setCancelled(true);
+                            return;
+                        }
+                    }
+                    checkPlayerAction(player, block, Action.INTERACT, event);
                 } else {
                     switch (mat) {
                     case ENCHANTING_TABLE:
@@ -443,6 +474,15 @@ final class ClaimListener implements Listener {
                     case STONECUTTER:
                     case LEVER:
                         checkPlayerAction(player, block, Action.INTERACT, event);
+                        break;
+                    case RESPAWN_ANCHOR:
+                        if (block.getWorld().getEnvironment() != World.Environment.NETHER) {
+                            if (claim != null && !claim.getBoolSetting(Claim.Setting.EXPLOSIONS)) {
+                                event.setCancelled(true);
+                                return;
+                            }
+                        }
+                        checkPlayerAction(player, block, Action.BUILD, event);
                         break;
                     default:
                         if (block.getState() instanceof InventoryHolder) {

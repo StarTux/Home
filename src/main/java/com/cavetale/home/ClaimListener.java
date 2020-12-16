@@ -35,6 +35,7 @@ import org.bukkit.event.EventPriority;
 import org.bukkit.event.Listener;
 import org.bukkit.event.block.BlockBreakEvent;
 import org.bukkit.event.block.BlockBurnEvent;
+import org.bukkit.event.block.BlockExplodeEvent;
 import org.bukkit.event.block.BlockIgniteEvent;
 import org.bukkit.event.block.BlockPistonExtendEvent;
 import org.bukkit.event.block.BlockPistonRetractEvent;
@@ -550,6 +551,17 @@ final class ClaimListener implements Listener {
     @EventHandler(ignoreCancelled = true, priority = EventPriority.LOW)
     public void onEntityExplode(EntityExplodeEvent event) {
         if (!plugin.isHomeWorld(event.getEntity().getWorld())) return;
+        for (Iterator<Block> iter = event.blockList().iterator(); iter.hasNext();) {
+            Claim claim = plugin.getClaimAt(iter.next());
+            if (claim == null || !claim.getBoolSetting(Claim.Setting.EXPLOSIONS)) {
+                iter.remove();
+            }
+        }
+    }
+
+    @EventHandler(ignoreCancelled = true, priority = EventPriority.LOW)
+    public void onBlockExplode(BlockExplodeEvent event) {
+        if (!plugin.isHomeWorld(event.getBlock().getWorld())) return;
         for (Iterator<Block> iter = event.blockList().iterator(); iter.hasNext();) {
             Claim claim = plugin.getClaimAt(iter.next());
             if (claim == null || !claim.getBoolSetting(Claim.Setting.EXPLOSIONS)) {

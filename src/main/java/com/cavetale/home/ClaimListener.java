@@ -71,6 +71,7 @@ import org.bukkit.event.server.PluginEnableEvent;
 import org.bukkit.event.vehicle.VehicleCreateEvent;
 import org.bukkit.event.vehicle.VehicleDamageEvent;
 import org.bukkit.event.vehicle.VehicleDestroyEvent;
+import org.bukkit.event.vehicle.VehicleEntityCollisionEvent;
 import org.bukkit.inventory.InventoryHolder;
 import org.bukkit.inventory.ItemStack;
 import org.spigotmc.event.entity.EntityMountEvent;
@@ -886,5 +887,13 @@ final class ClaimListener implements Listener {
             if (!(player.hasPermission("home.admin"))) continue;
             player.sendMessage(ChatColor.RED + "[Home] " + msg);
         }
+    }
+
+    @EventHandler(ignoreCancelled = true, priority = EventPriority.LOW)
+    public void onVehicleEntityCollision(VehicleEntityCollisionEvent event) {
+        if (!(event.getEntity() instanceof Player)) return;
+        Player player = (Player) event.getEntity();
+        Vehicle vehicle = event.getVehicle();
+        checkPlayerAction(player, vehicle.getLocation().getBlock(), Action.VEHICLE, event);
     }
 }

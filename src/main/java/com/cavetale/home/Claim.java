@@ -62,8 +62,8 @@ final class Claim {
         SHOW_BORDERS("Show claim borders as you enter or leave", true),
         // Admin only
         HIDDEN("Hide this claim", false),
-        ELYTRA("Allow elytra flight", true),
-        ENDER_PEARL("Allow ender pearls", true),
+        ELYTRA("Allow elytra flight", false),
+        ENDER_PEARL("Allow ender pearls", false),
         MOB_SPAWNING("Allow mob spawning", true);
 
         final String key;

@@ -273,8 +273,8 @@ final class ClaimListener implements Listener {
                 // claims.
                 action = Action.BUILD;
             } else if (isHostileMob(damaged)) {
-                // Always allowed
-                return;
+                if (damaged.getCustomName() == null) return;
+                action = Action.BUILD;
             } else {
                 // Must be an animal
                 action = Action.BUILD;
@@ -337,8 +337,7 @@ final class ClaimListener implements Listener {
             return;
         }
         if (isHostileMob(damaged)) {
-            // always allowed
-            return;
+            if (damaged.getCustomName() == null) return;
         }
         if (isOwner(damager, damaged)) {
             // tamed animals

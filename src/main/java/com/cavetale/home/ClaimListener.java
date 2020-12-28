@@ -1,5 +1,6 @@
 package com.cavetale.home;
 
+import com.destroystokyo.paper.event.entity.PreCreatureSpawnEvent;
 import com.winthier.exploits.Exploits;
 import com.winthier.generic_events.PlayerCanBuildEvent;
 import java.util.Iterator;
@@ -211,6 +212,22 @@ final class ClaimListener implements Listener {
             return true;
         default:
             return entity instanceof Monster;
+        }
+    }
+
+    private boolean isHostileMob(EntityType entityType) {
+        switch (entityType) {
+        case GHAST:
+        case SLIME:
+        case PHANTOM:
+        case MAGMA_CUBE:
+        case ENDER_DRAGON:
+        case SHULKER:
+        case SHULKER_BULLET:
+        case HOGLIN:
+            return true;
+        default:
+            return Monster.class.isAssignableFrom(entityType.getEntityClass());
         }
     }
 
@@ -728,21 +745,27 @@ final class ClaimListener implements Listener {
     }
 
     @EventHandler(ignoreCancelled = true, priority = EventPriority.LOWEST)
-    public void onCreatureSpawn(CreatureSpawnEvent event) {
-        if (!plugin.isHomeWorld(event.getEntity().getLocation().getWorld())) return;
-        LivingEntity entity = event.getEntity();
-        if (entity.getType() == EntityType.PHANTOM
-            && event.getSpawnReason() != CreatureSpawnEvent.SpawnReason.CUSTOM) {
+    void onCreatureSpawn(CreatureSpawnEvent event) {
+        onCreatureSpawn(event, event.getSpawnReason(), event.getEntityType(), event.getLocation());
+    }
+
+    @EventHandler(ignoreCancelled = true, priority = EventPriority.LOWEST)
+    void onPreCreatureSpawn(PreCreatureSpawnEvent event) {
+        onCreatureSpawn(event, event.getReason(), event.getType(), event.getSpawnLocation());
+    }
+
+    void onCreatureSpawn(Cancellable event, CreatureSpawnEvent.SpawnReason reason, EntityType entityType, Location location) {
+        if (!plugin.isHomeWorld(location.getWorld())) return;
+        if (entityType == EntityType.PHANTOM && reason != CreatureSpawnEvent.SpawnReason.CUSTOM) {
             event.setCancelled(true);
         }
-        if (entity.getType() == EntityType.WITHER
-            && event.getSpawnReason() != CreatureSpawnEvent.SpawnReason.CUSTOM) {
+        if (entityType == EntityType.WITHER && reason != CreatureSpawnEvent.SpawnReason.CUSTOM) {
             event.setCancelled(true);
         }
-        Claim claim = plugin.getClaimAt(entity.getLocation());
+        Claim claim = plugin.getClaimAt(location);
         if (claim == null) return;
         if (!claim.getBoolSetting(Claim.Setting.MOB_SPAWNING)) {
-            switch (event.getSpawnReason()) {
+            switch (reason) {
             case BREEDING:
             case BUILD_WITHER:
             case JOCKEY:
@@ -760,23 +783,20 @@ final class ClaimListener implements Listener {
             default: break;
             }
         }
-        if (!claim.isAdminClaim()
-            && isHostileMob(event.getEntity())
-            && event.getEntity().getWorld().getEnvironment() == World.Environment.NORMAL) {
-            switch (event.getEntity().getType()) {
+        if (!claim.isAdminClaim() && isHostileMob(entityType) && location.getWorld().getEnvironment() == World.Environment.NORMAL) {
+            switch (entityType) {
                 // These are exempt
             case SLIME:
             case GUARDIAN:
             case ELDER_GUARDIAN:
                 break;
             default:
-                switch (event.getSpawnReason()) {
+                switch (reason) {
                 case NATURAL:
                 case REINFORCEMENTS:
                 case VILLAGE_INVASION:
                 case TRAP: // Skeleton riders(?)
-                    Location loc = event.getLocation();
-                    Block block = loc.getBlock();
+                    Block block = location.getBlock();
                     int light = block.getLightFromBlocks();
                     if (light > 0) {
                         event.setCancelled(true);
@@ -784,7 +804,7 @@ final class ClaimListener implements Listener {
                     }
                     int sunlight = block.getLightFromSky();
                     if (sunlight > 0) {
-                        Block baseBlock = loc.getBlock().getRelative(0, -1, 0);
+                        Block baseBlock = location.getBlock().getRelative(0, -1, 0);
                         if (!baseBlock.isEmpty() && !baseBlock.isLiquid() && Exploits.isPlayerPlaced(baseBlock)) {
                             event.setCancelled(true);
                         }

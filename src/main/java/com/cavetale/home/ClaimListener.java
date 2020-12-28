@@ -104,7 +104,14 @@ final class ClaimListener implements Listener {
             .filter(c -> c.isInWorld(world)
                     && c.getArea().contains(block.getX(), block.getZ()))
             .findFirst().orElse(null);
-        if (claim == null) return true;
+        if (claim == null) {
+            if (action == Action.PVP) {
+                if (event != null) event.setCancelled(True);
+                return false;
+            } else {
+                return true;
+            }
+        }
         // We know there is a claim, so return on the player is
         // privileged here.  Claim perms override subclaim ones.
         Subclaim subclaim = claim.getSubclaimAt(block);

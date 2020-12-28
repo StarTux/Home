@@ -106,7 +106,7 @@ final class ClaimListener implements Listener {
             .findFirst().orElse(null);
         if (claim == null) {
             if (action == Action.PVP) {
-                if (event != null) event.setCancelled(True);
+                if (cancellable != null) cancellable.setCancelled(true);
                 return false;
             } else {
                 return true;

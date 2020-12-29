@@ -498,6 +498,7 @@ final class ClaimListener implements Listener {
                     case GRINDSTONE:
                     case STONECUTTER:
                     case LEVER:
+                    case SMITHING_TABLE:
                         checkPlayerAction(player, block, Action.INTERACT, event);
                         break;
                     case RESPAWN_ANCHOR:

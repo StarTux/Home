@@ -920,6 +920,7 @@ final class ClaimListener implements Listener {
     public void onVehicleEntityCollision(VehicleEntityCollisionEvent event) {
         if (!(event.getEntity() instanceof Player)) return;
         Player player = (Player) event.getEntity();
+        if (plugin.doesIgnoreClaims(player)) return;
         Vehicle vehicle = event.getVehicle();
         checkPlayerAction(player, vehicle.getLocation().getBlock(), Action.VEHICLE, event);
     }

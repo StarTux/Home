@@ -752,12 +752,12 @@ final class ClaimListener implements Listener {
         }
     }
 
-    @EventHandler(ignoreCancelled = true, priority = EventPriority.LOWEST)
+    @EventHandler(ignoreCancelled = true, priority = EventPriority.LOW)
     void onCreatureSpawn(CreatureSpawnEvent event) {
         onCreatureSpawn(event, event.getSpawnReason(), event.getEntityType(), event.getLocation());
     }
 
-    @EventHandler(ignoreCancelled = true, priority = EventPriority.LOWEST)
+    @EventHandler(ignoreCancelled = true, priority = EventPriority.LOW)
     void onPreCreatureSpawn(PreCreatureSpawnEvent event) {
         onCreatureSpawn(event, event.getReason(), event.getType(), event.getSpawnLocation());
     }

@@ -461,7 +461,6 @@ final class ClaimListener implements Listener {
     @EventHandler(ignoreCancelled = true, priority = EventPriority.LOW)
     public void onPlayerInteract(PlayerInteractEvent event) {
         final Player player = event.getPlayer();
-        if (plugin.sessions.of(player).onPlayerInteract(event)) return;
         if (plugin.doesIgnoreClaims(player)) return;
         final Block block = event.getClickedBlock();
         if (block == null) return;
@@ -477,6 +476,7 @@ final class ClaimListener implements Listener {
             }
             return;
         case RIGHT_CLICK_BLOCK:
+            if (plugin.sessions.of(player).onPlayerInteract(event)) return;
             if (slimeballUse(player, event, block, claim)) return;
             if (mat.isInteractable()) {
                 if (Tag.DOORS.isTagged(mat) || Tag.BUTTONS.isTagged(mat) || Tag.TRAPDOORS.isTagged(mat)) {

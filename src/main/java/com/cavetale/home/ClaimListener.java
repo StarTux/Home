@@ -43,6 +43,7 @@ import org.bukkit.event.block.BlockPistonExtendEvent;
 import org.bukkit.event.block.BlockPistonRetractEvent;
 import org.bukkit.event.block.BlockPlaceEvent;
 import org.bukkit.event.block.EntityBlockFormEvent;
+import org.bukkit.event.entity.CreatureSpawnEvent.SpawnReason;
 import org.bukkit.event.entity.CreatureSpawnEvent;
 import org.bukkit.event.entity.EntityChangeBlockEvent;
 import org.bukkit.event.entity.EntityCombustByEntityEvent;
@@ -762,35 +763,36 @@ final class ClaimListener implements Listener {
         onCreatureSpawn(event, event.getReason(), event.getType(), event.getSpawnLocation());
     }
 
-    void onCreatureSpawn(Cancellable event, CreatureSpawnEvent.SpawnReason reason, EntityType entityType, Location location) {
+    void onCreatureSpawn(Cancellable event, SpawnReason reason, EntityType entityType, Location location) {
         if (!plugin.isHomeWorld(location.getWorld())) return;
-        if (entityType == EntityType.PHANTOM && reason != CreatureSpawnEvent.SpawnReason.CUSTOM) {
+        switch (reason) {
+        case CUSTOM:
+        case DEFAULT:
+            // We assume these are commands or plugins which is always
+            // allowed.
+            return;
+        case BUILD_WITHER:
+            // No wither building in the home worlds
             event.setCancelled(true);
+            return;
+        case NATURAL:
+            if (entityType == EntityType.PHANTOM) {
+                // No phantom spawning in the
+                event.setCancelled(true);
+                return;
+            }
+            break;
+        default: break;
         }
-        if (entityType == EntityType.WITHER && reason != CreatureSpawnEvent.SpawnReason.CUSTOM) {
-            event.setCancelled(true);
-        }
+        // Respect claim settings
         Claim claim = plugin.getClaimAt(location);
         if (claim == null) return;
         if (!claim.getBoolSetting(Claim.Setting.MOB_SPAWNING)) {
-            switch (reason) {
-            case BREEDING:
-            case BUILD_WITHER:
-            case JOCKEY:
-            case LIGHTNING:
-            case NATURAL:
-            case OCELOT_BABY:
-            case PATROL:
-            case RAID:
-            case REINFORCEMENTS:
-            case TRAP:
-            case VILLAGE_DEFENSE:
-            case VILLAGE_INVASION:
-                event.setCancelled(true);
-                return;
-            default: break;
-            }
+            event.setCancelled(true);
+            return;
         }
+        // No spawning on player placed blocks which are lit
+        // TODO: Rethink this whole logic
         if (!claim.isAdminClaim() && isHostileMob(entityType) && location.getWorld().getEnvironment() == World.Environment.NORMAL) {
             switch (entityType) {
                 // These are exempt

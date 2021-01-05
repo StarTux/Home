@@ -164,7 +164,6 @@ final class ClaimListener implements Listener {
         case INTERACT:
             return subclaim.getParent().isOwner(player) || subclaim.getTrust(player).entails(Subclaim.Trust.ACCESS);
         case PVP:
-            // TODO: combat requires pvp setting
             return subclaim.getParent().getBoolSetting(Claim.Setting.PVP);
         default:
             return subclaim.getParent().isOwner(player) || subclaim.getTrust(player).entails(Subclaim.Trust.OWNER);

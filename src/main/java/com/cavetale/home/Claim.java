@@ -10,6 +10,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.UUID;
 import java.util.stream.Collectors;
+import javax.annotation.Nullable;
 import javax.persistence.Column;
 import javax.persistence.Id;
 import javax.persistence.Table;
@@ -275,5 +276,77 @@ final class Claim {
 
     public boolean removeSubclaim(Subclaim subclaim) {
         return subclaims.remove(subclaim);
+    }
+
+    /**
+     * Get trust in the entire claim.
+     */
+    public Subclaim.Trust getTrust(Player player) {
+        if (isOwner(player)) return Subclaim.Trust.OWNER;
+        if (members.contains(player.getUniqueId())) return Subclaim.Trust.BUILD;
+        if (visitors.contains(player.getUniqueId())) return Subclaim.Trust.ACCESS;
+        return Subclaim.Trust.NONE;
+    }
+
+    /**
+     * Get trust at this spot, either from the claim or the subclaim.
+     */
+    public Subclaim.Trust getTrust(Player player, Block block) {
+        return getTrust(player, getSubclaimAt(block));
+    }
+
+    /**
+     * Get trust at this spot, either from the claim or the subclaim.
+     */
+    public Subclaim.Trust getTrust(Player player, Location location) {
+        return getTrust(player, getSubclaimAt(location));
+    }
+
+    /**
+     * Helper for the other getTrust() functions.
+     */
+    private Subclaim.Trust getTrust(Player player, @Nullable Subclaim subclaim) {
+        Subclaim.Trust trust = getTrust(player);
+        if (subclaim != null) {
+            Subclaim.Trust trust2 = subclaim.getTrust(player);
+            if (trust2.entails(trust)) trust = trust2;
+        }
+        return trust;
+    }
+
+    /**
+     * Check if a player can perform a certain action at this spot.
+     */
+    public boolean hasTrust(Player player, Block block, Action action) {
+        return hasTrust(player, getSubclaimAt(block), action);
+    }
+
+    /**
+     * Check if a player can perform a certain action at this spot.
+     */
+    public boolean hasTrust(Player player, Location location, Action action) {
+        return hasTrust(player, getSubclaimAt(location), action);
+    }
+
+    /**
+     * Helper for the other hasTrust() functions.
+     */
+    private boolean hasTrust(Player player, Subclaim subclaim, Action action) {
+        if (plugin.doesIgnoreClaims(player)) return true;
+        Subclaim.Trust trust = getTrust(player, subclaim);
+        switch (action) {
+        case BUILD:
+        case VEHICLE:
+        case BUCKET:
+            return trust.entails(Subclaim.Trust.BUILD);
+        case CONTAINER:
+            return trust.entails(Subclaim.Trust.CONTAINER);
+        case INTERACT:
+            return trust.entails(Subclaim.Trust.ACCESS);
+        case PVP:
+            return getBoolSetting(Claim.Setting.PVP);
+        default:
+            return trust.entails(Subclaim.Trust.OWNER);
+        }
     }
 }

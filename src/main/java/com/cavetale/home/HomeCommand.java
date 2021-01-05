@@ -23,12 +23,12 @@ public final class HomeCommand extends PlayerCommand {
             Home home = plugin.findHome(player.getUniqueId(), null);
             if (home != null) {
                 Location location = home.createLocation();
-                Claim claim = plugin.getClaimAt(location);
-                if (claim != null && !claim.canVisit(playerId)) {
-                    throw new Wrong("This home is not claimed by you.");
-                }
                 if (location == null) {
                     throw new Wrong("Primary home could not be found.");
+                }
+                Claim claim = plugin.getClaimAt(location);
+                if (claim != null && !claim.hasTrust(player, location, Action.INTERACT)) {
+                    throw new Wrong("This home is in a claim where you're not permitted.");
                 }
                 plugin.warpTo(player, location, () -> {
                         player.sendMessage(ChatColor.GREEN + "Welcome home :)");
@@ -50,7 +50,7 @@ public final class HomeCommand extends PlayerCommand {
             Location bedSpawn = player.getBedSpawnLocation();
             if (bedSpawn != null) {
                 Claim claim = plugin.getClaimAt(bedSpawn.getBlock());
-                if (claim != null && claim.canVisit(playerId)) {
+                if (claim != null && claim.hasTrust(player, bedSpawn, Action.INTERACT)) {
                     plugin.warpTo(player, bedSpawn.add(0.5, 0.0, 0.5), () -> {
                             player.sendMessage(ChatColor.BLUE + "Welcome to your bed. :)");
                         });

@@ -54,6 +54,7 @@ import org.bukkit.event.entity.EntityInteractEvent;
 import org.bukkit.event.entity.EntityPlaceEvent;
 import org.bukkit.event.entity.EntityToggleGlideEvent;
 import org.bukkit.event.entity.PlayerLeashEntityEvent;
+import org.bukkit.event.entity.ProjectileLaunchEvent;
 import org.bukkit.event.entity.SpawnerSpawnEvent;
 import org.bukkit.event.hanging.HangingBreakByEntityEvent;
 import org.bukkit.event.hanging.HangingBreakEvent;
@@ -851,15 +852,38 @@ final class ClaimListener implements Listener {
 
     @EventHandler(ignoreCancelled = true)
     void onPlayerTeleport(PlayerTeleportEvent event) {
-        if (event.getCause() != PlayerTeleportEvent.TeleportCause.ENDER_PEARL) {
-            return;
+        switch (event.getCause()) {
+        case ENDER_PEARL:
+        case CHORUS_FRUIT: {
+            Player player = event.getPlayer();
+            Claim claim = plugin.getClaimAt(event.getTo());
+            if (claim == null) return;
+            if (!claim.getBoolSetting(Claim.Setting.ENDER_PEARL)) {
+                event.setCancelled(true);
+                return;
+            }
+            break;
         }
-        Player player = event.getPlayer();
+        default: break;
+        }
+    }
+
+    @EventHandler(ignoreCancelled = true)
+    void onProjectileLaunch(ProjectileLaunchEvent event) {
+        Projectile projectile = event.getEntity();
+        if (!(projectile.getShooter() instanceof Player)) return;
+        Player player = (Player) projectile.getShooter();
         Claim claim = plugin.getClaimAt(player.getLocation());
         if (claim == null) return;
-        if (!claim.getBoolSetting(Claim.Setting.ENDER_PEARL)) {
-            event.setCancelled(true);
+        switch (projectile.getType()) {
+        case ENDER_PEARL:
+            if (!claim.getBoolSetting(Claim.Setting.ENDER_PEARL)) {
+                event.setCancelled(true);
+                return;
+            }
+        default: break;
         }
+        event.setCancelled(true);
     }
 
     @EventHandler(ignoreCancelled = true)

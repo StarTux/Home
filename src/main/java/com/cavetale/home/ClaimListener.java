@@ -883,7 +883,6 @@ final class ClaimListener implements Listener {
             }
         default: break;
         }
-        event.setCancelled(true);
     }
 
     @EventHandler(ignoreCancelled = true)

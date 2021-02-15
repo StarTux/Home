@@ -409,6 +409,7 @@ final class ClaimListener implements Listener {
         final Player player = event.getPlayer();
         if (plugin.doesIgnoreClaims(player)) return;
         final Entity entity = event.getRightClicked();
+        if (entity instanceof Player) return;
         if (isOwner(player, entity)) return;
         checkPlayerAction(player, entity.getLocation().getBlock(), Action.BUILD, event);
     }
@@ -419,6 +420,7 @@ final class ClaimListener implements Listener {
         final Player player = event.getPlayer();
         if (plugin.doesIgnoreClaims(player)) return;
         final Entity entity = event.getRightClicked();
+        if (entity instanceof Player) return;
         if (isOwner(player, entity)) return;
         checkPlayerAction(player, entity.getLocation().getBlock(), Action.BUILD, event);
     }

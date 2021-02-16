@@ -102,10 +102,7 @@ final class ClaimListener implements Listener {
         final String world = plugin.getMirrorWorlds().containsKey(w)
             ? plugin.getMirrorWorlds().get(w) : w;
         // Find claim
-        Claim claim = plugin.getClaims().stream()
-            .filter(c -> c.isInWorld(world)
-                    && c.getArea().contains(block.getX(), block.getZ()))
-            .findFirst().orElse(null);
+        Claim claim = plugin.getClaimAt(block);
         if (claim == null) {
             if (action == Action.PVP) {
                 if (cancellable != null) cancellable.setCancelled(true);

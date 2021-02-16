@@ -50,7 +50,8 @@ public final class HomeAdminCommand implements TabExecutor {
             }
             break;
         case "debug":
-            return false;
+            sender.sendMessage("Cache hits=" + plugin.getCacheHits() + " misses=" + plugin.getCacheMisses());
+            return true;
         case "giveclaimblocks":
             if (args.length == 2) {
                 if (player == null) {

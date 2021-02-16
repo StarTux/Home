@@ -11,7 +11,6 @@ import java.util.UUID;
 import java.util.concurrent.ThreadLocalRandom;
 import java.util.function.BiConsumer;
 import java.util.function.Consumer;
-import java.util.stream.Collectors;
 import lombok.Getter;
 import lombok.Value;
 import net.md_5.bungee.api.ChatColor;
@@ -69,6 +68,10 @@ public final class HomePlugin extends JavaPlugin {
     final BuildCommand buildCommand = new BuildCommand(this);
     final InviteHomeCommand inviteHomeCommand = new InviteHomeCommand(this);
     final SubclaimCommand subclaimCommand = new SubclaimCommand(this);
+    // Cache
+    private Claim cachedClaim = null;
+    private int cacheHits = 0;
+    private int cacheMisses = 0;
 
     @Override
     public void onEnable() {
@@ -102,6 +105,7 @@ public final class HomePlugin extends JavaPlugin {
 
     @Override
     public void onDisable() {
+        cachedClaim = null;
         claims.clear();
         homes.clear();
         disableDynmap();
@@ -166,16 +170,16 @@ public final class HomePlugin extends JavaPlugin {
         int x = loc.getBlockX();
         int z = loc.getBlockZ();
         if (player.isGliding() && ticks % 10 == 0) {
-            if (claims.stream()
-                .filter(c -> c.isInWorld(worldName))
-                .filter(c -> c.area.isWithin(x, z, 64))
-                .anyMatch(c -> !c.getBoolSetting(Claim.Setting.ELYTRA))) {
-                player.sendTitle("" + ChatColor.RED + ChatColor.BOLD + "WARNING",
-                                 "" + ChatColor.RED + ChatColor.BOLD + "Approaching No-Fly Zone!",
-                                 0, 11, 0);
-                player.playSound(player.getEyeLocation(),
-                                 Sound.ENTITY_ARROW_HIT_PLAYER, SoundCategory.MASTER,
-                                 1.0f, 2.0f);
+            for (Claim claim : claims) {
+                if (claim.isInWorld(worldName) && claim.getArea().isWithin(x, z, 64) && !claim.getBoolSetting(Claim.Setting.ELYTRA)) {
+                    player.sendTitle("" + ChatColor.RED + ChatColor.BOLD + "WARNING",
+                                     "" + ChatColor.RED + ChatColor.BOLD + "Approaching No-Fly Zone!",
+                                     0, 11, 0);
+                    player.playSound(player.getEyeLocation(),
+                                     Sound.ENTITY_ARROW_HIT_PLAYER, SoundCategory.MASTER,
+                                     1.0f, 2.0f);
+                    break;
+                }
             }
         }
         Claim claim = getClaimAt(loc);
@@ -293,6 +297,7 @@ public final class HomePlugin extends JavaPlugin {
     }
 
     void loadFromDatabase() {
+        cachedClaim = null;
         claims.clear();
         homes.clear();
         for (Claim.SQLRow row : db.find(Claim.SQLRow.class).findList()) {
@@ -353,7 +358,10 @@ public final class HomePlugin extends JavaPlugin {
     }
 
     Claim getClaimById(int claimId) {
-        return claims.stream().filter(c -> c.getId() == claimId).findFirst().orElse(null);
+        for (Claim claim : claims) {
+            if (claim.getId() == claimId) return claim;
+        }
+        return null;
     }
 
     Claim getClaimAt(Block block) {
@@ -368,9 +376,18 @@ public final class HomePlugin extends JavaPlugin {
 
     Claim getClaimAt(String w, int x, int y) {
         final String world = mirrorWorlds.containsKey(w) ? mirrorWorlds.get(w) : w;
-        return claims.stream()
-            .filter(c -> c.isInWorld(world) && c.getArea().contains(x, y))
-            .findFirst().orElse(null);
+        if (cachedClaim != null && cachedClaim.isInWorld(world) && cachedClaim.getArea().contains(x, y)) {
+            cacheHits += 1;
+            return cachedClaim;
+        }
+        for (Claim claim : claims) {
+            if (claim.isInWorld(world) && claim.getArea().contains(x, y)) {
+                cacheMisses += 1;
+                cachedClaim = claim;
+                return claim;
+            }
+        }
+        return null;
     }
 
     Claim findNearestOwnedClaim(Player player) {
@@ -381,11 +398,19 @@ public final class HomePlugin extends JavaPlugin {
             : playerWorld;
         int x = playerLocation.getBlockX();
         int z = playerLocation.getBlockZ();
-        return claims.stream()
-            .filter(c -> c.isOwner(player) && c.isInWorld(w))
-            .min((a, b) -> Integer.compare(a.getArea().distanceToPoint(x, z),
-                                           b.getArea().distanceToPoint(x, z)))
-            .orElse(null);
+        List<Claim> list = new ArrayList<>();
+        int minDist = Integer.MAX_VALUE;
+        Claim result = null;
+        for (Claim claim : claims) {
+            if (claim.isOwner(player) && claim.isInWorld(w)) {
+                int dist = claim.getArea().distanceToPoint(x, z);
+                if (dist < minDist) {
+                    result = claim;
+                    minDist = dist;
+                }
+            }
+        }
+        return result;
     }
 
     Claim findNearbyBuildClaim(Player player, int radius) {
@@ -396,11 +421,12 @@ public final class HomePlugin extends JavaPlugin {
             : playerWorld;
         int x = playerLocation.getBlockX();
         int z = playerLocation.getBlockZ();
-        return claims.stream()
-            .filter(c -> c.canBuild(player)
-                    && c.isInWorld(w)
-                    && c.getArea().isWithin(x, z, radius))
-            .findFirst().orElse(null);
+        for (Claim claim : claims) {
+            if (claim.isInWorld(w) && claim.getArea().isWithin(x, z, radius) && claim.canBuild(player)) {
+                return claim;
+            }
+        }
+        return null;
     }
 
     public void highlightClaim(Claim claim, Player player) {
@@ -466,19 +492,25 @@ public final class HomePlugin extends JavaPlugin {
     // --- Public home and claim finders
 
     public List<Home> findHomes(UUID owner) {
-        return homes.stream().filter(h -> h.isOwner(owner)).collect(Collectors.toList());
+        List<Home> list = new ArrayList<>();
+        for (Home home : homes) {
+            if (home.isOwner(owner)) list.add(home);
+        }
+        return list;
     }
 
     public Home findHome(UUID owner, String name) {
-        return homes.stream()
-            .filter(h -> h.isOwner(owner) && h.isNamed(name))
-            .findFirst().orElse(null);
+        for (Home home : homes) {
+            if (home.isOwner(owner) && home.isNamed(name)) return home;
+        }
+        return null;
     }
 
     public Home findPublicHome(String name) {
-        return homes.stream()
-            .filter(h -> name.equalsIgnoreCase(h.getPublicName()))
-            .findFirst().orElse(null);
+        for (Home home : homes) {
+            if (name.equalsIgnoreCase(home.getPublicName())) return home;
+        }
+        return null;
     }
 
     public Claim findPrimaryClaim(UUID owner) {
@@ -489,23 +521,37 @@ public final class HomePlugin extends JavaPlugin {
     }
 
     public List<Claim> findClaims(UUID owner) {
-        return claims.stream().filter(c -> c.isOwner(owner)).collect(Collectors.toList());
+        List<Claim> list = new ArrayList<>();
+        for (Claim claim : claims) {
+            if (claim.isOwner(owner)) list.add(claim);
+        }
+        return list;
     }
 
     public List<Claim> findClaims(Player player) {
-        return claims.stream().filter(c -> c.isOwner(player)).collect(Collectors.toList());
+        List<Claim> list = new ArrayList<>();
+        for (Claim claim : claims) {
+            if (claim.isOwner(player)) list.add(claim);
+        }
+        return list;
     }
 
     public List<Claim> findClaimsInWorld(UUID owner, String w) {
         final String world = mirrorWorlds.containsKey(w) ? mirrorWorlds.get(w) : w;
-        return claims.stream()
-            .filter(c -> c.isOwner(owner) && c.isInWorld(world))
-            .collect(Collectors.toList());
+        List<Claim> list = new ArrayList<>();
+        for (Claim claim : claims) {
+            if (claim.isOwner(owner) && claim.isInWorld(world)) list.add(claim);
+        }
+        return list;
     }
 
     public List<Claim> findClaimsInWorld(String w) {
         final String world = mirrorWorlds.containsKey(w) ? mirrorWorlds.get(w) : w;
-        return claims.stream().filter(c -> c.isInWorld(world)).collect(Collectors.toList());
+        List<Claim> list = new ArrayList<>();
+        for (Claim claim : claims) {
+            if (claim.isInWorld(world)) list.add(claim);
+        }
+        return list;
     }
 
     public Claim findClaimWithId(int id) {
@@ -520,6 +566,7 @@ public final class HomePlugin extends JavaPlugin {
         db.find(Claim.SQLRow.class).eq("id", claimId).delete();
         db.find(ClaimTrust.class).eq("claimId", claimId).delete();
         claims.remove(claim);
+        cachedClaim = null;
     }
 
     // --- Metadata

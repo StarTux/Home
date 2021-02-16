@@ -9,7 +9,6 @@ import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
-import java.util.stream.Collectors;
 import javax.annotation.Nullable;
 import javax.persistence.Column;
 import javax.persistence.Id;
@@ -246,9 +245,11 @@ final class Claim {
     }
 
     public List<Subclaim> getSubclaims(String inWorld) {
-        return subclaims.stream()
-            .filter(s -> s.getWorld().equals(inWorld))
-            .collect(Collectors.toList());
+        List<Subclaim> list = new ArrayList<>();
+        for (Subclaim subclaim : subclaims) {
+            if (subclaim.getWorld().equals(inWorld)) list.add(subclaim);
+        }
+        return list;
     }
 
     public Subclaim getSubclaimAt(Location loc) {

@@ -33,6 +33,7 @@ import org.bukkit.plugin.java.JavaPlugin;
 
 @Getter
 public final class HomePlugin extends JavaPlugin {
+    @Getter private static HomePlugin instance;
     // Globals
     static final String META_LOCATION = "home.location";
     static final String META_BUY = "home.buyclaimblocks";
@@ -75,6 +76,7 @@ public final class HomePlugin extends JavaPlugin {
 
     @Override
     public void onEnable() {
+        instance = this;
         saveDefaultConfig();
         db = new SQLDatabase(this);
         db.registerTables(Claim.SQLRow.class, Subclaim.SQLRow.class, ClaimTrust.class,

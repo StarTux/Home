@@ -111,6 +111,8 @@ public final class HomePlugin extends JavaPlugin {
         claims.clear();
         homes.clear();
         disableDynmap();
+        db.waitForAsyncTask();
+        db.close();
     }
 
     // --- Inner classes for utility

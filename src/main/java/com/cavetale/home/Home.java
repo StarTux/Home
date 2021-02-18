@@ -34,13 +34,14 @@ public final class Home {
     @Column(nullable = false) double pitch;
     @Column(nullable = false) double yaw;
     @Column(nullable = true, length = 32) String publicName;
+    @Column(nullable = false) int score;
     @Column(nullable = true, length = 4096) String json;
     final transient List<UUID> invites = new ArrayList<>();
     transient Tag tag = new Tag();
 
     public static final class Tag {
         Map<UUID, Long> visited = new HashMap<>(); // User=>Epoch
-        int visitScore = 0;
+        long lastUpdated = 0L;
     }
 
     /**
@@ -114,21 +115,29 @@ public final class Home {
         json = Json.serialize(tag);
     }
 
-    public void onVisit(HomePlugin plugin, UUID visitor) {
+    public void onVisit(UUID visitor) {
         tag.visited.put(visitor, Instant.now().getEpochSecond());
-        tag.visitScore = tag.visited.size();
+        score = tag.visited.size();
         pack();
-        plugin.db.saveAsync(this, null);
+        HomePlugin.getInstance().getDb().updateAsync(this, null, "json", "score");
     }
 
-    public int getVisitScore() {
-        if (tag == null) return 0;
-        return tag.visitScore;
+    public void updateScore() {
+        if (tag == null) return;
+        long now = Instant.now().getEpochSecond();
+        long cutoff = now - (60L * 60L * 24L);
+        if (tag.lastUpdated >= cutoff) return;
+        long cutoff2 = now - (60L * 60L * 24L * 30L);
+        tag.visited.values().removeIf(d -> d < cutoff2);
+        score = tag.visited.size();
+        tag.lastUpdated = now;
+        pack();
+        HomePlugin.getInstance().getDb().updateAsync(this, null, "json", "score");
     }
 
     public static int rank(Home a, Home b) {
         // Highest score
-        int v = Integer.compare(b.getVisitScore(), a.getVisitScore());
+        int v = Integer.compare(b.score, a.score);
         if (v != 0) return v;
         // Earliest
         return Long.compare(a.created.getTime(), b.created.getTime());

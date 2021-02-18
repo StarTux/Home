@@ -127,6 +127,7 @@ final class ClaimListener implements Listener {
         } else if (cancellable != null) {
             cancellable.setCancelled(true);
         }
+        plugin.sessions.of(player).notify(claim);
         return false;
     }
 
@@ -165,21 +166,6 @@ final class ClaimListener implements Listener {
         default:
             return subclaim.getParent().isOwner(player) || subclaim.getTrust(player).entails(Subclaim.Trust.OWNER);
         }
-    }
-
-    void warnNoBuild(Player player, Block block) {
-        Claim claim = plugin.getClaimAt(block);
-        if (claim != null) {
-            player.sendActionBar(ChatColor.RED + "This area is claimed by "
-                                 + claim.getOwnerName() + "!");
-        } else {
-            player.sendActionBar(ChatColor.RED + "This area is claimed!");
-        }
-        Location loc = block.getLocation().add(0.5, 0.5, 0.5);
-        player.spawnParticle(Particle.BARRIER, loc, 1, 0, 0, 0, 0);
-        player.playSound(loc, Sound.ENTITY_POLAR_BEAR_WARNING,
-                         SoundCategory.MASTER,
-                         0.1f, 1.0f);
     }
 
     /**
@@ -254,18 +240,14 @@ final class ClaimListener implements Listener {
     public void onBlockBreak(BlockBreakEvent event) {
         Block block = event.getBlock();
         Player player = event.getPlayer();
-        if (!checkPlayerAction(player, block, Action.BUILD, event)) {
-            warnNoBuild(player, block);
-        }
+        checkPlayerAction(player, block, Action.BUILD, event);
     }
 
     @EventHandler(ignoreCancelled = true, priority = EventPriority.LOW)
     public void onBlockPlace(BlockPlaceEvent event) {
         Block block = event.getBlock();
         Player player = event.getPlayer();
-        if (!checkPlayerAction(event.getPlayer(), event.getBlock(), Action.BUILD, event)) {
-            warnNoBuild(player, block);
-        }
+        checkPlayerAction(event.getPlayer(), event.getBlock(), Action.BUILD, event);
     }
 
     // Frost Walker
@@ -485,6 +467,7 @@ final class ClaimListener implements Listener {
                 } else if (Tag.BEDS.isTagged(mat)) {
                     if (block.getWorld().getEnvironment() != World.Environment.NORMAL) {
                         if (claim != null && !claim.getBoolSetting(Claim.Setting.EXPLOSIONS)) {
+                            plugin.sessions.of(player).notify(claim);
                             event.setCancelled(true);
                             return;
                         }
@@ -505,6 +488,7 @@ final class ClaimListener implements Listener {
                         if (block.getWorld().getEnvironment() != World.Environment.NETHER) {
                             RespawnAnchor data = (RespawnAnchor) block.getBlockData();
                             if (data.getCharges() >= data.getMaximumCharges() && claim != null && !claim.getBoolSetting(Claim.Setting.EXPLOSIONS)) {
+                                plugin.sessions.of(player).notify(claim);
                                 event.setCancelled(true);
                                 return;
                             }
@@ -857,6 +841,7 @@ final class ClaimListener implements Listener {
             Claim claim = plugin.getClaimAt(event.getTo());
             if (claim == null) return;
             if (!claim.getBoolSetting(Claim.Setting.ENDER_PEARL)) {
+                plugin.sessions.of(player).notify(claim);
                 event.setCancelled(true);
                 return;
             }
@@ -876,6 +861,7 @@ final class ClaimListener implements Listener {
         switch (projectile.getType()) {
         case ENDER_PEARL:
             if (!claim.getBoolSetting(Claim.Setting.ENDER_PEARL)) {
+                plugin.sessions.of(player).notify(claim);
                 event.setCancelled(true);
                 return;
             }
@@ -891,6 +877,7 @@ final class ClaimListener implements Listener {
         if (claim == null) return;
         if (!claim.getBoolSetting(Claim.Setting.ELYTRA)) {
             if (event.isGliding()) {
+                plugin.sessions.of(player).notify(claim);
                 event.setCancelled(true);
                 plugin.getServer().getScheduler().runTask(plugin,
                                                           () -> player.setGliding(false));

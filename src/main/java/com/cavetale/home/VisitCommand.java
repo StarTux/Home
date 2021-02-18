@@ -38,7 +38,7 @@ public final class VisitCommand extends PlayerCommand {
                 player.sendMessage(ChatColor.GREEN + "Teleported to "
                                    + ownerName + "'s public home \""
                                    + publicName + "\"");
-                home.onVisit(plugin, player.getUniqueId());
+                home.onVisit(player.getUniqueId());
             });
         return true;
     }
@@ -65,6 +65,7 @@ public final class VisitCommand extends PlayerCommand {
     public void listPublicHomes(Player player) {
         List<Home> publicHomes = plugin.getHomes().stream()
             .filter(h -> h.getPublicName() != null)
+            .peek(Home::updateScore)
             .sorted(Home::rank)
             .collect(Collectors.toList());
         player.sendMessage("");

@@ -1,6 +1,8 @@
 package com.cavetale.home;
 
 import com.cavetale.core.command.CommandWarn;
+import com.cavetale.home.util.Colors;
+import com.cavetale.home.util.Msg;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.function.Function;
@@ -23,6 +25,7 @@ public final class Session {
     private Runnable confirmCallback = null;
     private String confirmMessage;
     private List<Page> storedPages = new ArrayList<>();
+    private long notifyCooldown = 0L;
 
     void disable() {
         playerInteractCallback = null;
@@ -115,5 +118,12 @@ public final class Session {
                 .event(new HoverEvent(HoverEvent.Action.SHOW_TEXT, new Text(ChatColor.GREEN + "View Next Page")));
             player.sendMessage(cb.create());
         }
+    }
+
+    public void notify(Claim claim) {
+        long now = System.currentTimeMillis();
+        if (notifyCooldown > now) return;
+        notifyCooldown = now + 1000L;
+        player.sendActionBar(Msg.builder("This claim belongs to " + claim.getOwnerName()).color(Colors.RED).create());
     }
 }

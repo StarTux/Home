@@ -417,7 +417,11 @@ final class ClaimListener implements Listener {
         if (plugin.doesIgnoreClaims(player)) return;
         final Entity entity = event.getEntity();
         if (isOwner(player, entity)) return;
-        checkPlayerAction(player, entity.getLocation().getBlock(), Action.BUILD, event);
+        if (entity.getType() == EntityType.SHEEP) {
+            checkPlayerAction(player, entity.getLocation().getBlock(), Action.CONTAINER, event);
+        } else {
+            checkPlayerAction(player, entity.getLocation().getBlock(), Action.BUILD, event);
+        }
     }
 
     @EventHandler(ignoreCancelled = true, priority = EventPriority.LOW)

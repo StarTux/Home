@@ -71,8 +71,11 @@ public final class HomePlugin extends JavaPlugin {
     final SubclaimCommand subclaimCommand = new SubclaimCommand(this);
     // Cache
     private Claim cachedClaim = null;
-    private int cacheHits = 0;
-    private int cacheMisses = 0;
+    private long cacheLookups = 0;
+    private long cacheHits = 0;
+    private long cacheMisses = 0;
+    private long arrayIndex = 0;
+    private long arrayLookups = 0;
 
     @Override
     public void onEnable() {
@@ -380,13 +383,17 @@ public final class HomePlugin extends JavaPlugin {
 
     Claim getClaimAt(String w, int x, int y) {
         final String world = mirrorWorlds.containsKey(w) ? mirrorWorlds.get(w) : w;
+        cacheLookups += 1L;
         if (cachedClaim != null && cachedClaim.isInWorld(world) && cachedClaim.getArea().contains(x, y)) {
-            cacheHits += 1;
+            cacheHits += 1L;
             return cachedClaim;
         }
-        for (Claim claim : claims) {
+        arrayLookups += 1L;
+        for (int i = 0; i < claims.size(); i += 1) {
+            Claim claim = claims.get(i);
             if (claim.isInWorld(world) && claim.getArea().contains(x, y)) {
-                cacheMisses += 1;
+                cacheMisses += 1L;
+                arrayIndex += (long) i;
                 cachedClaim = claim;
                 return claim;
             }

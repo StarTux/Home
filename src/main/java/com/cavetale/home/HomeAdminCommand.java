@@ -49,9 +49,15 @@ public final class HomeAdminCommand implements TabExecutor {
                 return true;
             }
             break;
-        case "debug":
-            sender.sendMessage("Cache hits=" + plugin.getCacheHits() + " misses=" + plugin.getCacheMisses());
+        case "debug": {
+            long hitPercentage = (plugin.getCacheHits() * 100L) / plugin.getCacheLookups();
+            long averageIndex = (plugin.getArrayIndex() * 100L) / plugin.getArrayLookups();
+            long indexPercentage = (averageIndex * 100L) / (long) plugin.getClaims().size();
+            sender.sendMessage("Cache hits=" + plugin.getCacheHits() + "(" + hitPercentage + "%)"
+                               + " misses=" + plugin.getCacheMisses()
+                               + " avg-index=" + averageIndex + "(" + indexPercentage + "%)");
             return true;
+        }
         case "giveclaimblocks":
             if (args.length == 2) {
                 if (player == null) {

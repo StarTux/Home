@@ -11,7 +11,6 @@ enum Action {
     INTERACT,
     // Combat; claims allow it if pvp is on, subclaims require ACCESS
     // trust.
-    // TODO: Remove
     @Deprecated
     PVP;
 }

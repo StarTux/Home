@@ -499,6 +499,9 @@ final class ClaimListener implements Listener {
                         }
                         checkPlayerAction(player, block, Action.BUILD, event);
                         break;
+                    case JUKEBOX:
+                        checkPlayerAction(player, block, Action.CONTAINER, event);
+                        break;
                     default:
                         if (block.getState() instanceof InventoryHolder) {
                             checkPlayerAction(player, block, Action.CONTAINER, event);
@@ -779,7 +782,6 @@ final class ClaimListener implements Listener {
             return;
         }
         // No spawning on player placed blocks which are lit
-        // TODO: Rethink this whole logic
         if (!claim.isAdminClaim() && isHostileMob(entityType) && location.getWorld().getEnvironment() == World.Environment.NORMAL) {
             switch (entityType) {
                 // These are exempt

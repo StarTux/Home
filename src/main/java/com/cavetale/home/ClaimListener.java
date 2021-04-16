@@ -63,6 +63,7 @@ import org.bukkit.event.inventory.InventoryOpenEvent;
 import org.bukkit.event.player.PlayerArmorStandManipulateEvent;
 import org.bukkit.event.player.PlayerBucketEmptyEvent;
 import org.bukkit.event.player.PlayerBucketFillEvent;
+import org.bukkit.event.player.PlayerEggThrowEvent;
 import org.bukkit.event.player.PlayerInteractAtEntityEvent;
 import org.bukkit.event.player.PlayerInteractEntityEvent;
 import org.bukkit.event.player.PlayerInteractEvent;
@@ -939,5 +940,12 @@ final class ClaimListener implements Listener {
         if (plugin.doesIgnoreClaims(player)) return;
         Vehicle vehicle = event.getVehicle();
         checkPlayerAction(player, vehicle.getLocation().getBlock(), Action.VEHICLE, event);
+    }
+
+    @EventHandler(ignoreCancelled = true, priority = EventPriority.LOW)
+    public void onPlayerEggThrow(PlayerEggThrowEvent event) {
+        if (!checkPlayerAction(event.getPlayer(), event.getEgg().getLocation().getBlock(), Action.BUILD, null)) {
+            event.setHatching(false);
+        }
     }
 }

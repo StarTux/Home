@@ -16,9 +16,6 @@ import org.bukkit.Tag;
 import org.bukkit.World;
 import org.bukkit.block.Block;
 import org.bukkit.block.BlockFace;
-import org.bukkit.block.BlockState;
-import org.bukkit.block.DoubleChest;
-import org.bukkit.block.Lectern;
 import org.bukkit.block.data.type.RespawnAnchor;
 import org.bukkit.entity.AnimalTamer;
 import org.bukkit.entity.Entity;
@@ -59,7 +56,6 @@ import org.bukkit.event.entity.SpawnerSpawnEvent;
 import org.bukkit.event.hanging.HangingBreakByEntityEvent;
 import org.bukkit.event.hanging.HangingBreakEvent;
 import org.bukkit.event.hanging.HangingPlaceEvent;
-import org.bukkit.event.inventory.InventoryOpenEvent;
 import org.bukkit.event.player.PlayerArmorStandManipulateEvent;
 import org.bukkit.event.player.PlayerBucketEmptyEvent;
 import org.bukkit.event.player.PlayerBucketFillEvent;
@@ -674,33 +670,6 @@ final class ClaimListener implements Listener {
             checkPlayerAction(player, event.getBlock(), Action.BUILD, event);
         } else if (event.getEntity().getType() == EntityType.ENDERMAN) {
             event.setCancelled(true);
-        }
-    }
-
-    @EventHandler(ignoreCancelled = true, priority = EventPriority.LOW)
-    public void onInventoryOpen(InventoryOpenEvent event) {
-        if (!(event.getPlayer() instanceof Player)) return;
-        Player player = (Player) event.getPlayer();
-        if (plugin.doesIgnoreClaims(player)) return;
-        if (!plugin.isHomeWorld(player.getWorld())) return;
-        InventoryHolder holder = event.getInventory().getHolder();
-        if (holder == null) return;
-        if (holder instanceof Entity) {
-            if (holder.equals(player)) return;
-            if (isOwner(player, (Entity) holder)) return;
-            Block block = ((Entity) holder).getLocation().getBlock();
-            checkPlayerAction(player, block, Action.CONTAINER, event);
-        } else if (holder instanceof Lectern) {
-            Block block = ((Lectern) holder).getBlock();
-            if (block == null) return; // @NotNull
-            checkPlayerAction(player, block, Action.INTERACT, event);
-        } else if (holder instanceof BlockState) {
-            // One block containers, as opposed to double chest
-            Block block = ((BlockState) holder).getBlock();
-            checkPlayerAction(player, block, Action.CONTAINER, event);
-        } else if (holder instanceof DoubleChest) {
-            Block block = ((DoubleChest) holder).getLocation().getBlock();
-            checkPlayerAction(player, block, Action.CONTAINER, event);
         }
     }
 

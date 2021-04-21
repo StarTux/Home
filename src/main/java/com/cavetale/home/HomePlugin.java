@@ -70,12 +70,10 @@ public final class HomePlugin extends JavaPlugin {
     final InviteHomeCommand inviteHomeCommand = new InviteHomeCommand(this);
     final SubclaimCommand subclaimCommand = new SubclaimCommand(this);
     // Cache
-    private Claim cachedClaim = null;
+    private int cachedClaimIndex = -1;
     private long cacheLookups = 0;
     private long cacheHits = 0;
     private long cacheMisses = 0;
-    private long arrayIndex = 0;
-    private long arrayLookups = 0;
 
     @Override
     public void onEnable() {
@@ -110,7 +108,7 @@ public final class HomePlugin extends JavaPlugin {
 
     @Override
     public void onDisable() {
-        cachedClaim = null;
+        cachedClaimIndex = -1;
         claims.clear();
         homes.clear();
         disableDynmap();
@@ -304,7 +302,7 @@ public final class HomePlugin extends JavaPlugin {
     }
 
     void loadFromDatabase() {
-        cachedClaim = null;
+        cachedClaimIndex = -1;
         claims.clear();
         homes.clear();
         for (Claim.SQLRow row : db.find(Claim.SQLRow.class).findList()) {
@@ -384,17 +382,29 @@ public final class HomePlugin extends JavaPlugin {
     Claim getClaimAt(String w, int x, int y) {
         final String world = mirrorWorlds.containsKey(w) ? mirrorWorlds.get(w) : w;
         cacheLookups += 1L;
-        if (cachedClaim != null && cachedClaim.isInWorld(world) && cachedClaim.getArea().contains(x, y)) {
-            cacheHits += 1L;
-            return cachedClaim;
+        if (cachedClaimIndex >= 0 && cachedClaimIndex < claims.size()) {
+            Claim cachedClaim = claims.get(cachedClaimIndex);
+            if (cachedClaim.isInWorld(world) && cachedClaim.getArea().contains(x, y)) {
+                cacheHits += 1L;
+                if (cachedClaimIndex >= 1) {
+                    claims.set(cachedClaimIndex, claims.get(cachedClaimIndex - 1));
+                    claims.set(cachedClaimIndex - 1, cachedClaim);
+                    cachedClaimIndex -= 1;
+                }
+                return cachedClaim;
+            }
         }
-        arrayLookups += 1L;
+        cacheMisses += 1L;
         for (int i = 0; i < claims.size(); i += 1) {
             Claim claim = claims.get(i);
             if (claim.isInWorld(world) && claim.getArea().contains(x, y)) {
-                cacheMisses += 1L;
-                arrayIndex += (long) i;
-                cachedClaim = claim;
+                if (i >= 1) {
+                    claims.set(i, claims.get(i - 1));
+                    claims.set(i - 1, claim);
+                    cachedClaimIndex = i - 1;
+                } else {
+                    cachedClaimIndex = i;
+                }
                 return claim;
             }
         }
@@ -577,7 +587,7 @@ public final class HomePlugin extends JavaPlugin {
         db.find(Claim.SQLRow.class).eq("id", claimId).delete();
         db.find(ClaimTrust.class).eq("claimId", claimId).delete();
         claims.remove(claim);
-        cachedClaim = null;
+        cachedClaimIndex = -1;
     }
 
     // --- Metadata

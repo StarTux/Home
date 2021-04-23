@@ -380,6 +380,7 @@ public final class HomePlugin extends JavaPlugin {
     }
 
     Claim getClaimAt(String w, int x, int y) {
+        if (!homeWorlds.contains(w)) return null;
         final String world = mirrorWorlds.containsKey(w) ? mirrorWorlds.get(w) : w;
         cacheLookups += 1L;
         if (cachedClaimIndex >= 0 && cachedClaimIndex < claims.size()) {

@@ -580,8 +580,8 @@ final class ClaimListener implements Listener {
 
     @EventHandler(ignoreCancelled = true, priority = EventPriority.LOW)
     public void onHangingBreakByEntity(HangingBreakByEntityEvent event) {
-        if (event.getRemover() instanceof Player) {
-            final Player player = (Player) event.getRemover();
+        Player player = getPlayerDamager(event.getRemover());
+        if (player != null) {
             Block block = event.getEntity().getLocation().getBlock();
             checkPlayerAction(player, block, Action.BUILD, event);
         }

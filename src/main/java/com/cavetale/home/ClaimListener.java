@@ -39,6 +39,7 @@ import org.bukkit.event.block.BlockIgniteEvent;
 import org.bukkit.event.block.BlockPistonExtendEvent;
 import org.bukkit.event.block.BlockPistonRetractEvent;
 import org.bukkit.event.block.BlockPlaceEvent;
+import org.bukkit.event.block.CauldronLevelChangeEvent;
 import org.bukkit.event.block.EntityBlockFormEvent;
 import org.bukkit.event.entity.CreatureSpawnEvent.SpawnReason;
 import org.bukkit.event.entity.CreatureSpawnEvent;
@@ -659,6 +660,17 @@ final class ClaimListener implements Listener {
         if (claim == null || !claim.getBoolSetting(Claim.Setting.FIRE)) {
             event.setCancelled(true);
             return;
+        }
+    }
+
+    @EventHandler(ignoreCancelled = true, priority = EventPriority.LOW)
+    public void onCauldronLevelChange(CauldronLevelChangeEvent event) {
+        if (!plugin.isHomeWorld(event.getBlock().getWorld())) return;
+        Entity entity = event.getEntity();
+        if (entity != null) {
+            Player player = getPlayerDamager(entity);
+            if (player == null) return;
+            checkPlayerAction(player, event.getBlock(), Action.BUILD, event);
         }
     }
 

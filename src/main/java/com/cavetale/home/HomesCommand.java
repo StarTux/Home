@@ -149,7 +149,7 @@ public final class HomesCommand extends PlayerCommand {
         cb.event(new ClickEvent(ClickEvent.Action.SUGGEST_COMMAND, "/homes invite "));
         tooltip = TextComponent
             .fromLegacyText(buttonColor + "/homes invite " + ChatColor.ITALIC + "<player> [home]\n"
-                            + ChatColor.WHITE + ChatColor.ITALIC + "Set a home.");
+                            + ChatColor.WHITE + ChatColor.ITALIC + "Invite someone.");
         cb.event(new HoverEvent(HoverEvent.Action.SHOW_TEXT, tooltip));
         cb.append("  ");
         cb.append("[Uninvite]").color(buttonColor);

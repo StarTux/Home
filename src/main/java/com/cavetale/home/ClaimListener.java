@@ -53,6 +53,7 @@ import org.bukkit.event.entity.EntityInteractEvent;
 import org.bukkit.event.entity.EntityPlaceEvent;
 import org.bukkit.event.entity.EntityToggleGlideEvent;
 import org.bukkit.event.entity.PlayerLeashEntityEvent;
+import org.bukkit.event.entity.ProjectileHitEvent;
 import org.bukkit.event.entity.ProjectileLaunchEvent;
 import org.bukkit.event.entity.SpawnerSpawnEvent;
 import org.bukkit.event.hanging.HangingBreakByEntityEvent;
@@ -300,6 +301,17 @@ final class ClaimListener implements Listener {
             default:
                 break;
             }
+        }
+    }
+
+    @EventHandler(ignoreCancelled = true, priority = EventPriority.LOW)
+    public void onProjecitleHit(ProjectileHitEvent event) {
+        Projectile projectile = event.getEntity();
+        Player player = getPlayerDamager(projectile);
+        if (player == null) return;
+        Block block = event.getHitBlock();
+        if (block != null) {
+            checkPlayerAction(player, block, Action.BUILD, event);
         }
     }
 

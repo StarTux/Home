@@ -35,6 +35,7 @@ import org.bukkit.event.EventPriority;
 import org.bukkit.event.Listener;
 import org.bukkit.event.block.BlockBreakEvent;
 import org.bukkit.event.block.BlockBurnEvent;
+import org.bukkit.event.block.BlockDropItemEvent;
 import org.bukkit.event.block.BlockExplodeEvent;
 import org.bukkit.event.block.BlockIgniteEvent;
 import org.bukkit.event.block.BlockPistonExtendEvent;
@@ -234,8 +235,6 @@ final class ClaimListener implements Listener {
         return null;
     }
 
-    // Events
-
     @EventHandler(ignoreCancelled = true, priority = EventPriority.LOW)
     public void onBlockBreak(BlockBreakEvent event) {
         Block block = event.getBlock();
@@ -247,6 +246,11 @@ final class ClaimListener implements Listener {
     public void onBlockPlace(BlockPlaceEvent event) {
         Block block = event.getBlock();
         Player player = event.getPlayer();
+        checkPlayerAction(event.getPlayer(), event.getBlock(), Action.BUILD, event);
+    }
+
+    @EventHandler(ignoreCancelled = true, priority = EventPriority.LOW)
+    public void onBlockDropItem(BlockDropItemEvent event) {
         checkPlayerAction(event.getPlayer(), event.getBlock(), Action.BUILD, event);
     }
 

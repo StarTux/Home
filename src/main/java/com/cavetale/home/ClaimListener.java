@@ -1,5 +1,6 @@
 package com.cavetale.home;
 
+import com.cavetale.core.event.block.PlayerBreakBlockEvent;
 import com.destroystokyo.paper.event.entity.PreCreatureSpawnEvent;
 import com.winthier.exploits.Exploits;
 import com.winthier.generic_events.PlayerCanBuildEvent;
@@ -893,6 +894,13 @@ final class ClaimListener implements Listener {
     @EventHandler(ignoreCancelled = true)
     public void onPlayerCanBuild(PlayerCanBuildEvent event) {
         checkPlayerAction(event.getPlayer(), event.getBlock(), Action.BUILD, event);
+    }
+
+    @EventHandler(ignoreCancelled = true, priority = EventPriority.LOW)
+    public void onPlayerBreakBlock(PlayerBreakBlockEvent event) {
+        Block block = event.getBlock();
+        Player player = event.getPlayer();
+        checkPlayerAction(player, block, Action.BUILD, event);
     }
 
     @EventHandler(ignoreCancelled = true)

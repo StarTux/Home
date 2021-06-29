@@ -42,7 +42,7 @@ public final class HomeCommand extends PlayerCommand {
             // from using /home as expected.  Either making a claim or
             // setting a home will have caused this function to exit
             // already.
-            if (plugin.findClaimsInWorld(playerId, plugin.getPrimaryHomeWorld()).isEmpty()) {
+            if (!plugin.hasAClaim(playerId)) {
                 plugin.findPlaceToBuild(player);
                 return true;
             }

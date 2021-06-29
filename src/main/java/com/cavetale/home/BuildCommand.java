@@ -15,9 +15,7 @@ public final class BuildCommand extends PlayerCommand {
         if (args.length != 0) return false;
         if (args.length == 1 && args[0].equals("help")) return false;
         final UUID playerId = player.getUniqueId();
-        if (!player.hasMetadata(plugin.META_IGNORE)
-            && !player.isOp()
-            && !plugin.findClaimsInWorld(playerId, plugin.getPrimaryHomeWorld()).isEmpty()) {
+        if (!player.hasMetadata(plugin.META_IGNORE) && !player.isOp() && plugin.hasAClaim(playerId)) {
             throw new Wrong("You already have a claim!");
         }
         plugin.findPlaceToBuild(player);

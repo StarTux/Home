@@ -542,6 +542,13 @@ public final class HomePlugin extends JavaPlugin {
         return null;
     }
 
+    public boolean hasAClaim(UUID owner) {
+        for (Claim claim : claims) {
+            if (claim.isOwner(owner)) return true;
+        }
+        return false;
+    }
+
     public List<Claim> findClaims(UUID owner) {
         List<Claim> list = new ArrayList<>();
         for (Claim claim : claims) {

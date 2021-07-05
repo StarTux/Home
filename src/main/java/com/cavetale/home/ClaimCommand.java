@@ -19,6 +19,7 @@ import org.bukkit.Location;
 import org.bukkit.World;
 import org.bukkit.block.Block;
 import org.bukkit.entity.Player;
+import org.bukkit.event.player.PlayerTeleportEvent.TeleportCause;
 
 @RequiredArgsConstructor
 public final class ClaimCommand extends PlayerCommand {
@@ -181,9 +182,9 @@ public final class ClaimCommand extends PlayerCommand {
         return true;
     }
 
-    private boolean portCommand(Player player, String[] args) throws Wrong {
+    private boolean portCommand(final Player player, String[] args) throws Wrong {
         if (args.length > 2) return false;
-        Claim claim;
+        final Claim claim;
         if (args.length == 2) {
             int claimId;
             try {
@@ -201,24 +202,26 @@ public final class ClaimCommand extends PlayerCommand {
                 throw new Wrong("You don't have a claim yet.");
             }
         }
-        World world = plugin.getServer().getWorld(claim.getWorld());
+        final World world = plugin.getServer().getWorld(claim.getWorld());
         if (world == null) return true;
-        int x = claim.centerX;
-        int z = claim.centerY;
-        final Location target;
-        if (world.getEnvironment() == World.Environment.NETHER) {
-            Block block = world.getBlockAt(x, 1, z);
-            while (!block.isEmpty() || !block.getRelative(0, 1, 0).isEmpty() || !block.getRelative(0, -1, 0).getType().isSolid()) {
-                block = block.getRelative(0, 1, 0);
-            }
-            target = block.getLocation().add(0.5, 0.0, 0.5);
-        } else {
-            target = world.getHighestBlockAt(x, z).getLocation().add(0.5, 1.0, 0.5);
-        }
-        Location ploc = player.getLocation();
-        target.setYaw(ploc.getYaw());
-        target.setPitch(ploc.getPitch());
-        plugin.warpTo(player, target, () -> {
+        final int x = claim.centerX;
+        final int z = claim.centerY;
+        world.getChunkAtAsync(x >> 4, z >> 4, chunk -> {
+                if (!player.isValid()) return;
+                final Location target;
+                if (world.getEnvironment() == World.Environment.NETHER) {
+                    Block block = world.getBlockAt(x, 1, z);
+                    while (!block.isEmpty() || !block.getRelative(0, 1, 0).isEmpty() || !block.getRelative(0, -1, 0).getType().isSolid()) {
+                        block = block.getRelative(0, 1, 0);
+                    }
+                    target = block.getLocation().add(0.5, 0.0, 0.5);
+                } else {
+                    target = world.getHighestBlockAt(x, z).getLocation().add(0.5, 1.0, 0.5);
+                }
+                Location ploc = player.getLocation();
+                target.setYaw(ploc.getYaw());
+                target.setPitch(ploc.getPitch());
+                player.teleport(target, TeleportCause.COMMAND);
                 player.sendMessage(ChatColor.BLUE + "Teleporting to claim.");
             });
         return true;

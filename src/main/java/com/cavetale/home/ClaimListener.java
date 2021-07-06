@@ -6,6 +6,7 @@ import com.winthier.exploits.Exploits;
 import com.winthier.generic_events.PlayerCanBuildEvent;
 import com.winthier.generic_events.PlayerCanDamageEntityEvent;
 import java.util.Iterator;
+import java.util.Objects;
 import lombok.RequiredArgsConstructor;
 import net.md_5.bungee.api.ChatColor;
 import org.bukkit.Bukkit;
@@ -38,6 +39,7 @@ import org.bukkit.event.block.BlockBreakEvent;
 import org.bukkit.event.block.BlockBurnEvent;
 import org.bukkit.event.block.BlockDropItemEvent;
 import org.bukkit.event.block.BlockExplodeEvent;
+import org.bukkit.event.block.BlockFromToEvent;
 import org.bukkit.event.block.BlockIgniteEvent;
 import org.bukkit.event.block.BlockPistonExtendEvent;
 import org.bukkit.event.block.BlockPistonRetractEvent;
@@ -971,6 +973,16 @@ final class ClaimListener implements Listener {
     public void onPlayerEggThrow(PlayerEggThrowEvent event) {
         if (!checkPlayerAction(event.getPlayer(), event.getEgg().getLocation().getBlock(), Action.BUILD, null)) {
             event.setHatching(false);
+        }
+    }
+
+    @EventHandler(ignoreCancelled = true, priority = EventPriority.LOW)
+    public void onBlockFromTo(BlockFromToEvent event) {
+        if (!plugin.isHomeWorld(event.getBlock().getWorld())) return;
+        Claim from = plugin.getClaimAt(event.getBlock());
+        Claim to = plugin.getClaimAt(event.getToBlock());
+        if (!Objects.equals(from, to)) {
+            event.setCancelled(true);
         }
     }
 }

@@ -46,17 +46,6 @@ public final class HomeCommand extends PlayerCommand {
                 plugin.findPlaceToBuild(player);
                 return true;
             }
-            // Try the bed spawn next.
-            Location bedSpawn = player.getBedSpawnLocation();
-            if (bedSpawn != null) {
-                Claim claim = plugin.getClaimAt(bedSpawn.getBlock());
-                if (claim != null && claim.hasTrust(player, bedSpawn, Action.INTERACT)) {
-                    plugin.warpTo(player, bedSpawn.add(0.5, 0.0, 0.5), () -> {
-                            player.sendMessage(ChatColor.BLUE + "Welcome to your bed. :)");
-                        });
-                    return true;
-                }
-            }
             // Try the primary claim in the home world.
             List<Claim> playerClaims = plugin
                 .findClaimsInWorld(playerId, plugin.getPrimaryHomeWorld());

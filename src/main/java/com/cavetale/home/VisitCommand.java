@@ -32,6 +32,10 @@ public final class VisitCommand extends PlayerCommand {
         if (location == null) {
             throw new Wrong("Could not take you to this home.");
         }
+        Claim claim = plugin.getClaimAt(location);
+        if (claim != null && !claim.canBuild(home.getOwner())) {
+            throw new Wrong("The invite is no longer valid in this claim");
+        }
         final String ownerName = home.getOwnerName();
         final String publicName = home.getPublicName();
         plugin.warpTo(player, location, () -> {

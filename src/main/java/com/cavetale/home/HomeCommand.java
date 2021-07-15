@@ -95,6 +95,10 @@ public final class HomeCommand extends PlayerCommand {
             if (location == null) {
                 throw new Wrong("Home \"%s\" could not be found.");
             }
+            Claim claim = plugin.getClaimAt(location);
+            if (claim != null && !claim.hasTrust(player, location, Action.INTERACT)) {
+                throw new Wrong("This home is in a claim where you're not permitted.");
+            }
             plugin.warpTo(player, location, () -> {
                     player.sendMessage(ChatColor.GREEN + "Welcome home.");
                     player.sendTitle("", ChatColor.GREEN + "Welcome home.", 10, 20, 10);

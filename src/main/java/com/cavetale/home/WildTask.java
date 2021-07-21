@@ -27,7 +27,7 @@ final class WildTask {
     int blockX;
     int blockZ;
 
-    void withCooldown() {
+    protected void withCooldown() {
         WorldSettings settings = plugin.worldSettings.get(world.getName());
         long now = System.nanoTime() / NANOS;
         long last = plugin.getMetadata(player, META_COOLDOWN_WILD, Long.class).orElse(-1L);
@@ -47,7 +47,7 @@ final class WildTask {
         plugin.getServer().getScheduler().runTask(plugin, this::findPlaceToBuild);
     }
 
-    void findPlaceToBuild() {
+    private void findPlaceToBuild() {
         if (!player.isValid()) return;
         // Attempts
         long now = System.nanoTime() / NANOS;
@@ -74,8 +74,6 @@ final class WildTask {
         if (size < 0) {
             throw new RuntimeException("World border makes no sense: " + size);
         }
-        int x = 0;
-        int z = 0;
         List<Claim> worldClaims = plugin.findClaimsInWorld(world.getName());
         boolean foundSpot = false;
         for (int i = 0; i < 100; i += 1) {
@@ -88,10 +86,10 @@ final class WildTask {
             player.sendMessage(ChatColor.RED
                                + "Could not find a place to build. Please try again");
         }
-        world.getChunkAtAsync(x >> 4, z >> 4, (Consumer<Chunk>) this::onChunkLoaded);
+        world.getChunkAtAsync(blockX >> 4, blockZ >> 4, (Consumer<Chunk>) this::onChunkLoaded);
     }
 
-    boolean findUnclaimedSpot(List<Claim> worldClaims,
+    private boolean findUnclaimedSpot(List<Claim> worldClaims,
                               final int cx, final int cz,
                               final int size, final int margin) {
         int x = cx - size / 2 + plugin.random.nextInt(size);

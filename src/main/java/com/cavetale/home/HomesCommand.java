@@ -1,6 +1,6 @@
 package com.cavetale.home;
 
-import com.winthier.generic_events.GenericEvents;
+import com.winthier.playercache.PlayerCache;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
@@ -263,7 +263,7 @@ public final class HomesCommand extends PlayerCommand {
         }
         StringBuilder sb = new StringBuilder();
         for (UUID inviteId : home.getInvites()) {
-            sb.append(" ").append(GenericEvents.cachedPlayerName(inviteId));
+            sb.append(" ").append(PlayerCache.nameForUuid(inviteId));
         }
         player.sendMessage(ChatColor.GRAY + " Location: " + ChatColor.WHITE
                            + String.format("%s %d,%d,%d",
@@ -274,7 +274,7 @@ public final class HomesCommand extends PlayerCommand {
         ComponentBuilder cb = new ComponentBuilder("");
         cb.append(" Invited: " + home.getInvites().size()).color(ChatColor.GRAY);
         for (UUID invitee : home.getInvites()) {
-            cb.append(" ").append(GenericEvents.cachedPlayerName(invitee));
+            cb.append(" ").append(PlayerCache.nameForUuid(invitee));
             cb.color(ChatColor.WHITE);
         }
         player.spigot().sendMessage(cb.create());
@@ -312,7 +312,7 @@ public final class HomesCommand extends PlayerCommand {
     boolean uninviteCommand(Player player, String[] args) throws Wrong {
         if (args.length != 1 && args.length != 2) return printHomesInfo(player);
         final String targetName = args[0];
-        UUID target = GenericEvents.cachedPlayerUuid(targetName);
+        UUID target = PlayerCache.uuidForName(targetName);
         if (target == null) throw new Wrong("Player not found: " + targetName + "!");
         Home home;
         if (args.length >= 2) {

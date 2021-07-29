@@ -1,6 +1,6 @@
 package com.cavetale.home;
 
-import com.winthier.generic_events.GenericEvents;
+import com.winthier.playercache.PlayerCache;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.UUID;
@@ -73,7 +73,7 @@ public final class HomeCommand extends PlayerCommand {
             String arg = args[0];
             if (arg.contains(":")) {
                 String[] toks = arg.split(":", 2);
-                UUID targetId = GenericEvents.cachedPlayerUuid(toks[0]);
+                UUID targetId = PlayerCache.uuidForName(toks[0]);
                 if (targetId == null) {
                     throw new Wrong("Player not found: " + toks[0]);
                 }

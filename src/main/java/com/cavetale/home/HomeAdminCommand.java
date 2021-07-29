@@ -1,6 +1,6 @@
 package com.cavetale.home;
 
-import com.winthier.generic_events.GenericEvents;
+import com.winthier.playercache.PlayerCache;
 import java.util.Arrays;
 import java.util.List;
 import java.util.UUID;
@@ -132,7 +132,7 @@ public final class HomeAdminCommand implements TabExecutor {
             if (targetName.equals("-admin")) {
                 targetId = Claim.ADMIN_ID;
             } else {
-                targetId = GenericEvents.cachedPlayerUuid(targetName);
+                targetId = PlayerCache.uuidForName(targetName);
                 if (targetId == null) {
                     sender.sendMessage(ChatColor.RED + "Player not found: " + targetName);
                     return true;
@@ -184,12 +184,12 @@ public final class HomeAdminCommand implements TabExecutor {
             return true;
         }
         String name = args[0];
-        UUID uuid = GenericEvents.cachedPlayerUuid(name);
+        UUID uuid = PlayerCache.uuidForName(name);
         if (uuid == null) {
             sender.sendMessage(ChatColor.RED + "Player not found: " + name);
             return true;
         }
-        name = GenericEvents.cachedPlayerName(uuid);
+        name = PlayerCache.nameForUuid(uuid);
         List<Claim> claims = plugin.findClaims(uuid);
         int count = claims.size();
         sender.sendMessage(ChatColor.YELLOW + name + " has " + count
@@ -213,12 +213,12 @@ public final class HomeAdminCommand implements TabExecutor {
     boolean homesCommand(CommandSender sender, String[] args) {
         if (args.length != 1) return false;
         String name = args[0];
-        UUID uuid = GenericEvents.cachedPlayerUuid(name);
+        UUID uuid = PlayerCache.uuidForName(name);
         if (uuid == null) {
             sender.sendMessage(ChatColor.RED + "Player not found: " + name);
             return true;
         }
-        name = GenericEvents.cachedPlayerName(uuid);
+        name = PlayerCache.nameForUuid(uuid);
         List<Home> homes = plugin.findHomes(uuid);
         int count = homes.size();
         sender.sendMessage(ChatColor.YELLOW + name + " has " + count

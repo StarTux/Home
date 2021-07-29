@@ -1,7 +1,7 @@
 package com.cavetale.home;
 
 import com.cavetale.core.util.Json;
-import com.winthier.generic_events.GenericEvents;
+import com.winthier.playercache.PlayerCache;
 import java.time.Instant;
 import java.util.ArrayList;
 import java.util.Date;
@@ -102,7 +102,7 @@ public final class Home {
 
     public String getOwnerName() {
         if (owner == null) return "N/A";
-        String result = GenericEvents.cachedPlayerName(owner);
+        String result = PlayerCache.nameForUuid(owner);
         if (result != null) return result;
         return "N/A";
     }

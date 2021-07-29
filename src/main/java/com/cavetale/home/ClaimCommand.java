@@ -1,6 +1,7 @@
 package com.cavetale.home;
 
-import com.winthier.generic_events.GenericEvents;
+import com.cavetale.money.Money;
+import com.winthier.playercache.PlayerCache;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
@@ -129,8 +130,8 @@ public final class ClaimCommand extends PlayerCommand {
             claimSize = settings.secondaryClaimSize;
             claimCost = settings.secondaryClaimCost;
         }
-        if (GenericEvents.getPlayerBalance(playerId) < claimCost) {
-            throw new Wrong("You cannot afford " + GenericEvents.formatMoney(claimCost) + "!");
+        if (Money.get(playerId) < claimCost) {
+            throw new Wrong("You cannot afford " + Money.format(claimCost) + "!");
         }
         final int rad = claimSize / 2;
         final int tol = (rad * 2 == claimSize) ? 1 : 0;
@@ -152,13 +153,13 @@ public final class ClaimCommand extends PlayerCommand {
                   + ChatColor.AQUA + " around your current location.");
         if (claimCost >= 0.01) {
             sb.append(" " + ChatColor.AQUA + "This will cost you " + ChatColor.WHITE
-                      + GenericEvents.formatMoney(claimCost) + ChatColor.AQUA + ".");
+                      + Money.format(claimCost) + ChatColor.AQUA + ".");
         }
         sb.append(" " + ChatColor.AQUA + "Your new claim will have "
                   + ChatColor.WHITE + area.size() + ChatColor.AQUA + " claim blocks.");
         if (settings.claimBlockCost >= 0.01) {
             sb.append(" " + ChatColor.AQUA + "You can buy additional claim blocks for "
-                      + ChatColor.WHITE + GenericEvents.formatMoney(settings.claimBlockCost)
+                      + ChatColor.WHITE + Money.format(settings.claimBlockCost)
                       + ChatColor.AQUA + " per block.");
         }
         sb.append(ChatColor.AQUA + " You can abandon the claim after a cooldown of "
@@ -245,8 +246,8 @@ public final class ClaimCommand extends PlayerCommand {
         }
         WorldSettings settings = plugin.getWorldSettings().get(claim.getWorld());
         double price = (double) buyClaimBlocks * settings.claimBlockCost;
-        String priceFormat = GenericEvents.formatMoney(price);
-        if (GenericEvents.getPlayerBalance(playerId) < price) {
+        String priceFormat = Money.format(price);
+        if (Money.get(playerId) < price) {
             throw new Wrong("You do not have " + priceFormat + " to buy "
                             + buyClaimBlocks + " claim blocks");
         }
@@ -285,9 +286,8 @@ public final class ClaimCommand extends PlayerCommand {
             if (!args[1].equals(meta.token)) {
                 throw new Wrong("Purchase expired");
             }
-            if (!GenericEvents.takePlayerMoney(playerId, meta.price, plugin,
-                                               "Buy " + meta.amount + " claim blocks")) {
-                throw new Wrong("You cannot afford " + GenericEvents.formatMoney(meta.price));
+            if (!Money.take(playerId, meta.price, plugin, "Buy " + meta.amount + " claim blocks")) {
+                throw new Wrong("You cannot afford " + Money.format(meta.price));
             }
             claim.setBlocks(claim.getBlocks() + meta.amount);
             claim.saveToDatabase();
@@ -325,12 +325,8 @@ public final class ClaimCommand extends PlayerCommand {
                     throw new Wrong("Your claim would overlap an existing claim.");
                 }
             }
-            if (ncmeta.price >= 0.01
-                && !GenericEvents.takePlayerMoney(playerId, ncmeta.price, plugin,
-                                                  "Make new claim in "
-                                                  + plugin.worldDisplayName(ncmeta.world))) {
-                throw new Wrong("You cannot afford "
-                                + GenericEvents.formatMoney(ncmeta.price) + "!");
+            if (ncmeta.price >= 0.01 && !Money.take(playerId, ncmeta.price, plugin, "Make new claim in " + plugin.worldDisplayName(ncmeta.world))) {
+                throw new Wrong("You cannot afford " + Money.format(ncmeta.price) + "!");
             }
             Claim claim = new Claim(plugin, playerId, ncmeta.world, ncmeta.area);
             claim.saveToDatabase();
@@ -372,7 +368,7 @@ public final class ClaimCommand extends PlayerCommand {
             throw new Wrong("You are not the owner of this claim.");
         }
         String targetName = args[1];
-        UUID targetId = GenericEvents.cachedPlayerUuid(targetName);
+        UUID targetId = PlayerCache.uuidForName(targetName);
         if (targetId == null) {
             throw new Wrong("Player not found: " + targetName + ".");
         }
@@ -402,7 +398,7 @@ public final class ClaimCommand extends PlayerCommand {
             throw new Wrong("You are not the owner of this claim.");
         }
         String targetName = args[1];
-        UUID targetId = GenericEvents.cachedPlayerUuid(targetName);
+        UUID targetId = PlayerCache.uuidForName(targetName);
         if (targetId == null) {
             throw new Wrong("Player not found: " + targetName + ".");
         }
@@ -426,7 +422,7 @@ public final class ClaimCommand extends PlayerCommand {
             throw new Wrong("You are not the owner of this claim");
         }
         String targetName = args[1];
-        UUID targetId = GenericEvents.cachedPlayerUuid(targetName);
+        UUID targetId = PlayerCache.uuidForName(targetName);
         if (targetId == null) {
             throw new Wrong("Player not found: " + targetName);
         }
@@ -551,8 +547,7 @@ public final class ClaimCommand extends PlayerCommand {
         WorldSettings settings = plugin.getWorldSettings().get(claim.getWorld());
         if (claim.getBlocks() < newArea.size()) {
             int needed = newArea.size() - claim.getBlocks();
-            String formatMoney = GenericEvents
-                .formatMoney((double) needed * settings.claimBlockCost);
+            String formatMoney = Money.format((double) needed * settings.claimBlockCost);
             ComponentBuilder cb = new ComponentBuilder("");
             cb.append(needed + " more claim blocks required. ").color(ChatColor.RED);
             cb.append("[Buy More]").color(ChatColor.GRAY);
@@ -736,7 +731,7 @@ public final class ClaimCommand extends PlayerCommand {
             cb.append(key).color(ChatColor.GRAY);
             for (UUID id : ids) {
                 cb.append(" ").reset();
-                cb.append(GenericEvents.cachedPlayerName(id)).color(ChatColor.WHITE);
+                cb.append(PlayerCache.nameForUuid(id)).color(ChatColor.WHITE);
             }
             player.spigot().sendMessage(cb.create());
         }
@@ -815,7 +810,7 @@ public final class ClaimCommand extends PlayerCommand {
                 .fromLegacyText(buttonColor + "/claim buy " + ChatColor.ITALIC + "<amount>\n"
                                 + ChatColor.WHITE + ChatColor.ITALIC
                                 + "Add some claim blocks to this claim. One claim block costs "
-                                + GenericEvents.formatMoney(settings.claimBlockCost) + ".");
+                                + Money.format(settings.claimBlockCost) + ".");
             cb.event(new HoverEvent(HoverEvent.Action.SHOW_TEXT, txt));
             cb.append("  ").append("[Settings]").color(buttonColor);
             cb.event(new ClickEvent(ClickEvent.Action.RUN_COMMAND, "/claim set"));

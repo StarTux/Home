@@ -1,6 +1,6 @@
 package com.cavetale.home;
 
-import com.winthier.generic_events.GenericEvents;
+import com.winthier.playercache.PlayerCache;
 import java.util.Collections;
 import java.util.List;
 import java.util.UUID;
@@ -23,7 +23,7 @@ public final class InviteHomeCommand extends PlayerCommand {
         if (args.length == 1 && args[0].equals("help")) return false;
         final UUID playerId = player.getUniqueId();
         String targetName = args[0];
-        UUID targetId = GenericEvents.cachedPlayerUuid(targetName);
+        UUID targetId = PlayerCache.uuidForName(targetName);
         if (targetId == null) fail("Player not found: " + targetName);
         String homeName = args.length >= 2 ? args[1] : null;
         Home home = this.plugin.findHome(playerId, homeName);

@@ -1,10 +1,9 @@
 package com.cavetale.home;
 
 import com.cavetale.core.event.block.PlayerBreakBlockEvent;
+import com.cavetale.core.event.block.PlayerCanBuildEvent;
 import com.destroystokyo.paper.event.entity.PreCreatureSpawnEvent;
 import com.winthier.exploits.Exploits;
-import com.winthier.generic_events.PlayerCanBuildEvent;
-import com.winthier.generic_events.PlayerCanDamageEntityEvent;
 import java.util.Iterator;
 import java.util.Objects;
 import lombok.RequiredArgsConstructor;
@@ -900,29 +899,27 @@ final class ClaimListener implements Listener {
 
     @EventHandler(ignoreCancelled = true, priority = EventPriority.LOW)
     public void onPlayerBreakBlock(PlayerBreakBlockEvent event) {
-        Block block = event.getBlock();
-        Player player = event.getPlayer();
-        checkPlayerAction(player, block, Action.BUILD, event);
+        checkPlayerAction(event.getPlayer(), event.getBlock(), Action.BUILD, event);
     }
 
-    @EventHandler(ignoreCancelled = true)
-    public void onPlayerCanDamageEntity(PlayerCanDamageEntityEvent event) {
-        Entity entity = event.getEntity();
-        boolean claimed = plugin.getClaimAt(entity.getLocation()) != null;
-        Action action;
-        if (claimed && entity.getType() == EntityType.SHULKER) {
-            // Some extra code for hostile, yet valuable mobs in
-            // claims.
-            action = Action.BUILD;
-        } else if (isHostileMob(entity)) {
-            if (entity.getCustomName() == null) return;
-            action = Action.BUILD;
-        } else {
-            // Must be an animal
-            action = Action.BUILD;
-        }
-        checkPlayerAction(event.getPlayer(), entity.getLocation().getBlock(), action, event);
-    }
+    // @EventHandler(ignoreCancelled = true)
+    // public void onPlayerCanDamageEntity(PlayerCanDamageEntityEvent event) {
+    //     Entity entity = event.getEntity();
+    //     boolean claimed = plugin.getClaimAt(entity.getLocation()) != null;
+    //     Action action;
+    //     if (claimed && entity.getType() == EntityType.SHULKER) {
+    //         // Some extra code for hostile, yet valuable mobs in
+    //         // claims.
+    //         action = Action.BUILD;
+    //     } else if (isHostileMob(entity)) {
+    //         if (entity.getCustomName() == null) return;
+    //         action = Action.BUILD;
+    //     } else {
+    //         // Must be an animal
+    //         action = Action.BUILD;
+    //     }
+    //     checkPlayerAction(event.getPlayer(), entity.getLocation().getBlock(), action, event);
+    // }
 
     @EventHandler(ignoreCancelled = true, priority = EventPriority.MONITOR)
     public void onSpawnerSpawn(SpawnerSpawnEvent event) {

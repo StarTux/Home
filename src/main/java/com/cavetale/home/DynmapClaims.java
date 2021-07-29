@@ -1,6 +1,6 @@
 package com.cavetale.home;
 
-import com.winthier.generic_events.GenericEvents;
+import com.winthier.playercache.PlayerCache;
 import java.util.Map;
 import java.util.Set;
 import java.util.UUID;
@@ -52,10 +52,10 @@ final class DynmapClaims {
                     + "<br/><strong>Size</strong>: "
                     + claim.getArea().width() + "x" + claim.getArea().height()
                     + "<br/><strong>Members</strong>: " + claim.getMembers().stream()
-                    .map(GenericEvents::cachedPlayerName)
+                    .map(PlayerCache::nameForUuid)
                     .collect(Collectors.joining(", "))
                     + "<br/><strong>Visitors</strong>: " + claim.getVisitors().stream()
-                    .map(GenericEvents::cachedPlayerName)
+                    .map(PlayerCache::nameForUuid)
                     .collect(Collectors.joining(", "));
                 marker.setLabel(label, true);
                 marker.setLineStyle(3, 0.75, 0xFF0000);
@@ -70,11 +70,11 @@ final class DynmapClaims {
                     + "<strong>Subclaim</strong>"
                     + "<br/>"
                     + "<strong>Owner</strong>: " + trusted.get(Subclaim.Trust.OWNER).stream()
-                    .map(GenericEvents::cachedPlayerName)
+                    .map(PlayerCache::nameForUuid)
                     .collect(Collectors.joining(", "))
                     + "<br/>"
                     + "<strong>Co-Owner</strong>: " + trusted.get(Subclaim.Trust.CO_OWNER).stream()
-                    .map(GenericEvents::cachedPlayerName)
+                    .map(PlayerCache::nameForUuid)
                     .collect(Collectors.joining(", "));
                 marker.setLabel(label, true);
                 marker.setLineStyle(2, 0.75, 0xFFFFFF);

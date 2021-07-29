@@ -1,6 +1,6 @@
 package com.cavetale.home;
 
-import com.winthier.generic_events.GenericEvents;
+import com.winthier.playercache.PlayerCache;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Date;
@@ -216,7 +216,7 @@ final class Claim {
 
     String getOwnerName() {
         if (ADMIN_ID.equals(owner)) return "admin";
-        return GenericEvents.cachedPlayerName(owner);
+        return PlayerCache.nameForUuid(owner);
     }
 
     boolean contains(Location location) {

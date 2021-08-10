@@ -1,5 +1,6 @@
 package com.cavetale.home;
 
+import com.cavetale.core.event.player.PluginPlayerEvent;
 import java.util.Collections;
 import java.util.List;
 import java.util.UUID;
@@ -55,8 +56,12 @@ public final class SetHomeCommand extends PlayerCommand {
         }
         if (homeName == null) {
             player.sendMessage(ChatColor.GREEN + "Primary home set");
+            PluginPlayerEvent.Name.SET_PRIMARY_HOME.call(plugin, player);
         } else {
             player.sendMessage(ChatColor.GREEN + "Home \"" + homeName + "\" set");
+            PluginPlayerEvent.Name.SET_NAMED_HOME.ultimate(plugin, player)
+                .detail("home_name", homeName)
+                .call();
         }
         return true;
     }

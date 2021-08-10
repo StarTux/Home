@@ -1,5 +1,6 @@
 package com.cavetale.home;
 
+import com.cavetale.core.event.player.PluginPlayerEvent;
 import com.cavetale.money.Money;
 import com.winthier.playercache.PlayerCache;
 import java.util.ArrayList;
@@ -341,6 +342,7 @@ public final class ClaimCommand extends PlayerCommand {
                                                     + "The command to access all your claims.")));
             player.spigot().sendMessage(cb.create());
             plugin.highlightClaim(claim, player);
+            PluginPlayerEvent.Name.CREATE_CLAIM.call(plugin, player);
         }
         return true;
     }

@@ -1,5 +1,6 @@
 package com.cavetale.home;
 
+import com.cavetale.core.event.player.PluginPlayerEvent;
 import java.util.List;
 import java.util.function.Consumer;
 import lombok.RequiredArgsConstructor;
@@ -141,6 +142,7 @@ final class WildTask {
                                     + endl + "Find another place to build.");
                 cb.event(new HoverEvent(HoverEvent.Action.SHOW_TEXT, tooltip));
                 player.spigot().sendMessage(cb.create());
+                PluginPlayerEvent.Name.USE_WILD.call(plugin, player);
             });
     }
 }

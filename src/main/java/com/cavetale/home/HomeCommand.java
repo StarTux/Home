@@ -1,5 +1,6 @@
 package com.cavetale.home;
 
+import com.cavetale.core.event.player.PluginPlayerEvent;
 import com.winthier.playercache.PlayerCache;
 import java.util.ArrayList;
 import java.util.List;
@@ -29,6 +30,11 @@ public final class HomeCommand extends PlayerCommand {
                 Claim claim = plugin.getClaimAt(location);
                 if (claim != null && !claim.hasTrust(player, location, Action.INTERACT)) {
                     throw new Wrong("This home is in a claim where you're not permitted.");
+                }
+                if (!PluginPlayerEvent.Name.USE_PRIMARY_HOME.cancellable(plugin, player)
+                    .detail("location", location)
+                    .call()) {
+                    return true;
                 }
                 plugin.warpTo(player, location, () -> {
                         player.sendMessage(ChatColor.GREEN + "Welcome home :)");
@@ -96,8 +102,24 @@ public final class HomeCommand extends PlayerCommand {
                 throw new Wrong("Home \"%s\" could not be found.");
             }
             Claim claim = plugin.getClaimAt(location);
-            if (claim != null && !claim.hasTrust(player, location, Action.INTERACT)) {
+            if (claim != null && !claim.canVisit(home.getOwner())) {
                 throw new Wrong("This home is in a claim where you're not permitted.");
+            }
+            if (home.isOwner(player.getUniqueId())) {
+                if (!PluginPlayerEvent.Name.USE_NAMED_HOME.cancellable(plugin, player)
+                    .detail("home_name", home.getName())
+                    .detail("location", location)
+                    .call()) {
+                    return true;
+                }
+            } else {
+                if (!PluginPlayerEvent.Name.VISIT_HOME.cancellable(plugin, player)
+                    .detail("home_owner", home.getOwner())
+                    .detail("home_name", home.getName())
+                    .detail("location", location)
+                    .call()) {
+                    return true;
+                }
             }
             plugin.warpTo(player, location, () -> {
                     player.sendMessage(ChatColor.GREEN + "Welcome home.");

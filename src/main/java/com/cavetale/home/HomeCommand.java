@@ -106,18 +106,24 @@ public final class HomeCommand extends PlayerCommand {
                 throw new Wrong("This home is in a claim where you're not permitted.");
             }
             if (home.isOwner(player.getUniqueId())) {
-                if (!PluginPlayerEvent.Name.USE_NAMED_HOME.cancellable(plugin, player)
-                    .detail("home_name", home.getName())
-                    .detail("location", location)
-                    .call()) {
+                PluginPlayerEvent pluginPlayerEvent = PluginPlayerEvent.Name.USE_NAMED_HOME
+                    .cancellable(plugin, player)
+                    .detail("location", location);
+                if (home.getName() != null) {
+                    pluginPlayerEvent.detail("home_name", home.getName());
+                }
+                if (!pluginPlayerEvent.call()) {
                     return true;
                 }
             } else {
-                if (!PluginPlayerEvent.Name.VISIT_HOME.cancellable(plugin, player)
+                PluginPlayerEvent pluginPlayerEvent = PluginPlayerEvent.Name.VISIT_HOME
+                    .cancellable(plugin, player)
                     .detail("home_owner", home.getOwner())
-                    .detail("home_name", home.getName())
-                    .detail("location", location)
-                    .call()) {
+                    .detail("location", location);
+                if (home.getName() != null) {
+                    pluginPlayerEvent.detail("home_name", home.getName());
+                }
+                if (!pluginPlayerEvent.call()) {
                     return true;
                 }
             }

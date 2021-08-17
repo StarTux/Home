@@ -1,5 +1,7 @@
 package com.cavetale.home;
 
+import com.cavetale.core.event.player.PluginPlayerEvent.Detail;
+import com.cavetale.core.event.player.PluginPlayerEvent;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.stream.Collectors;
@@ -38,6 +40,13 @@ public final class VisitCommand extends PlayerCommand {
         }
         final String ownerName = home.getOwnerName();
         final String publicName = home.getPublicName();
+        boolean allowed = PluginPlayerEvent.Name.VISIT_PUBLIC_HOME
+            .cancellable(plugin, player)
+            .detail(Detail.NAME, publicName)
+            .detail(Detail.OWNER, home.getOwner())
+            .detail(Detail.LOCATION, location)
+            .call();
+        if (!allowed) return true;
         plugin.warpTo(player, location, () -> {
                 player.sendMessage(ChatColor.GREEN + "Teleported to "
                                    + ownerName + "'s public home \""
@@ -104,5 +113,6 @@ public final class VisitCommand extends PlayerCommand {
         plugin.sessions.of(player).setPages(pages);
         plugin.sessions.of(player).showStoredPage();
         player.sendMessage("");
+        PluginPlayerEvent.Name.VIEW_PUBLIC_HOMES.call(plugin, player);
     }
 }

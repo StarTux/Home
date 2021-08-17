@@ -1,5 +1,6 @@
 package com.cavetale.home;
 
+import com.cavetale.core.event.player.PluginPlayerEvent.Detail;
 import com.cavetale.core.event.player.PluginPlayerEvent;
 import com.winthier.playercache.PlayerCache;
 import java.util.ArrayList;
@@ -31,11 +32,10 @@ public final class HomeCommand extends PlayerCommand {
                 if (claim != null && !claim.hasTrust(player, location, Action.INTERACT)) {
                     throw new Wrong("This home is in a claim where you're not permitted.");
                 }
-                if (!PluginPlayerEvent.Name.USE_PRIMARY_HOME.cancellable(plugin, player)
-                    .detail("location", location)
-                    .call()) {
-                    return true;
-                }
+                boolean allowed = PluginPlayerEvent.Name.USE_PRIMARY_HOME.cancellable(plugin, player)
+                    .detail(Detail.LOCATION, location)
+                    .call();
+                if (!allowed) return true;
                 plugin.warpTo(player, location, () -> {
                         player.sendMessage(ChatColor.GREEN + "Welcome home :)");
                         player.sendTitle("", ChatColor.GREEN + "Welcome home :)", 10, 20, 10);
@@ -106,26 +106,20 @@ public final class HomeCommand extends PlayerCommand {
                 throw new Wrong("This home is in a claim where you're not permitted.");
             }
             if (home.isOwner(player.getUniqueId())) {
-                PluginPlayerEvent pluginPlayerEvent = PluginPlayerEvent.Name.USE_NAMED_HOME
+                boolean allowed = PluginPlayerEvent.Name.USE_NAMED_HOME
                     .cancellable(plugin, player)
-                    .detail("location", location);
-                if (home.getName() != null) {
-                    pluginPlayerEvent.detail("home_name", home.getName());
-                }
-                if (!pluginPlayerEvent.call()) {
-                    return true;
-                }
+                    .detail(Detail.NAME, home.getName())
+                    .detail(Detail.LOCATION, location)
+                    .call();
+                if (!allowed) return true;
             } else {
-                PluginPlayerEvent pluginPlayerEvent = PluginPlayerEvent.Name.VISIT_HOME
+                boolean allowed = PluginPlayerEvent.Name.VISIT_HOME
                     .cancellable(plugin, player)
-                    .detail("home_owner", home.getOwner())
-                    .detail("location", location);
-                if (home.getName() != null) {
-                    pluginPlayerEvent.detail("home_name", home.getName());
-                }
-                if (!pluginPlayerEvent.call()) {
-                    return true;
-                }
+                    .detail(Detail.OWNER, home.getOwner())
+                    .detail(Detail.NAME, home.getName())
+                    .detail(Detail.LOCATION, location)
+                    .call();
+                if (!allowed) return true;
             }
             plugin.warpTo(player, location, () -> {
                     player.sendMessage(ChatColor.GREEN + "Welcome home.");

@@ -1,7 +1,8 @@
 package com.cavetale.home;
 
+import com.cavetale.core.event.block.PlayerBlockAbilityQuery;
 import com.cavetale.core.event.block.PlayerBreakBlockEvent;
-import com.cavetale.core.event.block.PlayerCanBuildEvent;
+import com.cavetale.core.event.entity.PlayerEntityAbilityQuery;
 import com.destroystokyo.paper.event.entity.PreCreatureSpawnEvent;
 import com.winthier.exploits.Exploits;
 import java.util.Iterator;
@@ -893,8 +894,57 @@ final class ClaimListener implements Listener {
     }
 
     @EventHandler(ignoreCancelled = true)
-    public void onPlayerCanBuild(PlayerCanBuildEvent event) {
-        checkPlayerAction(event.getPlayer(), event.getBlock(), Action.BUILD, event);
+    void onPlayerBlockAbility(PlayerBlockAbilityQuery query) {
+        switch (query.getAction()) {
+        case USE: // Buttons: Doors
+        case READ: // Lectern
+            checkPlayerAction(query.getPlayer(), query.getBlock(), Action.INTERACT, query);
+            break;
+        case OPEN: // Chests
+        case INVENTORY: // Lectern
+            checkPlayerAction(query.getPlayer(), query.getBlock(), Action.CONTAINER, query);
+            break;
+        case BUILD:
+        case PLACE_ENTITY:
+        case SPAWN_MOB: // PocketMob (before the attempt)
+        default:
+            checkPlayerAction(query.getPlayer(), query.getBlock(), Action.BUILD, query);
+        }
+    }
+
+    @EventHandler(ignoreCancelled = true)
+    void onPlayerEntityAbility(PlayerEntityAbilityQuery query) {
+        Player player = query.getPlayer();
+        Entity entity = query.getEntity();
+        if (isOwner(player, entity)) return;
+        Block block = entity.getLocation().getBlock();
+        switch (query.getAction()) {
+        case MOUNT:
+        case DISMOUNT:
+        case SIT:
+            checkPlayerAction(player, block, Action.INTERACT, query);
+            break;
+        case SHEAR:
+        case FEED:
+        case BREED:
+        case LEASH:
+        case PICKUP:
+        case INVENTORY:
+            checkPlayerAction(player, block, Action.CONTAINER, query);
+            break;
+        case DAMAGE:
+        case POTION:
+        case CATCH:
+        case OPEN:
+        case MOVE:
+        case PLACE:
+        case GIMMICK:
+        default:
+            if (isHostileMob(entity) && entity.getCustomName() == null && entity.getType() != EntityType.SHULKER) {
+                return;
+            }
+            checkPlayerAction(player, block, Action.BUILD, query);
+        }
     }
 
     @EventHandler(ignoreCancelled = true, priority = EventPriority.LOW)

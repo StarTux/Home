@@ -1,5 +1,6 @@
 package com.cavetale.home;
 
+import com.cavetale.core.event.player.PluginPlayerEvent.Detail;
 import com.cavetale.core.event.player.PluginPlayerEvent;
 import com.cavetale.money.Money;
 import com.winthier.playercache.PlayerCache;
@@ -300,6 +301,10 @@ public final class ClaimCommand extends PlayerCommand {
                                    + " blocks to this claim."
                                    + " Grow it manually or enable \"autogrow\" in the settings.");
             }
+            PluginPlayerEvent.Name.BUY_CLAIM_BLOCKS.ultimate(plugin, player)
+                .detail(Detail.COUNT, meta.amount)
+                .detail(Detail.MONEY, meta.price)
+                .call();
         }
         // AbandonClaim confirm
         int claimId = plugin.getMetadata(player, plugin.META_ABANDON, Integer.class).orElse(-1);

@@ -5,6 +5,8 @@ import java.util.Collections;
 import java.util.List;
 import java.util.UUID;
 import lombok.RequiredArgsConstructor;
+import net.kyori.adventure.text.Component;
+import net.kyori.adventure.text.format.NamedTextColor;
 import org.bukkit.entity.Player;
 
 @RequiredArgsConstructor
@@ -17,8 +19,9 @@ public final class BuildCommand extends PlayerCommand {
         if (args.length == 1 && args[0].equals("help")) return false;
         final UUID playerId = player.getUniqueId();
         if (!player.hasMetadata(plugin.META_IGNORE) && !player.isOp() && plugin.hasAClaim(playerId)) {
+            player.sendMessage(Component.text("You already have a claim!", NamedTextColor.RED));
             PluginPlayerEvent.Name.USE_WILD_WITH_CLAIM.call(plugin, player);
-            throw new Wrong("You already have a claim!");
+            return true;
         }
         plugin.findPlaceToBuild(player);
         return true;

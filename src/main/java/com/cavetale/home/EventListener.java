@@ -40,9 +40,13 @@ public final class EventListener implements Listener {
         } else if (name == PluginPlayerQuery.Name.PRIMARY_HOME_IS_SET) {
             boolean primaryHomeIsSet = plugin.findHome(player.getUniqueId(), null) != null;
             PluginPlayerQuery.Name.PRIMARY_HOME_IS_SET.respond(query, plugin, primaryHomeIsSet);
+        } else if (name == PluginPlayerQuery.Name.INSIDE_OWNED_CLAIM) {
+            Claim claim = plugin.getClaimAt(player.getLocation());
+            boolean insideTrustedClaim = claim != null ? claim.isOwner(player) : false;
+            PluginPlayerQuery.Name.INSIDE_TRUSTED_CLAIM.respond(query, plugin, insideTrustedClaim);
         } else if (name == PluginPlayerQuery.Name.INSIDE_TRUSTED_CLAIM) {
             Claim claim = plugin.getClaimAt(player.getLocation());
-            boolean insideTrustedClaim = claim != null ? claim.canBuild(player) : null;
+            boolean insideTrustedClaim = claim != null ? (!claim.isOwner(player) && claim.canBuild(player)) : false;
             PluginPlayerQuery.Name.INSIDE_TRUSTED_CLAIM.respond(query, plugin, insideTrustedClaim);
         }
     }

@@ -1,5 +1,6 @@
 package com.cavetale.home;
 
+import com.cavetale.core.event.player.PluginPlayerEvent;
 import java.util.Collections;
 import java.util.List;
 import java.util.UUID;
@@ -16,6 +17,7 @@ public final class BuildCommand extends PlayerCommand {
         if (args.length == 1 && args[0].equals("help")) return false;
         final UUID playerId = player.getUniqueId();
         if (!player.hasMetadata(plugin.META_IGNORE) && !player.isOp() && plugin.hasAClaim(playerId)) {
+            PluginPlayerEvent.Name.USE_WILD_WITH_CLAIM.call(plugin, player);
             throw new Wrong("You already have a claim!");
         }
         plugin.findPlaceToBuild(player);

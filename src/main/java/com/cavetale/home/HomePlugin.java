@@ -101,7 +101,6 @@ public final class HomePlugin extends JavaPlugin {
             enableDynmap();
         }
         if (getServer().getPluginManager().isPluginEnabled("MagicMap")) {
-            System.out.println(getClass().getSimpleName() + " MagicMap enable");
             magicMapListener = new MagicMapListener(this).enable();
         }
     }

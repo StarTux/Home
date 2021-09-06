@@ -242,9 +242,12 @@ public final class ClaimCommand extends PlayerCommand {
         if (buyClaimBlocks <= 0) {
             throw new Wrong("Invalid claim blocks amount: " + args[1]);
         }
-        Claim claim = plugin.findNearestOwnedClaim(player);
+        Claim claim = plugin.getClaimAt(player.getLocation());
         if (claim == null) {
-            throw new Wrong("You don't have a claim in this world");
+            throw new Wrong("There is no claim here!");
+        }
+        if (!claim.isOwner(player)) {
+            throw new Wrong("You do not own this claim!");
         }
         WorldSettings settings = plugin.getWorldSettings().get(claim.getWorld());
         double price = (double) buyClaimBlocks * settings.claimBlockCost;

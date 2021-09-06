@@ -344,7 +344,11 @@ public final class HomePlugin extends JavaPlugin {
         }
     }
 
-    String worldDisplayName(String worldName) {
+    public String worldDisplayName(String worldName) {
+        WorldSettings settings = worldSettings.get(worldName);
+        if (settings != null && settings.getDisplayName() != null) {
+            return settings.getDisplayName();
+        }
         World world = getServer().getWorld(worldName);
         if (world == null) return worldName;
         switch (world.getEnvironment()) {

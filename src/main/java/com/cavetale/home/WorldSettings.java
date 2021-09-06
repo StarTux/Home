@@ -5,16 +5,17 @@ import org.bukkit.configuration.ConfigurationSection;
 
 @Data
 final class WorldSettings {
-    int claimMargin = 1024;
-    int homeMargin = 64;
-    int wildCooldown = 10;
-    boolean manageGameMode = true;
-    int initialClaimSize = 128;
-    int secondaryClaimSize = 32;
-    double initialClaimCost = 0.0;
-    double secondaryClaimCost = 0.0;
-    double claimBlockCost = 0.1;
-    long claimAbandonCooldown = 0;
+    protected int claimMargin = 1024;
+    protected int homeMargin = 64;
+    protected int wildCooldown = 10;
+    protected boolean manageGameMode = true;
+    protected int initialClaimSize = 128;
+    protected int secondaryClaimSize = 32;
+    protected double initialClaimCost = 0.0;
+    protected double secondaryClaimCost = 0.0;
+    protected double claimBlockCost = 0.1;
+    protected long claimAbandonCooldown = 0;
+    protected String displayName;
 
     void load(ConfigurationSection config) {
         claimMargin = config.getInt("ClaimMargin", claimMargin);
@@ -27,5 +28,6 @@ final class WorldSettings {
         initialClaimCost = config.getDouble("InitialClaimCost", initialClaimCost);
         secondaryClaimCost = config.getDouble("SecondaryClaimCost", secondaryClaimCost);
         claimAbandonCooldown = config.getLong("ClaimAbandonCooldown", claimAbandonCooldown);
+        displayName = config.getString("DisplayName", displayName);
     }
 }

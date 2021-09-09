@@ -30,7 +30,7 @@ public final class EventListener implements Listener {
     @EventHandler
     public void onPlayerQuery(PluginPlayerQuery query) {
         Player player = query.getPlayer();
-        PluginPlayerQuery.Name name = query.parseName();
+        PluginPlayerQuery.Name name = query.getName();
         if (name == PluginPlayerQuery.Name.CLAIM_COUNT) {
             int claimCount = plugin.findClaims(player).size();
             PluginPlayerQuery.Name.CLAIM_COUNT.respond(query, plugin, claimCount);

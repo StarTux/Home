@@ -100,6 +100,7 @@ public final class ClaimCommand extends PlayerCommand {
         for (Subclaim subclaim : claim.getSubclaims(player.getWorld())) {
             plugin.highlightSubclaim(subclaim, player);
         }
+        PluginPlayerEvent.Name.VIEW_CLAIM_INFO.call(plugin, player);
         return true;
     }
 
@@ -467,6 +468,7 @@ public final class ClaimCommand extends PlayerCommand {
         }
         if (args.length == 1) {
             showClaimSettings(claim, player);
+            PluginPlayerEvent.Name.VIEW_CLAIM_SETTINGS.call(plugin, player);
             return true;
         }
         Claim.Setting setting;
@@ -478,7 +480,7 @@ public final class ClaimCommand extends PlayerCommand {
         if (setting.isAdminOnly() && !Claim.ownsAdminClaims(player)) {
             throw new Wrong("Unknown claim setting: " + args[1]);
         }
-        Object value;
+        final Boolean value;
         switch (args[2]) {
         case "on": case "true": case "enabled": value = true; break;
         case "off": case "false": case "disabled": value = false; break;
@@ -494,6 +496,10 @@ public final class ClaimCommand extends PlayerCommand {
         }
         claim.saveToDatabase();
         showClaimSettings(claim, player);
+        PluginPlayerEvent.Name.CHANGE_CLAIM_SETTING.ultimate(plugin, player)
+            .detail(Detail.NAME, setting.key)
+            .detail(Detail.TOGGLE, value)
+            .call();
         return true;
     }
 

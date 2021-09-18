@@ -243,12 +243,12 @@ public final class ClaimCommand extends PlayerCommand {
         if (buyClaimBlocks <= 0) {
             throw new Wrong("Invalid claim blocks amount: " + args[1]);
         }
-        Claim claim = plugin.getClaimAt(player.getLocation());
-        if (claim == null) {
-            Session.ClaimGrowSnippet snippet = plugin.sessions.of(player).getClaimGrowSnippet();
-            if (snippet != null) {
-                claim = plugin.findClaimWithId(snippet.claimId);
-            }
+        Claim claim;
+        Session.ClaimGrowSnippet snippet = plugin.sessions.of(player).getClaimGrowSnippet();
+        if (snippet != null && snippet.isNear(player.getLocation())) {
+            claim = plugin.findClaimWithId(snippet.claimId);
+        } else {
+            claim = plugin.findNearestOwnedClaim(player, 512);
         }
         if (claim == null) {
             throw new Wrong("There is no claim here!");

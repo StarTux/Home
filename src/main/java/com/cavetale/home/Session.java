@@ -146,8 +146,8 @@ public final class Session {
 
         public boolean isNear(Location location) {
             return location.getWorld().getName().equals(world)
-                && Math.abs(location.getBlockX() - x) < 8
-                && Math.abs(location.getBlockZ() - z) < 8;
+                && location.getBlockX() == x
+                && location.getBlockZ() == z;
         }
     }
 }

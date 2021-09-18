@@ -22,20 +22,20 @@ import org.json.simple.JSONValue;
 
 @Data
 final class Claim {
-    final HomePlugin plugin;
-    Integer id;
-    UUID owner;
-    String world;
-    Area area;
-    final List<UUID> members = new ArrayList<>(); // Can build
-    final List<UUID> visitors = new ArrayList<>(); // Can visit
-    final List<Subclaim> subclaims = new ArrayList<>();
-    int blocks;
-    long created;
-    final Map<Setting, Object> settings = new EnumMap<>(Setting.class);
-    int centerX;
-    int centerY;
     public static final UUID ADMIN_ID = new UUID(0L, 0L);
+    protected final HomePlugin plugin;
+    protected int id;
+    protected UUID owner;
+    protected String world;
+    protected Area area;
+    protected final List<UUID> members = new ArrayList<>(); // Can build
+    protected final List<UUID> visitors = new ArrayList<>(); // Can visit
+    protected final List<Subclaim> subclaims = new ArrayList<>();
+    protected int blocks;
+    protected long created;
+    protected final Map<Setting, Object> settings = new EnumMap<>(Setting.class);
+    protected int centerX;
+    protected int centerY;
 
     Claim(final HomePlugin plugin) {
         this.plugin = plugin;

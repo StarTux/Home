@@ -142,6 +142,7 @@ public final class Session {
         public final String world;
         public final int x;
         public final int z;
+        public final int claimId;
 
         public boolean isNear(Location location) {
             return location.getWorld().getName().equals(world)

@@ -245,6 +245,12 @@ public final class ClaimCommand extends PlayerCommand {
         }
         Claim claim = plugin.getClaimAt(player.getLocation());
         if (claim == null) {
+            Session.ClaimGrowSnippet snippet = plugin.sessions.of(player).getClaimGrowSnippet();
+            if (snippet != null) {
+                claim = plugin.findClaimWithId(snippet.claimId);
+            }
+        }
+        if (claim == null) {
             throw new Wrong("There is no claim here!");
         }
         if (!claim.isOwner(player)) {
@@ -302,6 +308,7 @@ public final class ClaimCommand extends PlayerCommand {
             if (snippet != null && snippet.isNear(location) && claim.growTo(location.getBlockX(), location.getBlockZ()).isSuccessful()) {
                 player.sendMessage(ChatColor.WHITE + "Added " + meta.amount
                                    + " and grew to your location!");
+                plugin.highlightClaim(claim, player);
             } else if (claim.getBoolSetting(Claim.Setting.AUTOGROW)) {
                 player.sendMessage(ChatColor.WHITE + "Added " + meta.amount
                                    + " blocks to this claim. It will grow automatically.");
@@ -555,7 +562,7 @@ public final class ClaimCommand extends PlayerCommand {
         Location playerLocation = player.getLocation();
         int x = playerLocation.getBlockX();
         int z = playerLocation.getBlockZ();
-        Claim claim = plugin.findNearestOwnedClaim(player);
+        Claim claim = plugin.findNearestOwnedClaim(player, 512);
         if (claim == null) {
             throw new Wrong("You don't have a claim nearby");
         }
@@ -584,7 +591,7 @@ public final class ClaimCommand extends PlayerCommand {
                                                     + "Buy more " + needed + " claim blocks for "
                                                     + formatMoney + ".")));
             player.spigot().sendMessage(cb.create());
-            plugin.sessions.of(player).setClaimGrowSnippet(new Session.ClaimGrowSnippet(player.getWorld().getName(), x, z));
+            plugin.sessions.of(player).setClaimGrowSnippet(new Session.ClaimGrowSnippet(player.getWorld().getName(), x, z, claim.getId()));
             return true;
         }
         for (Claim other : plugin.getClaims()) {

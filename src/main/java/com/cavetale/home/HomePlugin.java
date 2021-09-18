@@ -311,7 +311,7 @@ public final class HomePlugin extends JavaPlugin {
         }
         for (ClaimTrust trust : db.find(ClaimTrust.class).findList()) {
             for (Claim claim : claims) {
-                if (claim.id.equals(trust.claimId)) {
+                if (claim.id == trust.claimId) {
                     switch (trust.type) {
                     case "visit": claim.visitors.add(trust.trustee); break;
                     case "member": claim.members.add(trust.trustee); break;
@@ -415,7 +415,7 @@ public final class HomePlugin extends JavaPlugin {
         return null;
     }
 
-    Claim findNearestOwnedClaim(Player player) {
+    protected Claim findNearestOwnedClaim(Player player, int radius) {
         Location playerLocation = player.getLocation();
         String playerWorld = playerLocation.getWorld().getName();
         final String w = mirrorWorlds.containsKey(playerWorld)
@@ -427,7 +427,7 @@ public final class HomePlugin extends JavaPlugin {
         int minDist = Integer.MAX_VALUE;
         Claim result = null;
         for (Claim claim : claims) {
-            if (claim.isOwner(player) && claim.isInWorld(w)) {
+            if (claim.isOwner(player) && claim.isInWorld(w) && claim.getArea().isWithin(x, z, radius)) {
                 int dist = claim.getArea().distanceToPoint(x, z);
                 if (dist < minDist) {
                     result = claim;
@@ -436,22 +436,6 @@ public final class HomePlugin extends JavaPlugin {
             }
         }
         return result;
-    }
-
-    Claim findNearbyBuildClaim(Player player, int radius) {
-        Location playerLocation = player.getLocation();
-        String playerWorld = playerLocation.getWorld().getName();
-        final String w = mirrorWorlds.containsKey(playerWorld)
-            ? mirrorWorlds.get(playerWorld)
-            : playerWorld;
-        int x = playerLocation.getBlockX();
-        int z = playerLocation.getBlockZ();
-        for (Claim claim : claims) {
-            if (claim.isInWorld(w) && claim.getArea().isWithin(x, z, radius) && claim.canBuild(player)) {
-                return claim;
-            }
-        }
-        return null;
     }
 
     public void highlightClaim(Claim claim, Player player) {

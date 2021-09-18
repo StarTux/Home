@@ -350,4 +350,20 @@ final class Claim {
             return trust.entails(Subclaim.Trust.OWNER);
         }
     }
+
+    public ClaimOperationResult growTo(int x, int z) {
+        int ax = Math.min(area.ax, x);
+        int ay = Math.min(area.ay, z);
+        int bx = Math.max(area.bx, x);
+        int by = Math.max(area.by, z);
+        Area newArea = new Area(ax, ay, bx, by);
+        if (getBlocks() < newArea.size()) return ClaimOperationResult.INSUFFICIENT_BLOCKS;
+        for (Claim other : plugin.findClaimsInWorld(world)) {
+            if (other != this && other.getArea().overlaps(newArea)) {
+                return ClaimOperationResult.OVERLAP;
+            }
+        }
+        setArea(newArea);
+        return ClaimOperationResult.SUCCESS;
+    }
 }

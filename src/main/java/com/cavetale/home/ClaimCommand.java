@@ -296,8 +296,13 @@ public final class ClaimCommand extends PlayerCommand {
                 throw new Wrong("You cannot afford " + Money.format(meta.price));
             }
             claim.setBlocks(claim.getBlocks() + meta.amount);
-            claim.saveToDatabase();
-            if (claim.getBoolSetting(Claim.Setting.AUTOGROW)) {
+            Session.ClaimGrowSnippet snippet = plugin.sessions.of(player).getClaimGrowSnippet();
+            plugin.sessions.of(player).setClaimGrowSnippet(null);
+            Location location = player.getLocation();
+            if (snippet != null && snippet.isNear(location) && claim.growTo(location.getBlockX(), location.getBlockZ()).isSuccessful()) {
+                player.sendMessage(ChatColor.WHITE + "Added " + meta.amount
+                                   + " and grew to your location!");
+            } else if (claim.getBoolSetting(Claim.Setting.AUTOGROW)) {
                 player.sendMessage(ChatColor.WHITE + "Added " + meta.amount
                                    + " blocks to this claim. It will grow automatically.");
             } else {
@@ -305,10 +310,12 @@ public final class ClaimCommand extends PlayerCommand {
                                    + " blocks to this claim."
                                    + " Grow it manually or enable \"autogrow\" in the settings.");
             }
+            claim.saveToDatabase();
             PluginPlayerEvent.Name.BUY_CLAIM_BLOCKS.ultimate(plugin, player)
                 .detail(Detail.COUNT, meta.amount)
                 .detail(Detail.MONEY, meta.price)
                 .call();
+            return true;
         }
         // AbandonClaim confirm
         int claimId = plugin.getMetadata(player, plugin.META_ABANDON, Integer.class).orElse(-1);
@@ -320,6 +327,7 @@ public final class ClaimCommand extends PlayerCommand {
             }
             plugin.deleteClaim(claim);
             player.sendMessage(ChatColor.YELLOW + "Claim removed");
+            return true;
         }
         // NewClaim confirm
         NewClaimMeta ncmeta = plugin.getMetadata(player, plugin.META_NEWCLAIM, NewClaimMeta.class)
@@ -352,6 +360,7 @@ public final class ClaimCommand extends PlayerCommand {
             player.spigot().sendMessage(cb.create());
             plugin.highlightClaim(claim, player);
             PluginPlayerEvent.Name.CREATE_CLAIM.call(plugin, player);
+            return true;
         }
         return true;
     }
@@ -575,6 +584,7 @@ public final class ClaimCommand extends PlayerCommand {
                                                     + "Buy more " + needed + " claim blocks for "
                                                     + formatMoney + ".")));
             player.spigot().sendMessage(cb.create());
+            plugin.sessions.of(player).setClaimGrowSnippet(new Session.ClaimGrowSnippet(player.getWorld().getName(), x, z));
             return true;
         }
         for (Claim other : plugin.getClaims()) {

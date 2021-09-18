@@ -6,14 +6,17 @@ import com.cavetale.home.util.Msg;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.function.Function;
+import lombok.Getter;
 import lombok.RequiredArgsConstructor;
 import lombok.Setter;
+import lombok.Value;
 import net.md_5.bungee.api.ChatColor;
 import net.md_5.bungee.api.chat.ClickEvent;
 import net.md_5.bungee.api.chat.ComponentBuilder;
 import net.md_5.bungee.api.chat.HoverEvent;
 import net.md_5.bungee.api.chat.TextComponent;
 import net.md_5.bungee.api.chat.hover.content.Text;
+import org.bukkit.Location;
 import org.bukkit.entity.Player;
 import org.bukkit.event.player.PlayerInteractEvent;
 
@@ -26,6 +29,7 @@ public final class Session {
     private String confirmMessage;
     private List<Page> storedPages = new ArrayList<>();
     private long notifyCooldown = 0L;
+    @Getter @Setter private ClaimGrowSnippet claimGrowSnippet;
 
     void disable() {
         playerInteractCallback = null;
@@ -125,5 +129,24 @@ public final class Session {
         if (notifyCooldown > now) return;
         notifyCooldown = now + 1000L;
         player.sendActionBar(Msg.builder("This claim belongs to " + claim.getOwnerName()).color(Colors.RED).create());
+    }
+
+    /**
+     * Created when a player enters "/claim grow" but has claim blocks
+     * missing.
+     * Used when the same player confirms "/claim buy" and is still
+     * nearby.
+     */
+    @Value
+    public static final class ClaimGrowSnippet {
+        public final String world;
+        public final int x;
+        public final int z;
+
+        public boolean isNear(Location location) {
+            return location.getWorld().getName().equals(world)
+                && Math.abs(location.getBlockX() - x) < 8
+                && Math.abs(location.getBlockZ() - z) < 8;
+        }
     }
 }

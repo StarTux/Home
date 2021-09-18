@@ -99,7 +99,7 @@ final class ClaimListener implements Listener {
      *
      * @return True if the event is permitted, false otherwise.
      */
-    public boolean checkPlayerAction(Player player, Block block, Action action, Cancellable cancellable) {
+    public boolean checkPlayerAction(Player player, Block block, Action action, Cancellable cancellable, boolean notify) {
         if (plugin.doesIgnoreClaims(player)) return true;
         String w = block.getWorld().getName();
         if (!plugin.getHomeWorlds().contains(w)) return true;
@@ -131,7 +131,9 @@ final class ClaimListener implements Listener {
         } else if (cancellable != null) {
             cancellable.setCancelled(true);
         }
-        plugin.sessions.of(player).notify(claim);
+        if (notify) {
+            plugin.sessions.of(player).notify(claim);
+        }
         return false;
     }
 
@@ -242,26 +244,26 @@ final class ClaimListener implements Listener {
     public void onBlockBreak(BlockBreakEvent event) {
         Block block = event.getBlock();
         Player player = event.getPlayer();
-        checkPlayerAction(player, block, Action.BUILD, event);
+        checkPlayerAction(player, block, Action.BUILD, event, true);
     }
 
     @EventHandler(ignoreCancelled = true, priority = EventPriority.LOW)
     public void onBlockPlace(BlockPlaceEvent event) {
         Block block = event.getBlock();
         Player player = event.getPlayer();
-        checkPlayerAction(event.getPlayer(), event.getBlock(), Action.BUILD, event);
+        checkPlayerAction(event.getPlayer(), event.getBlock(), Action.BUILD, event, true);
     }
 
     @EventHandler(ignoreCancelled = true, priority = EventPriority.LOW)
     public void onBlockDropItem(BlockDropItemEvent event) {
-        checkPlayerAction(event.getPlayer(), event.getBlock(), Action.BUILD, event);
+        checkPlayerAction(event.getPlayer(), event.getBlock(), Action.BUILD, event, true);
     }
 
     // Frost Walker
     @EventHandler(ignoreCancelled = true, priority = EventPriority.LOW)
     public void onEntityBlockForm(EntityBlockFormEvent event) {
         if (!(event.getEntity() instanceof Player)) return;
-        checkPlayerAction((Player) event.getEntity(), event.getBlock(), Action.BUILD, event);
+        checkPlayerAction((Player) event.getEntity(), event.getBlock(), Action.BUILD, event, false);
     }
 
     @EventHandler(ignoreCancelled = true, priority = EventPriority.LOW)
@@ -273,7 +275,7 @@ final class ClaimListener implements Listener {
             // PVP
             if (player.equals(damaged)) return;
             Block block = damaged.getLocation().getBlock();
-            checkPlayerAction(player, block, Action.PVP, event);
+            checkPlayerAction(player, block, Action.PVP, event, true);
             return;
         } else if (player != null) {
             // Player damaged a non-player
@@ -290,7 +292,7 @@ final class ClaimListener implements Listener {
                 // Must be an animal
                 action = Action.BUILD;
             }
-            checkPlayerAction(player, damaged.getLocation().getBlock(), action, event);
+            checkPlayerAction(player, damaged.getLocation().getBlock(), action, event, true);
         } else {
             // Non-player damages something
             switch (event.getCause()) {
@@ -318,7 +320,7 @@ final class ClaimListener implements Listener {
         if (player == null) return;
         Block block = event.getHitBlock();
         if (block != null) {
-            checkPlayerAction(player, block, Action.BUILD, event);
+            checkPlayerAction(player, block, Action.BUILD, event, false);
         }
     }
 
@@ -349,13 +351,14 @@ final class ClaimListener implements Listener {
         if (!plugin.isHomeWorld(event.getEntity().getWorld())) return;
         Player damager = getPlayerDamager(event.getCombuster());
         if (damager == null) return;
+        boolean melee = event.getCombuster().equals(damager);
         if (damager.hasMetadata(plugin.META_IGNORE)) return;
         Entity damaged = event.getEntity();
         if (damaged instanceof Player) {
             // PVP
             if (damager.equals(damaged)) return;
             Block block = damaged.getLocation().getBlock();
-            checkPlayerAction(damager, block, Action.PVP, event);
+            checkPlayerAction(damager, block, Action.PVP, event, melee);
             return;
         }
         if (isHostileMob(damaged)) {
@@ -366,7 +369,7 @@ final class ClaimListener implements Listener {
             return;
         }
         Block block = damaged.getLocation().getBlock();
-        checkPlayerAction(damager, block, Action.BUILD, event);
+        checkPlayerAction(damager, block, Action.BUILD, event, melee);
     }
 
     @EventHandler(ignoreCancelled = true, priority = EventPriority.LOW)
@@ -375,9 +378,10 @@ final class ClaimListener implements Listener {
         if (!plugin.isHomeWorld(vehicle.getWorld())) return;
         Player player = getPlayerDamager(event.getAttacker());
         if (player == null) return;
+        boolean melee = player.equals(event.getAttacker());
         if (isOwner(player, vehicle)) return;
         if (plugin.getClaimAt(vehicle.getLocation()) == null) return;
-        checkPlayerAction(player, vehicle.getLocation().getBlock(), Action.BUILD, event);
+        checkPlayerAction(player, vehicle.getLocation().getBlock(), Action.BUILD, event, melee);
     }
 
     @EventHandler(ignoreCancelled = true, priority = EventPriority.LOW)
@@ -386,9 +390,10 @@ final class ClaimListener implements Listener {
         if (!plugin.isHomeWorld(vehicle.getWorld())) return;
         Player player = getPlayerDamager(event.getAttacker());
         if (player == null) return;
+        boolean melee = player.equals(event.getAttacker());
         if (isOwner(player, vehicle)) return;
         if (plugin.getClaimAt(vehicle.getLocation()) == null) return;
-        checkPlayerAction(player, vehicle.getLocation().getBlock(), Action.BUILD, event);
+        checkPlayerAction(player, vehicle.getLocation().getBlock(), Action.BUILD, event, melee);
     }
 
     @EventHandler(ignoreCancelled = true, priority = EventPriority.LOW)
@@ -408,7 +413,7 @@ final class ClaimListener implements Listener {
         final Entity entity = event.getRightClicked();
         if (entity instanceof Player) return;
         if (isOwner(player, entity)) return;
-        checkPlayerAction(player, entity.getLocation().getBlock(), Action.BUILD, event);
+        checkPlayerAction(player, entity.getLocation().getBlock(), Action.BUILD, event, true);
     }
 
     // Should this just be the same as onPlayerInteractEntity() ?
@@ -419,14 +424,14 @@ final class ClaimListener implements Listener {
         final Entity entity = event.getRightClicked();
         if (entity instanceof Player) return;
         if (isOwner(player, entity)) return;
-        checkPlayerAction(player, entity.getLocation().getBlock(), Action.BUILD, event);
+        checkPlayerAction(player, entity.getLocation().getBlock(), Action.BUILD, event, true);
     }
 
     @EventHandler(ignoreCancelled = true, priority = EventPriority.LOW)
     public void onPlayerArmorStandManipulate(PlayerArmorStandManipulateEvent event) {
         final Player player = event.getPlayer();
         final Entity entity = event.getRightClicked();
-        checkPlayerAction(player, entity.getLocation().getBlock(), Action.BUILD, event);
+        checkPlayerAction(player, entity.getLocation().getBlock(), Action.BUILD, event, true);
     }
 
     @EventHandler(ignoreCancelled = true, priority = EventPriority.LOW)
@@ -436,9 +441,9 @@ final class ClaimListener implements Listener {
         final Entity entity = event.getEntity();
         if (isOwner(player, entity)) return;
         if (entity.getType() == EntityType.SHEEP) {
-            checkPlayerAction(player, entity.getLocation().getBlock(), Action.CONTAINER, event);
+            checkPlayerAction(player, entity.getLocation().getBlock(), Action.CONTAINER, event, true);
         } else {
-            checkPlayerAction(player, entity.getLocation().getBlock(), Action.BUILD, event);
+            checkPlayerAction(player, entity.getLocation().getBlock(), Action.BUILD, event, true);
         }
     }
 
@@ -449,7 +454,7 @@ final class ClaimListener implements Listener {
         if (plugin.doesIgnoreClaims(player)) return;
         final Entity mount = event.getMount();
         if (isOwner(player, mount)) return;
-        checkPlayerAction(player, mount.getLocation().getBlock(), Action.INTERACT, event);
+        checkPlayerAction(player, mount.getLocation().getBlock(), Action.INTERACT, event, true);
     }
 
     @EventHandler(ignoreCancelled = true, priority = EventPriority.LOW)
@@ -458,7 +463,7 @@ final class ClaimListener implements Listener {
         if (plugin.doesIgnoreClaims(player)) return;
         final Entity entity = event.getEntity();
         if (isOwner(player, entity)) return;
-        checkPlayerAction(player, entity.getLocation().getBlock(), Action.BUILD, event);
+        checkPlayerAction(player, entity.getLocation().getBlock(), Action.BUILD, event, true);
     }
 
     @EventHandler(ignoreCancelled = true, priority = EventPriority.LOW)
@@ -475,7 +480,7 @@ final class ClaimListener implements Listener {
             if (mat == Material.FARMLAND || mat == Material.TURTLE_EGG) {
                 event.setCancelled(true);
             } else {
-                checkPlayerAction(event.getPlayer(), block, Action.INTERACT, event);
+                checkPlayerAction(event.getPlayer(), block, Action.INTERACT, event, false);
             }
             return;
         case RIGHT_CLICK_BLOCK:
@@ -483,9 +488,9 @@ final class ClaimListener implements Listener {
             if (slimeballUse(player, event, block, claim)) return;
             if (mat.isInteractable()) {
                 if (Tag.DOORS.isTagged(mat) || Tag.BUTTONS.isTagged(mat) || Tag.TRAPDOORS.isTagged(mat)) {
-                    checkPlayerAction(player, block, Action.INTERACT, event);
+                    checkPlayerAction(player, block, Action.INTERACT, event, true);
                 } else if (Tag.ANVIL.isTagged(mat)) {
-                    checkPlayerAction(player, block, Action.CONTAINER, event);
+                    checkPlayerAction(player, block, Action.CONTAINER, event, true);
                 } else if (Tag.BEDS.isTagged(mat)) {
                     if (block.getWorld().getEnvironment() != World.Environment.NORMAL) {
                         if (claim != null && !claim.getBoolSetting(Claim.Setting.EXPLOSIONS)) {
@@ -494,7 +499,7 @@ final class ClaimListener implements Listener {
                             return;
                         }
                     }
-                    checkPlayerAction(player, block, Action.INTERACT, event);
+                    checkPlayerAction(player, block, Action.INTERACT, event, true);
                 } else {
                     switch (mat) {
                     case ENCHANTING_TABLE:
@@ -504,7 +509,7 @@ final class ClaimListener implements Listener {
                     case STONECUTTER:
                     case LEVER:
                     case SMITHING_TABLE:
-                        checkPlayerAction(player, block, Action.INTERACT, event);
+                        checkPlayerAction(player, block, Action.INTERACT, event, true);
                         break;
                     case RESPAWN_ANCHOR:
                         if (block.getWorld().getEnvironment() != World.Environment.NETHER) {
@@ -515,26 +520,26 @@ final class ClaimListener implements Listener {
                                 return;
                             }
                         }
-                        checkPlayerAction(player, block, Action.BUILD, event);
+                        checkPlayerAction(player, block, Action.BUILD, event, true);
                         break;
                     case JUKEBOX:
-                        checkPlayerAction(player, block, Action.CONTAINER, event);
+                        checkPlayerAction(player, block, Action.CONTAINER, event, true);
                         break;
                     default:
                         if (block.getState() instanceof InventoryHolder) {
-                            checkPlayerAction(player, block, Action.CONTAINER, event);
+                            checkPlayerAction(player, block, Action.CONTAINER, event, true);
                         } else {
-                            checkPlayerAction(player, block, Action.BUILD, event);
+                            checkPlayerAction(player, block, Action.BUILD, event, true);
                         }
                         break;
                     }
                 }
             } else {
-                checkPlayerAction(player, block, Action.INTERACT, event);
+                checkPlayerAction(player, block, Action.INTERACT, event, true);
             }
             return;
         case LEFT_CLICK_BLOCK:
-            checkPlayerAction(player, block, Action.INTERACT, event);
+            checkPlayerAction(player, block, Action.INTERACT, event, true);
             return;
         default:
             break;
@@ -579,7 +584,7 @@ final class ClaimListener implements Listener {
 
     @EventHandler(ignoreCancelled = true, priority = EventPriority.LOW)
     public void onEntityPlace(EntityPlaceEvent event) {
-        checkPlayerAction(event.getPlayer(), event.getBlock(), Action.BUILD, event);
+        checkPlayerAction(event.getPlayer(), event.getBlock(), Action.BUILD, null, true);
     }
 
     @EventHandler(ignoreCancelled = true, priority = EventPriority.LOW)
@@ -596,15 +601,16 @@ final class ClaimListener implements Listener {
     @EventHandler(ignoreCancelled = true, priority = EventPriority.LOW)
     public void onHangingPlace(HangingPlaceEvent event) {
         Block block = event.getEntity().getLocation().getBlock();
-        checkPlayerAction(event.getPlayer(), block, Action.BUILD, event);
+        checkPlayerAction(event.getPlayer(), block, Action.BUILD, null, true);
     }
 
     @EventHandler(ignoreCancelled = true, priority = EventPriority.LOW)
     public void onHangingBreakByEntity(HangingBreakByEntityEvent event) {
         Player player = getPlayerDamager(event.getRemover());
         if (player != null) {
+            boolean melee = player.equals(event.getRemover());
             Block block = event.getEntity().getLocation().getBlock();
-            checkPlayerAction(player, block, Action.BUILD, event);
+            checkPlayerAction(player, block, Action.BUILD, event, melee);
         }
         if (event.getCause() == HangingBreakEvent.RemoveCause.EXPLOSION) {
             Claim claim = plugin.getClaimAt(event.getEntity().getLocation().getBlock());
@@ -616,12 +622,12 @@ final class ClaimListener implements Listener {
 
     @EventHandler(ignoreCancelled = true, priority = EventPriority.LOW)
     public void onPlayerBucketEmpty(PlayerBucketEmptyEvent event) {
-        checkPlayerAction(event.getPlayer(), event.getBlockClicked(), Action.BUILD, event);
+        checkPlayerAction(event.getPlayer(), event.getBlockClicked(), Action.BUILD, event, true);
     }
 
     @EventHandler(ignoreCancelled = true, priority = EventPriority.LOW)
     public void onPlayerBucketFill(PlayerBucketFillEvent event) {
-        checkPlayerAction(event.getPlayer(), event.getBlockClicked(), Action.BUCKET, event);
+        checkPlayerAction(event.getPlayer(), event.getBlockClicked(), Action.BUCKET, event, true);
     }
 
     @EventHandler(ignoreCancelled = true, priority = EventPriority.LOW)
@@ -690,7 +696,8 @@ final class ClaimListener implements Listener {
         if (entity != null) {
             Player player = getPlayerDamager(entity);
             if (player == null) return;
-            checkPlayerAction(player, event.getBlock(), Action.BUILD, event);
+            boolean melee = player.equals(entity);
+            checkPlayerAction(player, event.getBlock(), Action.BUILD, event, melee);
         }
     }
 
@@ -699,7 +706,8 @@ final class ClaimListener implements Listener {
         if (!plugin.isHomeWorld(event.getEntity().getWorld())) return;
         Player player = getPlayerDamager(event.getEntity());
         if (player != null) {
-            checkPlayerAction(player, event.getBlock(), Action.BUILD, event);
+            boolean melee = player.equals(event.getEntity());
+            checkPlayerAction(player, event.getBlock(), Action.BUILD, event, melee);
         } else if (event.getEntity().getType() == EntityType.ENDERMAN) {
             event.setCancelled(true);
         }
@@ -837,7 +845,7 @@ final class ClaimListener implements Listener {
         Player player = event.getPlayer();
         Block block = event.getLectern().getBlock();
         if (block == null) return; // says @NotNull
-        checkPlayerAction(player, block, Action.BUILD, event);
+        checkPlayerAction(player, block, Action.BUILD, event, true);
     }
 
     @EventHandler(ignoreCancelled = true)
@@ -898,17 +906,17 @@ final class ClaimListener implements Listener {
         switch (query.getAction()) {
         case USE: // Buttons: Doors
         case READ: // Lectern
-            checkPlayerAction(query.getPlayer(), query.getBlock(), Action.INTERACT, query);
+            checkPlayerAction(query.getPlayer(), query.getBlock(), Action.INTERACT, query, false);
             break;
         case OPEN: // Chests
         case INVENTORY: // Lectern
-            checkPlayerAction(query.getPlayer(), query.getBlock(), Action.CONTAINER, query);
+            checkPlayerAction(query.getPlayer(), query.getBlock(), Action.CONTAINER, query, false);
             break;
         case BUILD:
         case PLACE_ENTITY:
         case SPAWN_MOB: // PocketMob (before the attempt)
         default:
-            checkPlayerAction(query.getPlayer(), query.getBlock(), Action.BUILD, query);
+            checkPlayerAction(query.getPlayer(), query.getBlock(), Action.BUILD, query, false);
         }
     }
 
@@ -922,7 +930,7 @@ final class ClaimListener implements Listener {
         case MOUNT:
         case DISMOUNT:
         case SIT:
-            checkPlayerAction(player, block, Action.INTERACT, query);
+            checkPlayerAction(player, block, Action.INTERACT, query, false);
             break;
         case SHEAR:
         case FEED:
@@ -930,7 +938,7 @@ final class ClaimListener implements Listener {
         case LEASH:
         case PICKUP:
         case INVENTORY:
-            checkPlayerAction(player, block, Action.CONTAINER, query);
+            checkPlayerAction(player, block, Action.CONTAINER, query, false);
             break;
         case DAMAGE:
         case POTION:
@@ -943,33 +951,14 @@ final class ClaimListener implements Listener {
             if (isHostileMob(entity) && entity.getCustomName() == null && entity.getType() != EntityType.SHULKER) {
                 return;
             }
-            checkPlayerAction(player, block, Action.BUILD, query);
+            checkPlayerAction(player, block, Action.BUILD, query, false);
         }
     }
 
     @EventHandler(ignoreCancelled = true, priority = EventPriority.LOW)
     public void onPlayerBreakBlock(PlayerBreakBlockEvent event) {
-        checkPlayerAction(event.getPlayer(), event.getBlock(), Action.BUILD, event);
+        checkPlayerAction(event.getPlayer(), event.getBlock(), Action.BUILD, event, true);
     }
-
-    // @EventHandler(ignoreCancelled = true)
-    // public void onPlayerCanDamageEntity(PlayerCanDamageEntityEvent event) {
-    //     Entity entity = event.getEntity();
-    //     boolean claimed = plugin.getClaimAt(entity.getLocation()) != null;
-    //     Action action;
-    //     if (claimed && entity.getType() == EntityType.SHULKER) {
-    //         // Some extra code for hostile, yet valuable mobs in
-    //         // claims.
-    //         action = Action.BUILD;
-    //     } else if (isHostileMob(entity)) {
-    //         if (entity.getCustomName() == null) return;
-    //         action = Action.BUILD;
-    //     } else {
-    //         // Must be an animal
-    //         action = Action.BUILD;
-    //     }
-    //     checkPlayerAction(event.getPlayer(), entity.getLocation().getBlock(), action, event);
-    // }
 
     @EventHandler(ignoreCancelled = true, priority = EventPriority.MONITOR)
     public void onSpawnerSpawn(SpawnerSpawnEvent event) {
@@ -1013,12 +1002,12 @@ final class ClaimListener implements Listener {
         Player player = (Player) event.getEntity();
         if (plugin.doesIgnoreClaims(player)) return;
         Vehicle vehicle = event.getVehicle();
-        checkPlayerAction(player, vehicle.getLocation().getBlock(), Action.VEHICLE, event);
+        checkPlayerAction(player, vehicle.getLocation().getBlock(), Action.VEHICLE, event, false);
     }
 
     @EventHandler(ignoreCancelled = true, priority = EventPriority.LOW)
     public void onPlayerEggThrow(PlayerEggThrowEvent event) {
-        if (!checkPlayerAction(event.getPlayer(), event.getEgg().getLocation().getBlock(), Action.BUILD, null)) {
+        if (!checkPlayerAction(event.getPlayer(), event.getEgg().getLocation().getBlock(), Action.BUILD, null, false)) {
             event.setHatching(false);
         }
     }

@@ -24,7 +24,7 @@ public final class SetHomeCommand extends PlayerCommand {
         }
         Block block = player.getLocation().getBlock();
         Claim claim = plugin.getClaimAt(block);
-        if (claim != null && !plugin.getClaimListener().checkPlayerAction(player, block, Action.BUILD, null)) {
+        if (claim != null && !plugin.getClaimListener().checkPlayerAction(player, block, Action.BUILD, null, false)) {
             throw new Wrong("You cannot set homes in this claim");
         }
         String playerWorld = player.getWorld().getName();

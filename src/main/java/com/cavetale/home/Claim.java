@@ -118,7 +118,7 @@ final class Claim {
 
     SQLRow toSQLRow() {
         SQLRow row = new SQLRow();
-        row.id = this.id;
+        if (this.id > 0) row.id = this.id;
         row.owner = this.owner;
         row.world = this.world;
         row.ax = this.area.ax;

@@ -68,6 +68,7 @@ import org.bukkit.event.player.PlayerBucketEmptyEvent;
 import org.bukkit.event.player.PlayerBucketFillEvent;
 import org.bukkit.event.player.PlayerEggThrowEvent;
 import org.bukkit.event.player.PlayerInteractEntityEvent;
+import org.bukkit.event.player.PlayerInteractAtEntityEvent;
 import org.bukkit.event.player.PlayerInteractEvent;
 import org.bukkit.event.player.PlayerShearEntityEvent;
 import org.bukkit.event.player.PlayerTakeLecternBookEvent;
@@ -413,6 +414,16 @@ final class ClaimListener implements Listener {
         if (entity instanceof Player) return;
         if (isOwner(player, entity)) return;
         checkPlayerAction(player, entity.getLocation().getBlock(), Action.BUILD, event, true);
+    }
+
+    @EventHandler(ignoreCancelled = true, priority = EventPriority.LOW)
+    public void onPlayerInteractAtEntity(PlayerInteractAtEntityEvent event) {
+        final Player player = event.getPlayer();
+        if (plugin.doesIgnoreClaims(player)) return;
+        final Entity entity = event.getRightClicked();
+        if (entity instanceof Player) return;
+        if (isOwner(player, entity)) return;
+        checkPlayerAction(player, entity.getLocation().getBlock(), Action.BUILD, event, false);
     }
 
     @EventHandler(ignoreCancelled = true, priority = EventPriority.LOW)

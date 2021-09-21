@@ -2,6 +2,7 @@ package com.cavetale.home;
 
 import com.winthier.sql.SQLDatabase;
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -40,6 +41,7 @@ public final class HomePlugin extends JavaPlugin {
     static final String META_ABANDON = "home.abandonclaim";
     static final String META_NEWCLAIM = "home.newclaim";
     static final String META_IGNORE = "home.ignore";
+    private final boolean deleteOverlappingClaims = false;
     // Database
     SQLDatabase db;
     // Worlds
@@ -309,14 +311,30 @@ public final class HomePlugin extends JavaPlugin {
             claim.loadSQLRow(row);
             claims.add(claim);
         }
-        // Debug overlap check
-        for (int i = 0; i < claims.size() - 1; i += 1) {
-            for (int j = i + 1; j < claims.size(); j += 1) {
+        if (deleteOverlappingClaims) {
+            List<Claim> deleteClaims = new ArrayList<>();
+            for (int i = 0; i < claims.size() - 1; i += 1) {
+                List<Claim> overlappingClaims = new ArrayList<>();
                 Claim a = claims.get(i);
-                Claim b = claims.get(j);
-                if (a.getWorld().equals(b.getWorld()) && a.getArea().overlaps(b.getArea())) {
-                    getLogger().warning("Claims overlap: " + a.getId() + "/" + b.getId()
-                                        + " at " + a.getArea().centerX() + ", " + a.getArea().centerY());
+                overlappingClaims.add(a);
+                for (int j = i + 1; j < claims.size(); j += 1) {
+                    Claim b = claims.get(j);
+                    if (a.getWorld().equals(b.getWorld()) && a.getArea().overlaps(b.getArea())) {
+                        getLogger().warning("Claims overlap: " + a.getId() + "/" + b.getId()
+                                            + " at " + a.getArea().centerX() + ", " + a.getArea().centerY());
+                        overlappingClaims.add(b);
+                    }
+                }
+                if (overlappingClaims.size() == 1) continue;
+                Collections.sort(overlappingClaims, (l, r) -> Integer.compare(r.blocks, l.blocks));
+                for (int j = 1; j < overlappingClaims.size(); j += 1) {
+                    deleteClaims.add(overlappingClaims.get(j));
+                }
+            }
+            if (!deleteClaims.isEmpty()) {
+                getLogger().warning("Deleting " + deleteClaims.size() + " claims...");
+                for (Claim deleteClaim : deleteClaims) {
+                    deleteClaim(deleteClaim);
                 }
             }
         }
@@ -590,10 +608,15 @@ public final class HomePlugin extends JavaPlugin {
 
     public void deleteClaim(Claim claim) {
         int claimId = claim.getId();
-        db.find(Claim.SQLRow.class).eq("id", claimId).delete();
-        db.find(ClaimTrust.class).eq("claimId", claimId).delete();
+        int claimCount = db.find(Claim.SQLRow.class).eq("id", claimId).delete();
+        int trustCount = db.find(ClaimTrust.class).eq("claimId", claimId).delete();
+        int subclaimCount = db.find(Subclaim.SQLRow.class).eq("claimId", claimId).delete();
         claims.remove(claim);
         cachedClaimIndex = -1;
+        getLogger().info("Deleted claim #" + claimId
+                         + " claims=" + claimCount
+                         + " trusted=" + trustCount
+                         + " subclaims=" + subclaimCount);
     }
 
     // --- Metadata

@@ -314,8 +314,9 @@ public final class HomePlugin extends JavaPlugin {
         if (deleteOverlappingClaims) {
             List<Claim> deleteClaims = new ArrayList<>();
             for (int i = 0; i < claims.size() - 1; i += 1) {
-                List<Claim> overlappingClaims = new ArrayList<>();
                 Claim a = claims.get(i);
+                if (deleteClaims.contains(a)) continue;
+                List<Claim> overlappingClaims = new ArrayList<>();
                 overlappingClaims.add(a);
                 for (int j = i + 1; j < claims.size(); j += 1) {
                     Claim b = claims.get(j);

@@ -355,6 +355,7 @@ public final class HomePlugin extends JavaPlugin {
             Claim claim = getClaimById(row.getClaimId());
             if (claim == null) {
                 getLogger().warning("Subclaim lacks parent claim: id=" + row.getId() + " claim_id=" + row.getClaimId());
+                db.delete(row);
                 continue;
             }
             Subclaim subclaim = new Subclaim(this, claim, row);

@@ -311,7 +311,7 @@ public final class HomePlugin extends JavaPlugin {
         }
         // Debug overlap check
         for (int i = 0; i < claims.size() - 1; i += 1) {
-            for (int j = i; j < claims.size(); j += 1) {
+            for (int j = i + 1; j < claims.size(); j += 1) {
                 Claim a = claims.get(i);
                 Claim b = claims.get(j);
                 if (a.getWorld().equals(b.getWorld()) && a.getArea().overlaps(b.getArea())) {

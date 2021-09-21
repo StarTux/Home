@@ -528,13 +528,13 @@ final class ClaimListener implements Listener {
                         if (block.getState() instanceof InventoryHolder) {
                             checkPlayerAction(player, block, Action.CONTAINER, event, true);
                         } else {
-                            checkPlayerAction(player, block, Action.BUILD, event, true);
+                            checkPlayerAction(player, block, Action.BUILD, event, false);
                         }
                         break;
                     }
                 }
             } else {
-                checkPlayerAction(player, block, Action.INTERACT, event, true);
+                checkPlayerAction(player, block, Action.INTERACT, event, false);
             }
             return;
         case LEFT_CLICK_BLOCK:

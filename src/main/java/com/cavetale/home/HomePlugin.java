@@ -309,6 +309,17 @@ public final class HomePlugin extends JavaPlugin {
             claim.loadSQLRow(row);
             claims.add(claim);
         }
+        // Debug overlap check
+        for (int i = 0; i < claims.size() - 1; i += 1) {
+            for (int j = i; j < claims.size(); j += 1) {
+                Claim a = claims.get(i);
+                Claim b = claims.get(j);
+                if (a.getWorld().equals(b.getWorld()) && a.getArea().overlaps(b.getArea())) {
+                    getLogger().warning("Claims overlap: " + a.getId() + "/" + b.getId()
+                                        + " at " + a.getArea().centerX() + ", " + a.getArea().centerY());
+                }
+            }
+        }
         for (ClaimTrust trust : db.find(ClaimTrust.class).findList()) {
             for (Claim claim : claims) {
                 if (claim.id == trust.claimId) {

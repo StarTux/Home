@@ -7,8 +7,10 @@ import com.winthier.playercache.PlayerCache;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.UUID;
+import java.util.function.Consumer;
 import lombok.RequiredArgsConstructor;
 import net.md_5.bungee.api.ChatColor;
+import org.bukkit.Chunk;
 import org.bukkit.Location;
 import org.bukkit.World;
 import org.bukkit.entity.Player;
@@ -62,13 +64,15 @@ public final class HomeCommand extends PlayerCommand {
                 Claim claim = playerClaims.get(0);
                 World bworld = plugin.getServer().getWorld(claim.getWorld());
                 Area area = claim.getArea();
-                Location location = bworld.getHighestBlockAt((area.ax + area.bx) / 2,
-                                                             (area.ay + area.by) / 2)
-                    .getLocation().add(0.5, 0.0, 0.5);
-                plugin.warpTo(player, location, () -> {
-                        player.sendMessage(ChatColor.GREEN + "Welcome to your claim. :)");
+                final int x = area.centerX();
+                final int z = area.centerY();
+                bworld.getChunkAtAsync(x >> 4, z >> 4, (Consumer<Chunk>) c -> {
+                        Location location = bworld.getHighestBlockAt(x, z).getLocation().add(0.5, 0.0, 0.5);
+                        plugin.warpTo(player, location, () -> {
+                                player.sendMessage(ChatColor.GREEN + "Welcome to your claim. :)");
+                            });
+                        plugin.highlightClaim(claim, player);
                     });
-                plugin.highlightClaim(claim, player);
                 return true;
             }
             // Give up and default to a random build location, again.

@@ -2,6 +2,7 @@ package com.cavetale.home;
 
 import com.cavetale.core.event.player.PluginPlayerEvent.Detail;
 import com.cavetale.core.event.player.PluginPlayerEvent;
+import com.cavetale.home.struct.BlockVector;
 import com.winthier.playercache.PlayerCache;
 import java.util.ArrayList;
 import java.util.List;
@@ -29,8 +30,8 @@ public final class HomeCommand extends PlayerCommand {
                     throw new Wrong("Primary home could not be found.");
                 }
                 Claim claim = plugin.getClaimAt(location);
-                if (claim != null && !claim.hasTrust(player, location, Action.INTERACT)) {
-                    throw new Wrong("This home is in a claim where you're not permitted.");
+                if (claim != null && !claim.canBuild(home.getOwner(), BlockVector.of(location))) {
+                    throw new Wrong("This home location lacks build permission");
                 }
                 boolean allowed = PluginPlayerEvent.Name.USE_PRIMARY_HOME.cancellable(plugin, player)
                     .detail(Detail.LOCATION, location)

@@ -1,5 +1,6 @@
 package com.cavetale.home;
 
+import com.cavetale.home.struct.BlockVector;
 import com.winthier.playercache.PlayerCache;
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -260,6 +261,10 @@ final class Claim {
         return getSubclaimAt(block.getWorld().getName(), block.getX(), block.getZ());
     }
 
+    public Subclaim getSubclaimAt(BlockVector at) {
+        return getSubclaimAt(at.world, at.x, at.z);
+    }
+
     public Subclaim getSubclaimAt(String inWorld, int x, int z) {
         for (Subclaim subclaim : subclaims) {
             if (!subclaim.getWorld().equals(inWorld)) continue;
@@ -365,5 +370,12 @@ final class Claim {
         }
         setArea(newArea);
         return ClaimOperationResult.SUCCESS;
+    }
+
+    public boolean canBuild(UUID uuid, BlockVector at) {
+        if (canBuild(uuid)) return true;
+        Subclaim subclaim = getSubclaimAt(at);
+        if (subclaim == null) return false;
+        return subclaim.getTrust(uuid).entails(Subclaim.Trust.BUILD);
     }
 }

@@ -880,8 +880,9 @@ public final class ClaimCommand extends AbstractCommand<HomePlugin> {
         ComponentBuilder cb = new ComponentBuilder("");
         cb.append("Invited").color(ChatColor.GRAY);
         for (Claim claim : playerClaims) {
+            String claimName = claim.getName() != null ? claim.getName() : claim.getOwnerName();
             cb.append("  ");
-            cb.append("[" + claim.getOwnerName() + "]").color(ChatColor.GREEN);
+            cb.append("[" + claimName + "]").color(ChatColor.GREEN);
             cb.event(new net.md_5.bungee.api.chat.ClickEvent(net.md_5.bungee.api.chat.ClickEvent.Action.RUN_COMMAND,
                                                              "/claim info " + claim.getId()));
             BaseComponent[] txt = net.md_5.bungee.api.chat.TextComponent

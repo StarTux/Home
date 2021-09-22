@@ -5,33 +5,42 @@ import com.cavetale.home.util.Colors;
 import com.cavetale.home.util.Msg;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.UUID;
 import java.util.function.Function;
 import lombok.Getter;
-import lombok.RequiredArgsConstructor;
 import lombok.Setter;
 import lombok.Value;
-import net.md_5.bungee.api.ChatColor;
-import net.md_5.bungee.api.chat.ClickEvent;
-import net.md_5.bungee.api.chat.ComponentBuilder;
-import net.md_5.bungee.api.chat.HoverEvent;
-import net.md_5.bungee.api.chat.TextComponent;
-import net.md_5.bungee.api.chat.hover.content.Text;
+import net.kyori.adventure.text.Component;
+import net.kyori.adventure.text.event.ClickEvent;
+import net.kyori.adventure.text.event.HoverEvent;
+import net.kyori.adventure.text.format.NamedTextColor;
+import org.bukkit.Bukkit;
+import org.bukkit.ChatColor;
 import org.bukkit.Location;
 import org.bukkit.entity.Player;
 import org.bukkit.event.player.PlayerInteractEvent;
 
-@RequiredArgsConstructor
 public final class Session {
     private final HomePlugin plugin;
-    private final Player player;
+    private final UUID uuid;
     @Setter private Function<PlayerInteractEvent, Boolean> playerInteractCallback = null;
     private Runnable confirmCallback = null;
     private String confirmMessage;
-    private List<Page> storedPages = new ArrayList<>();
+    private List<Component> storedPages = new ArrayList<>();
     private long notifyCooldown = 0L;
+    @Getter @Setter private boolean ignoreClaims = false;
     @Getter @Setter private ClaimGrowSnippet claimGrowSnippet;
 
-    void disable() {
+    public Session(final HomePlugin plugin, final Player player) {
+        this.plugin = plugin;
+        this.uuid = player.getUniqueId();
+    }
+
+    public Player getPlayer() {
+        return Bukkit.getPlayer(uuid);
+    }
+
+    protected void disable() {
         playerInteractCallback = null;
         confirmCallback = null;
         confirmMessage = null;
@@ -61,18 +70,22 @@ public final class Session {
     public void requireConfirmation(String message, Runnable callback) {
         confirmCallback = callback;
         confirmMessage = message;
-        ComponentBuilder cb = new ComponentBuilder(message).color(ChatColor.WHITE);
-        cb.append(" ").reset();
-        cb.append("[Confirm]").color(ChatColor.GREEN)
-            .event(new ClickEvent(ClickEvent.Action.RUN_COMMAND, "/subclaim confirm"))
-            .event(new HoverEvent(HoverEvent.Action.SHOW_TEXT, TextComponent
-                                  .fromLegacyText(ChatColor.GREEN + "Confirm" + "\n" + ChatColor.RESET + message)));
-        cb.append(" ").reset();
-        cb.append("[Cancel]").color(ChatColor.RED)
-            .event(new ClickEvent(ClickEvent.Action.RUN_COMMAND, "/subclaim cancel"))
-            .event(new HoverEvent(HoverEvent.Action.SHOW_TEXT, TextComponent
-                                  .fromLegacyText(ChatColor.GREEN + "Cancel" + "\n" + ChatColor.RESET + message)));
-        player.sendMessage(cb.create());
+        Component confirmTooltip = Component.join(Component.newline(),
+                                                  Component.text("Confirm", NamedTextColor.GREEN),
+                                                  Component.text(message, NamedTextColor.GRAY));
+        Component cancelTooltip = Component.join(Component.newline(),
+                                                 Component.text("Cancel", NamedTextColor.GREEN),
+                                                 Component.text(message, NamedTextColor.GRAY));
+        getPlayer().sendMessage(Component.text().color(NamedTextColor.WHITE)
+                                .content(message)
+                                .append(Component.space())
+                                .append(Component.text().content("[Confirm]").color(NamedTextColor.GREEN)
+                                        .clickEvent(ClickEvent.runCommand("/subclaim confirm"))
+                                        .hoverEvent(HoverEvent.showText(confirmTooltip)))
+                                .append(Component.space())
+                                .append(Component.text().content("[Cancel]").color(NamedTextColor.RED)
+                                        .clickEvent(ClickEvent.runCommand("/subclaim cancel"))
+                                        .hoverEvent(HoverEvent.showText(cancelTooltip))));
     }
 
     /**
@@ -83,7 +96,7 @@ public final class Session {
         String message = confirmMessage;
         confirmCallback = null;
         confirmMessage = null;
-        player.sendMessage(ChatColor.RED + "Cancelled: " + message);
+        getPlayer().sendMessage(ChatColor.RED + "Cancelled: " + message);
     }
 
     /**
@@ -97,38 +110,42 @@ public final class Session {
         try {
             callback.run();
         } catch (CommandWarn warn) {
-            player.sendMessage(ChatColor.RED + warn.getMessage());
+            getPlayer().sendMessage(ChatColor.RED + warn.getMessage());
         }
     }
 
-    public void setPages(List<Page> pages) {
+    public void setPages(List<Component> pages) {
         storedPages = new ArrayList<>(pages);
     }
 
-    public void showStoredPage() {
-        if (storedPages.isEmpty()) return;
-        Page first = storedPages.remove(0);
-        first.send(player);
-        if (!storedPages.isEmpty()) {
-            ComponentBuilder cb = new ComponentBuilder("");
-            cb.append(storedPages.size() == 1
-                      ? "There is 1 more page"
-                      : "There are " + storedPages.size() + " more pages")
-                .color(ChatColor.WHITE);
-            cb.append(" ").reset();
-            cb.append("[View Next]")
-                .color(ChatColor.GREEN)
-                .event(new ClickEvent(ClickEvent.Action.RUN_COMMAND, "/homes page next"))
-                .event(new HoverEvent(HoverEvent.Action.SHOW_TEXT, new Text(ChatColor.GREEN + "View Next Page")));
-            player.sendMessage(cb.create());
-        }
+    public boolean showStoredPage(Player player, int pageIndex) {
+        if (pageIndex < 0 || pageIndex >= storedPages.size()) return false;
+        Component page = storedPages.get(pageIndex);
+        player.sendMessage(page);
+        if (pageIndex == storedPages.size() - 1) return true;
+        int remainingPages = storedPages.size() - pageIndex - 1;
+        player.sendMessage(Component.text().color(NamedTextColor.GRAY)
+                           .content("Showing page " + (pageIndex + 1) + "/" + storedPages.size())
+                           .append(Component.space())
+                           .append(Component.text("[View Next]", NamedTextColor.GREEN))
+                           .clickEvent(ClickEvent.runCommand("/homes page " + (pageIndex + 2)))
+                           .hoverEvent(HoverEvent.showText(Component.text("View Next Page", NamedTextColor.GREEN))));
+        return true;
     }
 
-    public void notify(Claim claim) {
+    public void notify(Player player, Claim claim) {
         long now = System.currentTimeMillis();
         if (notifyCooldown > now) return;
         notifyCooldown = now + 1000L;
         player.sendActionBar(Msg.builder("This claim belongs to " + claim.getOwnerName()).color(Colors.RED).create());
+    }
+
+    public boolean notify(Player player, Component component) {
+        long now = System.currentTimeMillis();
+        if (notifyCooldown > now) return false;
+        notifyCooldown = now + 1000L;
+        player.sendActionBar(component);
+        return true;
     }
 
     /**

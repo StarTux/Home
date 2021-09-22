@@ -1,25 +1,31 @@
 package com.cavetale.home;
 
+import com.cavetale.core.util.Json;
 import com.cavetale.home.struct.BlockVector;
+import com.cavetale.home.struct.Vec2i;
+import com.winthier.perm.Perm;
 import com.winthier.playercache.PlayerCache;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Date;
 import java.util.EnumMap;
+import java.util.HashMap;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
-import javax.annotation.Nullable;
+import java.util.function.Consumer;
+import java.util.function.Predicate;
 import javax.persistence.Column;
 import javax.persistence.Id;
 import javax.persistence.Table;
 import lombok.Data;
+import org.bukkit.Chunk;
 import org.bukkit.Location;
 import org.bukkit.World;
 import org.bukkit.block.Block;
 import org.bukkit.entity.Player;
-import org.json.simple.JSONValue;
+import org.bukkit.event.player.PlayerTeleportEvent.TeleportCause;
 
 @Data
 final class Claim {
@@ -29,14 +35,14 @@ final class Claim {
     protected UUID owner;
     protected String world;
     protected Area area;
-    protected final List<UUID> members = new ArrayList<>(); // Can build
-    protected final List<UUID> visitors = new ArrayList<>(); // Can visit
+    protected final Map<UUID, ClaimTrust> trusted = new HashMap<>();
     protected final List<Subclaim> subclaims = new ArrayList<>();
     protected int blocks;
     protected long created;
     protected final Map<Setting, Object> settings = new EnumMap<>(Setting.class);
     protected int centerX;
     protected int centerY;
+    protected String name;
 
     Claim(final HomePlugin plugin) {
         this.plugin = plugin;
@@ -59,6 +65,7 @@ final class Claim {
         FIRE("Fire Burns Blocks", false),
         AUTOGROW("Claim Grows Automatically", true),
         PUBLIC("Anyone can build", false),
+        PUBLIC_CONTAINER("Anyone can open containers", false),
         PUBLIC_INVITE("Anyone can interact with blocks such as doors", false),
         SHOW_BORDERS("Show claim borders as you enter or leave", true),
         ELYTRA("Allow elytra flight", true),
@@ -114,6 +121,7 @@ final class Claim {
         @Column(nullable = false) private Integer by;
         @Column(nullable = false) private Integer blocks;
         @Column(nullable = false, length = 255) private String settings;
+        @Column(nullable = true, length = 255) private String name;
         @Column(nullable = false) private Date created;
     }
 
@@ -133,7 +141,8 @@ final class Claim {
             settingsMap.put(setting.getKey().name().toLowerCase(), setting.getValue());
         }
         settingsMap.put("center", Arrays.asList(centerX, centerY));
-        row.settings = JSONValue.toJSONString(settingsMap);
+        row.settings = Json.serialize(settingsMap);
+        row.name = name;
         return row;
     }
 
@@ -145,7 +154,7 @@ final class Claim {
         this.blocks = row.blocks;
         this.created = row.getCreated().getTime();
         @SuppressWarnings("unchecked")
-        Map<String, Object> settingsMap = (Map<String, Object>) JSONValue.parse(row.getSettings());
+        Map<String, Object> settingsMap = (Map<String, Object>) Json.deserialize(row.getSettings(), Map.class);
         settings.clear();
         for (Setting setting : Setting.values()) {
             Object value = settingsMap.get(setting.key);
@@ -160,6 +169,7 @@ final class Claim {
             centerX = center.get(0).intValue();
             centerY = center.get(1).intValue();
         }
+        name = row.getName();
     }
 
     void saveToDatabase() {
@@ -170,41 +180,63 @@ final class Claim {
 
     // Utility
 
-    static boolean ownsAdminClaims(Player player) {
+    public static boolean ownsAdminClaims(Player player) {
         return player.hasPermission("home.adminclaims");
     }
 
-    boolean isOwner(Player player) {
-        if (plugin.doesIgnoreClaims(player)) return true;
-        if (isAdminClaim() && ownsAdminClaims(player)) return true;
-        return isOwner(player.getUniqueId());
+    public TrustType getPublicTrust() {
+        if (getBoolSetting(Setting.PUBLIC)) return TrustType.BUILD;
+        if (getBoolSetting(Setting.PUBLIC_CONTAINER)) return TrustType.CONTAINER;
+        if (getBoolSetting(Setting.PUBLIC_INVITE)) return TrustType.INTERACT;
+        return TrustType.NONE;
     }
 
-    boolean isOwner(UUID playerId) {
-        return owner.equals(playerId);
+    public TrustType getTrustType(UUID uuid) {
+        if (uuid.equals(owner)) return TrustType.OWNER;
+        if (isAdminClaim() && Perm.has(uuid, "home.adminclaims")) return TrustType.OWNER;
+        ClaimTrust entry = trusted.get(uuid);
+        TrustType playerTrustType = entry != null ? entry.parseTrustType() : TrustType.NONE;
+        if (playerTrustType.isBan()) return playerTrustType;
+        return playerTrustType.max(getPublicTrust());
     }
 
-    boolean canBuild(Player player) {
-        if (plugin.doesIgnoreClaims(player)) return true;
-        if (isAdminClaim() && ownsAdminClaims(player)) return true;
-        return canBuild(player.getUniqueId());
+    public TrustType getTrustType(Player player) {
+        if (plugin.doesIgnoreClaims(player)) return TrustType.OWNER;
+        return getTrustType(player.getUniqueId());
     }
 
-    boolean canBuild(UUID playerId) {
-        return isOwner(playerId) || members.contains(playerId);
+    public TrustType getTrustType(UUID uuid, BlockVector vec) {
+        TrustType claimTrustType = getTrustType(uuid);
+        if (claimTrustType.isBan()) return TrustType.BAN;
+        if (claimTrustType.isOwner()) return TrustType.OWNER;
+        Subclaim subclaim = getSubclaimAt(vec);
+        return subclaim != null
+            ? claimTrustType.max(subclaim.getTrustType(uuid))
+            : claimTrustType;
     }
 
-    boolean canVisit(Player player) {
-        if (plugin.doesIgnoreClaims(player)) return true;
-        if (isOwner(player)) return true;
-        if (!isAdminClaim() && getBoolSetting(Setting.PUBLIC_INVITE)) {
-            return true;
-        }
-        return canVisit(player.getUniqueId());
+    public TrustType getTrustType(Player player, BlockVector vec) {
+        return getTrustType(player.getUniqueId(), vec);
     }
 
-    boolean canVisit(UUID playerId) {
-        return canBuild(playerId) || visitors.contains(playerId);
+    public boolean isOwner(Player player) {
+        return getTrustType(player).isOwner();
+    }
+
+    public boolean isOwner(UUID player) {
+        return getTrustType(player).isOwner();
+    }
+
+    public boolean canBuild(Player player, BlockVector vec) {
+        return getTrustType(player.getUniqueId(), vec).canBuild();
+    }
+
+    public boolean canBuild(UUID uuid, BlockVector vec) {
+        return getTrustType(uuid, vec).canBuild();
+    }
+
+    public boolean isPvPAllowed(BlockVector vec) {
+        return getBoolSetting(Setting.PVP);
     }
 
     boolean isInWorld(String worldName) {
@@ -284,78 +316,6 @@ final class Claim {
         return subclaims.remove(subclaim);
     }
 
-    /**
-     * Get trust in the entire claim.
-     */
-    public Subclaim.Trust getTrust(Player player) {
-        if (isOwner(player)) return Subclaim.Trust.OWNER;
-        if (members.contains(player.getUniqueId())) return Subclaim.Trust.BUILD;
-        if (visitors.contains(player.getUniqueId())) return Subclaim.Trust.ACCESS;
-        return Subclaim.Trust.NONE;
-    }
-
-    /**
-     * Get trust at this spot, either from the claim or the subclaim.
-     */
-    public Subclaim.Trust getTrust(Player player, Block block) {
-        return getTrust(player, getSubclaimAt(block));
-    }
-
-    /**
-     * Get trust at this spot, either from the claim or the subclaim.
-     */
-    public Subclaim.Trust getTrust(Player player, Location location) {
-        return getTrust(player, getSubclaimAt(location));
-    }
-
-    /**
-     * Helper for the other getTrust() functions.
-     */
-    private Subclaim.Trust getTrust(Player player, @Nullable Subclaim subclaim) {
-        Subclaim.Trust trust = getTrust(player);
-        if (subclaim != null) {
-            Subclaim.Trust trust2 = subclaim.getTrust(player);
-            if (trust2.entails(trust)) trust = trust2;
-        }
-        return trust;
-    }
-
-    /**
-     * Check if a player can perform a certain action at this spot.
-     */
-    public boolean hasTrust(Player player, Block block, Action action) {
-        return hasTrust(player, getSubclaimAt(block), action);
-    }
-
-    /**
-     * Check if a player can perform a certain action at this spot.
-     */
-    public boolean hasTrust(Player player, Location location, Action action) {
-        return hasTrust(player, getSubclaimAt(location), action);
-    }
-
-    /**
-     * Helper for the other hasTrust() functions.
-     */
-    private boolean hasTrust(Player player, Subclaim subclaim, Action action) {
-        if (plugin.doesIgnoreClaims(player)) return true;
-        Subclaim.Trust trust = getTrust(player, subclaim);
-        switch (action) {
-        case BUILD:
-        case VEHICLE:
-        case BUCKET:
-            return trust.entails(Subclaim.Trust.BUILD);
-        case CONTAINER:
-            return trust.entails(Subclaim.Trust.CONTAINER);
-        case INTERACT:
-            return trust.entails(Subclaim.Trust.ACCESS);
-        case PVP:
-            return getBoolSetting(Claim.Setting.PVP);
-        default:
-            return trust.entails(Subclaim.Trust.OWNER);
-        }
-    }
-
     public ClaimOperationResult growTo(int x, int z) {
         int ax = Math.min(area.ax, x);
         int ay = Math.min(area.ay, z);
@@ -372,10 +332,25 @@ final class Claim {
         return ClaimOperationResult.SUCCESS;
     }
 
-    public boolean canBuild(UUID uuid, BlockVector at) {
-        if (canBuild(uuid)) return true;
-        Subclaim subclaim = getSubclaimAt(at);
-        if (subclaim == null) return false;
-        return subclaim.getTrust(uuid).entails(Subclaim.Trust.BUILD);
+    public List<PlayerCache> listPlayers(Predicate<TrustType> predicate) {
+        List<PlayerCache> result = new ArrayList<>();
+        for (ClaimTrust row : trusted.values()) {
+            if (!predicate.test(row.parseTrustType())) continue;
+            PlayerCache playerCache = PlayerCache.forUuid(row.getTrustee());
+            if (playerCache == null) continue;
+            result.add(playerCache);
+        }
+        return result;
+    }
+
+    public void kick(Player player) {
+        World w = player.getWorld();
+        if (!isInWorld(w.getName())) return;
+        Vec2i vec = area.getNearestOutside(Vec2i.of(player.getLocation()));
+        w.getChunkAtAsync(vec.x, vec.y, (Consumer<Chunk>) chunk -> {
+                Location target = w.getHighestBlockAt(vec.x, vec.y).getLocation().add(0.5, 1.0, 0.5);
+                target.setDirection(player.getLocation().getDirection());
+                player.teleport(target, TeleportCause.PLUGIN);
+            });
     }
 }

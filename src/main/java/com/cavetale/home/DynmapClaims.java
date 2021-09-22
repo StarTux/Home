@@ -51,11 +51,8 @@ final class DynmapClaims {
                     + "<strong>Owner</strong>: " + claim.getOwnerName()
                     + "<br/><strong>Size</strong>: "
                     + claim.getArea().width() + "x" + claim.getArea().height()
-                    + "<br/><strong>Members</strong>: " + claim.getMembers().stream()
-                    .map(PlayerCache::nameForUuid)
-                    .collect(Collectors.joining(", "))
-                    + "<br/><strong>Visitors</strong>: " + claim.getVisitors().stream()
-                    .map(PlayerCache::nameForUuid)
+                    + "<br/><strong>Trusted</strong>: " + claim.listPlayers(TrustType::canBuild).stream()
+                    .map(PlayerCache::getName)
                     .collect(Collectors.joining(", "));
                 marker.setLabel(label, true);
                 marker.setLineStyle(3, 0.75, 0xFF0000);

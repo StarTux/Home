@@ -1,5 +1,6 @@
 package com.cavetale.home;
 
+import com.cavetale.home.struct.BlockVector;
 import com.winthier.sql.SQLDatabase;
 import java.util.ArrayList;
 import java.util.Collections;
@@ -14,6 +15,9 @@ import java.util.function.BiConsumer;
 import java.util.function.Consumer;
 import lombok.Getter;
 import lombok.Value;
+import net.kyori.adventure.text.Component;
+import net.kyori.adventure.text.format.NamedTextColor;
+import net.kyori.adventure.text.format.TextColor;
 import net.md_5.bungee.api.ChatColor;
 import org.bukkit.Chunk;
 import org.bukkit.GameMode;
@@ -64,12 +68,14 @@ public final class HomePlugin extends JavaPlugin {
     // Commands
     final HomeAdminCommand homeAdminCommand = new HomeAdminCommand(this);
     final ClaimCommand claimCommand = new ClaimCommand(this);
-    final HomeCommand homeCommand = new HomeCommand(this);
     final HomesCommand homesCommand = new HomesCommand(this);
+    final HomeCommand homeCommand = new HomeCommand(this);
+    final ListHomesCommand listHomesCommand = new ListHomesCommand(this);
     final VisitCommand visitCommand = new VisitCommand(this);
     final SetHomeCommand setHomeCommand = new SetHomeCommand(this);
     final BuildCommand buildCommand = new BuildCommand(this);
     final InviteHomeCommand inviteHomeCommand = new InviteHomeCommand(this);
+    final UnInviteHomeCommand unInviteHomeCommand = new UnInviteHomeCommand(this);
     final SubclaimCommand subclaimCommand = new SubclaimCommand(this);
     // Cache
     private int cachedClaimIndex = -1;
@@ -88,13 +94,15 @@ public final class HomePlugin extends JavaPlugin {
         claimListener = new ClaimListener(this).enable();
         eventListener.enable();
         getCommand("homeadmin").setExecutor(homeAdminCommand);
-        getCommand("claim").setExecutor(claimCommand);
-        getCommand("home").setExecutor(homeCommand);
-        getCommand("homes").setExecutor(homesCommand);
-        getCommand("visit").setExecutor(visitCommand);
-        getCommand("sethome").setExecutor(setHomeCommand);
-        getCommand("invitehome").setExecutor(inviteHomeCommand);
+        claimCommand.enable();
         getCommand("build").setExecutor(buildCommand);
+        homesCommand.enable();
+        setHomeCommand.enable();
+        homeCommand.enable();
+        listHomesCommand.enable();
+        visitCommand.enable();
+        inviteHomeCommand.enable();
+        unInviteHomeCommand.enable();
         subclaimCommand.enable();
         loadFromConfig();
         loadFromDatabase();
@@ -164,7 +172,7 @@ public final class HomePlugin extends JavaPlugin {
         }
     }
 
-    void tickPlayer(Player player) {
+    private void tickPlayer(Player player) {
         if (player.getGameMode() == GameMode.SPECTATOR) return;
         Location loc = player.getLocation();
         final World world = loc.getWorld();
@@ -199,6 +207,15 @@ public final class HomePlugin extends JavaPlugin {
             if (player.isGliding() && !claim.getBoolSetting(Claim.Setting.ELYTRA)) {
                 player.setGliding(false);
             }
+            if (claim.getTrustType(player).isBan()) {
+                claim.kick(player);
+                Component msg = Component.text("You cannot enter this claim!", TextColor.color(0xFF0000));
+                if (sessions.of(player).notify(player, msg)) {
+                    player.sendMessage(msg);
+                    highlightClaim(claim, player);
+                }
+                return;
+            }
         }
         CachedLocation cl1 = getMetadata(player, META_LOCATION, CachedLocation.class)
             .orElse(null);
@@ -229,11 +246,15 @@ public final class HomePlugin extends JavaPlugin {
             } else { // (claim != null)
                 if (cl1.claimId != cl2.claimId) {
                     if (!claim.getBoolSetting(Claim.Setting.HIDDEN)) {
+                        String name = claim.getName();
                         if (claim.isOwner(player)) {
-                            player.sendActionBar(ChatColor.GRAY + "Entering your claim");
+                            player.sendActionBar(Component.text("Entering your claim"
+                                                                + (claim.getName() != null ? " " + claim.getName() : ""),
+                                                                NamedTextColor.GRAY));
                         } else {
-                            player.sendActionBar(ChatColor.GRAY + "Entering "
-                                                 + claim.getOwnerName() + "'s claim");
+                            player.sendActionBar(Component.text("Entering " + claim.getOwnerName() + "'s claim"
+                                                                + (claim.getName() != null ? " " + claim.getName() : ""),
+                                                                NamedTextColor.GRAY));
                         }
                         if (claim.getBoolSetting(Claim.Setting.SHOW_BORDERS)) {
                             highlightClaim(claim, player);
@@ -246,14 +267,15 @@ public final class HomePlugin extends JavaPlugin {
 
     // --- Player interactivity
 
-    void findPlaceToBuild(Player player) throws PlayerCommand.Wrong {
+    void findPlaceToBuild(Player player) {
         // Determine center and border
         String worldName = primaryHomeWorld; // Set up for future expansion
         World bworld = getServer().getWorld(worldName);
         if (bworld == null) {
             getLogger().warning("Home world not found: " + worldName);
-            throw new PlayerCommand
-                .Wrong("Something went wrong. Please contact an administrator.");
+            player.sendMessage(Component.text("Something went wrong. Please contact an administrator.",
+                                              NamedTextColor.RED));
+            return;
         }
         WildTask wildTask = new WildTask(this, bworld, player);
         wildTask.withCooldown();
@@ -340,16 +362,16 @@ public final class HomePlugin extends JavaPlugin {
             }
         }
         for (ClaimTrust trust : db.find(ClaimTrust.class).findList()) {
-            for (Claim claim : claims) {
-                if (claim.id == trust.claimId) {
-                    switch (trust.type) {
-                    case "visit": claim.visitors.add(trust.trustee); break;
-                    case "member": claim.members.add(trust.trustee); break;
-                    default: break;
-                    }
-                    break;
-                }
+            Claim claim = findClaimWithId(trust.claimId);
+            if (claim == null) {
+                getLogger().warning("Trust without claim found: " + trust);
+                continue;
             }
+            if (trust.parseTrustType().isNone()) {
+                getLogger().warning("Empty trust found: " + trust);
+                continue;
+            }
+            claim.trusted.put(trust.getTrustee(), trust);
         }
         for (Subclaim.SQLRow row : db.find(Subclaim.SQLRow.class).findList()) {
             Claim claim = getClaimById(row.getClaimId());
@@ -411,6 +433,10 @@ public final class HomePlugin extends JavaPlugin {
         return getClaimAt(location.getWorld().getName(),
                           location.getBlockX(),
                           location.getBlockZ());
+    }
+
+    Claim getClaimAt(BlockVector blockVector) {
+        return getClaimAt(blockVector.world, blockVector.x, blockVector.z);
     }
 
     Claim getClaimAt(String w, int x, int y) {
@@ -638,8 +664,12 @@ public final class HomePlugin extends JavaPlugin {
         entity.removeMetadata(key, this);
     }
 
-    boolean doesIgnoreClaims(Player player) {
-        return player.hasMetadata(META_IGNORE);
+    public void ignoreClaims(Player player, boolean value) {
+        sessions.of(player).setIgnoreClaims(value);
+    }
+
+    public boolean doesIgnoreClaims(Player player) {
+        return sessions.of(player).isIgnoreClaims();
     }
 
     // --- Dynmap
@@ -671,5 +701,13 @@ public final class HomePlugin extends JavaPlugin {
                 player.teleport(loc, TeleportCause.COMMAND);
                 if (task != null) task.run();
             });
+    }
+
+    public boolean isPvPAllowed(BlockVector blockVector) {
+        if (!homeWorlds.contains(blockVector.world)) return true;
+        Claim claim = getClaimAt(blockVector);
+        return claim != null
+            ? claim.isPvPAllowed(blockVector)
+            : false;
     }
 }

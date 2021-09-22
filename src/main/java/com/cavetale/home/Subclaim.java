@@ -66,14 +66,17 @@ public final class Subclaim {
         CO_OWNER("Co-owner"),
         OWNER;
 
+        public final String key;
         public final String displayName;
 
         Trust(final String displayName) {
+            this.key = name().toLowerCase();
             this.displayName = displayName;
         }
 
         Trust() {
-            displayName = name().substring(0, 1) + name().substring(1).toLowerCase();
+            this.key = name().toLowerCase();
+            this.displayName = name().substring(0, 1) + name().substring(1).toLowerCase();
         }
 
         public boolean entails(Trust other) {
@@ -172,5 +175,18 @@ public final class Subclaim {
     public static String cachedPlayerName(UUID uuid) {
         if (uuid.equals(PUBLIC_UUID)) return "*Everybody*";
         return PlayerCache.nameForUuid(uuid);
+    }
+
+    public TrustType getTrustType(UUID uuid) {
+        Trust trust = getTrust(uuid);
+        switch (trust) {
+        case NONE: return TrustType.NONE;
+        case ACCESS: return TrustType.INTERACT;
+        case CONTAINER: return TrustType.CONTAINER;
+        case BUILD: return TrustType.BUILD;
+        case CO_OWNER: return TrustType.CO_OWNER;
+        case OWNER: return TrustType.OWNER;
+        default: throw new IllegalStateException("trust=" + trust);
+        }
     }
 }

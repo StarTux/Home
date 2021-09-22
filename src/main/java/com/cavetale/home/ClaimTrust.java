@@ -14,16 +14,34 @@ public final class ClaimTrust {
     @Column(nullable = false) Integer claimId;
     @Column(nullable = false, length = 15) String type;
     @Column(nullable = false) UUID trustee;
-
-    enum Type {
-        MEMBER, VISIT;
-    }
+    protected transient TrustType trustType;
 
     public ClaimTrust() { }
 
-    ClaimTrust(final Claim claim, final Type type, final UUID trustee) {
+    ClaimTrust(final Claim claim, final TrustType type, final UUID trustee) {
         this.claimId = claim.getId();
-        this.type = type.name().toLowerCase();
+        this.type = type.key;
         this.trustee = trustee;
+        this.trustType = type;
+    }
+
+    private TrustType parseTrustTypeHelper() {
+        switch (this.type) {
+        case "visit": return TrustType.INTERACT;
+        case "member": return TrustType.BUILD;
+        default: return TrustType.of(this.type);
+        }
+    }
+
+    public TrustType parseTrustType() {
+        if (trustType == null) {
+            trustType = parseTrustTypeHelper();
+        }
+        return trustType;
+    }
+
+    public void setTrustType(final TrustType trustType) {
+        this.type = trustType.key;
+        this.trustType = trustType;
     }
 }

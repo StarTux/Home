@@ -31,11 +31,11 @@ public final class HomeAdminCommand implements TabExecutor {
         case "homes": return homesCommand(sender, argl);
         case "ignore":
             if (args.length == 1) {
-                if (player.hasMetadata(plugin.META_IGNORE)) {
-                    player.removeMetadata(plugin.META_IGNORE, plugin);
+                if (plugin.doesIgnoreClaims(player)) {
+                    plugin.ignoreClaims(player, false);
                     player.sendMessage(ChatColor.YELLOW + "Respecting home and claim permissions");
                 } else {
-                    plugin.setMetadata(player, plugin.META_IGNORE, true);
+                    plugin.ignoreClaims(player, true);
                     player.sendMessage(ChatColor.YELLOW + "Ignoring home and claim permissions");
                 }
                 return true;

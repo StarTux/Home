@@ -1,5 +1,6 @@
 package com.cavetale.home;
 
+import com.cavetale.home.struct.Vec2i;
 import lombok.Value;
 
 @Value
@@ -94,5 +95,20 @@ final class Area {
         if (outer.contains(this)) return this;
         return new Area(outer.clampX(ax), outer.clampY(ay),
                         outer.clampX(bx), outer.clampY(by));
+    }
+
+    public Vec2i getNearestOutside(Vec2i nearby) {
+        int distX = Math.min(Math.abs(ax - nearby.x), Math.abs(bx - nearby.x));
+        int distY = Math.min(Math.abs(ay - nearby.y), Math.abs(by - nearby.y));
+        if (distX < distY) {
+            // closer to left or right
+            return nearby.x > centerX()
+                ? Vec2i.of(bx + 1, nearby.y)
+                : Vec2i.of(ax - 1, nearby.y);
+        } else {
+            return nearby.y > centerY()
+                ? Vec2i.of(nearby.x, by + 1)
+                : Vec2i.of(nearby.x, ay - 1);
+        }
     }
 }

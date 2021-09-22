@@ -3,6 +3,8 @@ package com.cavetale.home;
 import com.cavetale.core.command.CommandContext;
 import com.cavetale.core.command.CommandNode;
 import com.cavetale.core.command.CommandWarn;
+import com.cavetale.core.event.player.PluginPlayerEvent.Detail;
+import com.cavetale.core.event.player.PluginPlayerEvent;
 import java.util.Collections;
 import java.util.List;
 import java.util.Map;
@@ -83,7 +85,7 @@ public final class SubclaimCommand implements TabExecutor {
     boolean list(Player player, String[] args) {
         if (args.length != 0) return false;
         Claim claim = requireClaim(player);
-        if (!claim.canVisit(player)) {
+        if (!claim.getTrustType(player).canInteract()) {
             throw new CommandWarn("No subclaims here");
         }
         List<Subclaim> subclaims = claim.getSubclaims();
@@ -183,6 +185,7 @@ public final class SubclaimCommand implements TabExecutor {
         player.sendMessage(ChatColor.GREEN + "Subclaim created!");
         player.sendTitle("", ChatColor.GREEN + "Subclaim created");
         player.playSound(player.getLocation(), Sound.ENTITY_PLAYER_LEVELUP, SoundCategory.MASTER, 0.2f, 2.0f);
+        PluginPlayerEvent.Name.CREATE_SUBCLAIM.call(plugin, player);
         return true;
     }
 
@@ -232,6 +235,10 @@ public final class SubclaimCommand implements TabExecutor {
         subclaim.setTrust(uuid, trust);
         subclaim.saveToDatabase();
         player.sendMessage(ChatColor.AQUA + "Player trusted: " + playerName + " (" + trust.displayName + ")");
+        PluginPlayerEvent.Name.SUBCLAIM_TRUST.ultimate(plugin, player)
+            .detail(Detail.TARGET, uuid)
+            .detail(Detail.NAME, trust.key)
+            .call();
         return true;
     }
 
@@ -270,12 +277,12 @@ public final class SubclaimCommand implements TabExecutor {
             throw new CommandWarn("You cannot modify this player's trust level!");
         }
         Subclaim.Trust oldTrust = subclaim.removeTrust(uuid);
-        if (oldTrust != null) {
-            subclaim.saveToDatabase();
-            player.sendMessage(ChatColor.AQUA + "Player trust reset: " + playerName + " (was " + oldTrust.displayName + ")");
-        } else {
+        if (oldTrust == null) {
             throw new CommandWarn(playerName + " was not trusted");
         }
+        PluginPlayerEvent.Name.SUBCLAIM_UNTRUST.ultimate(plugin, player)
+            .detail(Detail.TARGET, uuid)
+            .call();
         return true;
     }
 

@@ -26,7 +26,7 @@ public final class MagicMapListener implements Listener {
         Area mapArea = new Area(event.getMinX(), event.getMinZ(), event.getMaxX(), event.getMaxZ());
         for (Claim claim : plugin.findClaimsInWorld(event.getWorldName())) {
             if (!claim.getArea().overlaps(mapArea)) continue;
-            if (claim.isHidden() && !claim.canBuild(event.getPlayer())) continue;
+            if (claim.isHidden() && !claim.getTrustType(event.getPlayer()).canBuild()) continue;
             drawRect(event.getMapCache(), mapArea, claim.getArea(), CLAIM_COLOR, claim.getOwnerName() + "'s claim");
             for (Subclaim subclaim : claim.getSubclaims()) {
                 drawRect(event.getMapCache(), mapArea, subclaim.getArea(), SUBCLAIM_COLOR, null);

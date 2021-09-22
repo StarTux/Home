@@ -4,6 +4,9 @@ import java.util.Arrays;
 import java.util.List;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
+import net.kyori.adventure.text.Component;
+import net.kyori.adventure.text.format.NamedTextColor;
+import net.kyori.adventure.text.format.TextDecoration;
 import net.md_5.bungee.api.ChatColor;
 import net.md_5.bungee.api.chat.ClickEvent;
 import net.md_5.bungee.api.chat.ComponentBuilder;
@@ -60,7 +63,17 @@ abstract class PlayerCommand implements TabExecutor {
         throw new Wrong(msg);
     }
 
-    protected ComponentBuilder frame(ComponentBuilder cb, String text) {
+    protected static Component frame(String text) {
+        return Component.text().color(NamedTextColor.BLUE)
+            .append(Component.text("            ", null, TextDecoration.STRIKETHROUGH))
+            .append(Component.text("[ "))
+            .append(Component.text(text, NamedTextColor.WHITE))
+            .append(Component.text(" ]"))
+            .append(Component.text("            ", null, TextDecoration.STRIKETHROUGH))
+            .build();
+    }
+
+    protected static ComponentBuilder frame(ComponentBuilder cb, String text) {
         ChatColor fc = ChatColor.BLUE;
         return cb.append("            ").color(fc).strikethrough(true)
             .append("[ ").color(fc).strikethrough(false)

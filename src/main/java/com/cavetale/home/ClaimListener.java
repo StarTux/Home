@@ -3,11 +3,14 @@ package com.cavetale.home;
 import com.cavetale.core.event.block.PlayerBlockAbilityQuery;
 import com.cavetale.core.event.block.PlayerBreakBlockEvent;
 import com.cavetale.core.event.entity.PlayerEntityAbilityQuery;
+import com.cavetale.home.struct.BlockVector;
 import com.destroystokyo.paper.event.entity.PreCreatureSpawnEvent;
 import com.winthier.exploits.Exploits;
 import java.util.Iterator;
 import java.util.Objects;
 import lombok.RequiredArgsConstructor;
+import net.kyori.adventure.text.Component;
+import net.kyori.adventure.text.format.TextColor;
 import net.md_5.bungee.api.ChatColor;
 import org.bukkit.Bukkit;
 import org.bukkit.Location;
@@ -67,8 +70,8 @@ import org.bukkit.event.player.PlayerArmorStandManipulateEvent;
 import org.bukkit.event.player.PlayerBucketEmptyEvent;
 import org.bukkit.event.player.PlayerBucketFillEvent;
 import org.bukkit.event.player.PlayerEggThrowEvent;
-import org.bukkit.event.player.PlayerInteractEntityEvent;
 import org.bukkit.event.player.PlayerInteractAtEntityEvent;
+import org.bukkit.event.player.PlayerInteractEntityEvent;
 import org.bukkit.event.player.PlayerInteractEvent;
 import org.bukkit.event.player.PlayerShearEntityEvent;
 import org.bukkit.event.player.PlayerTakeLecternBookEvent;
@@ -99,32 +102,13 @@ final class ClaimListener implements Listener {
      *
      * @return True if the event is permitted, false otherwise.
      */
-    public boolean checkPlayerAction(Player player, Block block, Action action, Cancellable cancellable, boolean notify) {
+    public boolean checkPlayerAction(Player player, BlockVector at, TrustType requiredTrust, Cancellable cancellable, boolean notify) {
         if (plugin.doesIgnoreClaims(player)) return true;
-        String w = block.getWorld().getName();
-        if (!plugin.getHomeWorlds().contains(w)) return true;
-        final String world = plugin.getMirrorWorlds().containsKey(w)
-            ? plugin.getMirrorWorlds().get(w) : w;
-        // Find claim
-        Claim claim = plugin.getClaimAt(block);
-        if (claim == null) {
-            if (action == Action.PVP) {
-                if (cancellable != null) cancellable.setCancelled(true);
-                return false;
-            } else {
-                return true;
-            }
-        }
-        // We know there is a claim, so return on the player is
-        // privileged here.  Claim perms override subclaim ones.
-        Subclaim subclaim = claim.getSubclaimAt(block);
-        if (subclaim != null) {
-            if (hasSubclaimTrust(player, subclaim, action)) return true;
-        } else {
-            if (hasClaimTrust(player, claim, action)) return true;
-        }
-        // Action is not covered by visitor, member, or owner
-        // privilege.  Therefore, nothing is allowed.
+        if (!plugin.getHomeWorlds().contains(at.world)) return true;
+        Claim claim = plugin.getClaimAt(at);
+        if (claim == null) return true;
+        TrustType trustType = claim.getTrustType(player, at);
+        if (trustType.gte(requiredTrust)) return true;
         if (cancellable instanceof PlayerInteractEvent) {
             PlayerInteractEvent pis = (PlayerInteractEvent) cancellable;
             pis.setUseInteractedBlock(Event.Result.DENY);
@@ -132,46 +116,17 @@ final class ClaimListener implements Listener {
             cancellable.setCancelled(true);
         }
         if (notify) {
-            plugin.sessions.of(player).notify(claim);
+            plugin.sessions.of(player).notify(player, claim);
         }
         return false;
     }
 
-    /**
-     * Check for the given action based on claim permissions (trust or
-     * invite).
-     */
-    public boolean hasClaimTrust(Player player, Claim claim, Action action) {
-        switch (action) {
-        case BUILD:
-        case BUCKET:
-        case VEHICLE:
-        case CONTAINER:
-            return claim.getBoolSetting(Claim.Setting.PUBLIC) || claim.canBuild(player);
-        case INTERACT:
-            return claim.canVisit(player);
-        case PVP:
-            return claim.getBoolSetting(Claim.Setting.PVP);
-        default:
-            return claim.isOwner(player);
-        }
+    public boolean checkPlayerAction(Player player, Block block, TrustType requiredTrust, Cancellable cancellable, boolean notify) {
+        return checkPlayerAction(player, BlockVector.of(block), requiredTrust, cancellable, notify);
     }
 
-    public boolean hasSubclaimTrust(Player player, Subclaim subclaim, Action action) {
-        switch (action) {
-        case BUILD:
-        case VEHICLE:
-        case BUCKET:
-            return subclaim.getParent().isOwner(player) || subclaim.getTrust(player).entails(Subclaim.Trust.BUILD);
-        case CONTAINER:
-            return subclaim.getParent().isOwner(player) || subclaim.getTrust(player).entails(Subclaim.Trust.CONTAINER);
-        case INTERACT:
-            return subclaim.getParent().isOwner(player) || subclaim.getTrust(player).entails(Subclaim.Trust.ACCESS);
-        case PVP:
-            return subclaim.getParent().getBoolSetting(Claim.Setting.PVP);
-        default:
-            return subclaim.getParent().isOwner(player) || subclaim.getTrust(player).entails(Subclaim.Trust.OWNER);
-        }
+    public boolean checkPlayerAction(Player player, Location location, TrustType requiredTrust, Cancellable cancellable, boolean notify) {
+        return checkPlayerAction(player, BlockVector.of(location), requiredTrust, cancellable, notify);
     }
 
     /**
@@ -244,26 +199,26 @@ final class ClaimListener implements Listener {
     public void onBlockBreak(BlockBreakEvent event) {
         Block block = event.getBlock();
         Player player = event.getPlayer();
-        checkPlayerAction(player, block, Action.BUILD, event, true);
+        checkPlayerAction(player, BlockVector.of(block), TrustType.BUILD, event, true);
     }
 
     @EventHandler(ignoreCancelled = true, priority = EventPriority.LOW)
     public void onBlockPlace(BlockPlaceEvent event) {
         Block block = event.getBlock();
         Player player = event.getPlayer();
-        checkPlayerAction(event.getPlayer(), event.getBlock(), Action.BUILD, event, true);
+        checkPlayerAction(event.getPlayer(), event.getBlock(), TrustType.BUILD, event, true);
     }
 
     @EventHandler(ignoreCancelled = true, priority = EventPriority.LOW)
     public void onBlockDropItem(BlockDropItemEvent event) {
-        checkPlayerAction(event.getPlayer(), event.getBlock(), Action.BUILD, event, true);
+        checkPlayerAction(event.getPlayer(), event.getBlock(), TrustType.BUILD, event, true);
     }
 
     // Frost Walker
     @EventHandler(ignoreCancelled = true, priority = EventPriority.LOW)
     public void onEntityBlockForm(EntityBlockFormEvent event) {
         if (!(event.getEntity() instanceof Player)) return;
-        checkPlayerAction((Player) event.getEntity(), event.getBlock(), Action.BUILD, event, false);
+        checkPlayerAction((Player) event.getEntity(), event.getBlock(), TrustType.BUILD, event, false);
     }
 
     @EventHandler(ignoreCancelled = true, priority = EventPriority.LOW)
@@ -274,25 +229,27 @@ final class ClaimListener implements Listener {
         if (player != null && damaged instanceof Player) {
             // PVP
             if (player.equals(damaged)) return;
-            Block block = damaged.getLocation().getBlock();
-            checkPlayerAction(player, block, Action.PVP, event, true);
+            if (!plugin.isPvPAllowed(BlockVector.of(damaged.getLocation()))) {
+                event.setCancelled(true);
+                player.sendActionBar(Component.text("PvP is not allowed here", TextColor.color(0xFF0000)));
+            }
             return;
         } else if (player != null) {
             // Player damaged a non-player
             boolean claimed = plugin.getClaimAt(damaged.getLocation().getBlock()) != null;
-            Action action;
+            TrustType trustType;
             if (claimed && damaged.getType() == EntityType.SHULKER) {
                 // Some extra code for hostile, yet valuable mobs in
                 // claims.
-                action = Action.BUILD;
+                trustType = TrustType.BUILD;
             } else if (isHostileMob(damaged)) {
                 if (damaged.getCustomName() == null) return;
-                action = Action.BUILD;
+                trustType = TrustType.BUILD;
             } else {
                 // Must be an animal
-                action = Action.BUILD;
+                trustType = TrustType.BUILD;
             }
-            checkPlayerAction(player, damaged.getLocation().getBlock(), action, event, true);
+            checkPlayerAction(player, damaged.getLocation().getBlock(), trustType, event, true);
         } else {
             // Non-player damages something
             switch (event.getCause()) {
@@ -320,7 +277,7 @@ final class ClaimListener implements Listener {
         if (player == null) return;
         Block block = event.getHitBlock();
         if (block != null) {
-            checkPlayerAction(player, block, Action.BUILD, event, false);
+            checkPlayerAction(player, block, TrustType.BUILD, event, false);
         }
     }
 
@@ -357,8 +314,9 @@ final class ClaimListener implements Listener {
         if (damaged instanceof Player) {
             // PVP
             if (damager.equals(damaged)) return;
-            Block block = damaged.getLocation().getBlock();
-            checkPlayerAction(damager, block, Action.PVP, event, melee);
+            if (!plugin.isPvPAllowed(BlockVector.of(damaged.getLocation()))) {
+                event.setCancelled(true);
+            }
             return;
         }
         if (isHostileMob(damaged)) {
@@ -369,7 +327,7 @@ final class ClaimListener implements Listener {
             return;
         }
         Block block = damaged.getLocation().getBlock();
-        checkPlayerAction(damager, block, Action.BUILD, event, melee);
+        checkPlayerAction(damager, block, TrustType.BUILD, event, melee);
     }
 
     @EventHandler(ignoreCancelled = true, priority = EventPriority.LOW)
@@ -381,7 +339,7 @@ final class ClaimListener implements Listener {
         boolean melee = player.equals(event.getAttacker());
         if (isOwner(player, vehicle)) return;
         if (plugin.getClaimAt(vehicle.getLocation()) == null) return;
-        checkPlayerAction(player, vehicle.getLocation().getBlock(), Action.BUILD, event, melee);
+        checkPlayerAction(player, vehicle.getLocation().getBlock(), TrustType.BUILD, event, melee);
     }
 
     @EventHandler(ignoreCancelled = true, priority = EventPriority.LOW)
@@ -393,7 +351,7 @@ final class ClaimListener implements Listener {
         boolean melee = player.equals(event.getAttacker());
         if (isOwner(player, vehicle)) return;
         if (plugin.getClaimAt(vehicle.getLocation()) == null) return;
-        checkPlayerAction(player, vehicle.getLocation().getBlock(), Action.BUILD, event, melee);
+        checkPlayerAction(player, vehicle.getLocation().getBlock(), TrustType.BUILD, event, melee);
     }
 
     @EventHandler(ignoreCancelled = true, priority = EventPriority.LOW)
@@ -413,7 +371,7 @@ final class ClaimListener implements Listener {
         final Entity entity = event.getRightClicked();
         if (entity instanceof Player) return;
         if (isOwner(player, entity)) return;
-        checkPlayerAction(player, entity.getLocation().getBlock(), Action.BUILD, event, true);
+        checkPlayerAction(player, entity.getLocation().getBlock(), TrustType.BUILD, event, true);
     }
 
     @EventHandler(ignoreCancelled = true, priority = EventPriority.LOW)
@@ -423,14 +381,14 @@ final class ClaimListener implements Listener {
         final Entity entity = event.getRightClicked();
         if (entity instanceof Player) return;
         if (isOwner(player, entity)) return;
-        checkPlayerAction(player, entity.getLocation().getBlock(), Action.BUILD, event, false);
+        checkPlayerAction(player, entity.getLocation().getBlock(), TrustType.BUILD, event, false);
     }
 
     @EventHandler(ignoreCancelled = true, priority = EventPriority.LOW)
     public void onPlayerArmorStandManipulate(PlayerArmorStandManipulateEvent event) {
         final Player player = event.getPlayer();
         final Entity entity = event.getRightClicked();
-        checkPlayerAction(player, entity.getLocation().getBlock(), Action.BUILD, event, true);
+        checkPlayerAction(player, entity.getLocation().getBlock(), TrustType.BUILD, event, true);
     }
 
     @EventHandler(ignoreCancelled = true, priority = EventPriority.LOW)
@@ -440,9 +398,9 @@ final class ClaimListener implements Listener {
         final Entity entity = event.getEntity();
         if (isOwner(player, entity)) return;
         if (entity.getType() == EntityType.SHEEP) {
-            checkPlayerAction(player, entity.getLocation().getBlock(), Action.CONTAINER, event, true);
+            checkPlayerAction(player, entity.getLocation().getBlock(), TrustType.CONTAINER, event, true);
         } else {
-            checkPlayerAction(player, entity.getLocation().getBlock(), Action.BUILD, event, true);
+            checkPlayerAction(player, entity.getLocation().getBlock(), TrustType.BUILD, event, true);
         }
     }
 
@@ -453,7 +411,7 @@ final class ClaimListener implements Listener {
         if (plugin.doesIgnoreClaims(player)) return;
         final Entity mount = event.getMount();
         if (isOwner(player, mount)) return;
-        checkPlayerAction(player, mount.getLocation().getBlock(), Action.INTERACT, event, true);
+        checkPlayerAction(player, mount.getLocation().getBlock(), TrustType.INTERACT, event, true);
     }
 
     @EventHandler(ignoreCancelled = true, priority = EventPriority.LOW)
@@ -462,7 +420,7 @@ final class ClaimListener implements Listener {
         if (plugin.doesIgnoreClaims(player)) return;
         final Entity entity = event.getEntity();
         if (isOwner(player, entity)) return;
-        checkPlayerAction(player, entity.getLocation().getBlock(), Action.BUILD, event, true);
+        checkPlayerAction(player, entity.getLocation().getBlock(), TrustType.BUILD, event, true);
     }
 
     @EventHandler(ignoreCancelled = true, priority = EventPriority.LOW)
@@ -479,7 +437,7 @@ final class ClaimListener implements Listener {
             if (mat == Material.FARMLAND || mat == Material.TURTLE_EGG) {
                 event.setCancelled(true);
             } else {
-                checkPlayerAction(event.getPlayer(), block, Action.INTERACT, event, false);
+                checkPlayerAction(event.getPlayer(), block, TrustType.INTERACT, event, false);
             }
             return;
         case RIGHT_CLICK_BLOCK:
@@ -487,18 +445,18 @@ final class ClaimListener implements Listener {
             if (slimeballUse(player, event, block, claim)) return;
             if (mat.isInteractable()) {
                 if (Tag.DOORS.isTagged(mat) || Tag.BUTTONS.isTagged(mat) || Tag.TRAPDOORS.isTagged(mat)) {
-                    checkPlayerAction(player, block, Action.INTERACT, event, true);
+                    checkPlayerAction(player, block, TrustType.INTERACT, event, true);
                 } else if (Tag.ANVIL.isTagged(mat)) {
-                    checkPlayerAction(player, block, Action.CONTAINER, event, true);
+                    checkPlayerAction(player, block, TrustType.CONTAINER, event, true);
                 } else if (Tag.BEDS.isTagged(mat)) {
                     if (block.getWorld().getEnvironment() != World.Environment.NORMAL) {
                         if (claim != null && !claim.getBoolSetting(Claim.Setting.EXPLOSIONS)) {
-                            plugin.sessions.of(player).notify(claim);
+                            plugin.sessions.of(player).notify(player, claim);
                             event.setCancelled(true);
                             return;
                         }
                     }
-                    checkPlayerAction(player, block, Action.INTERACT, event, true);
+                    checkPlayerAction(player, block, TrustType.INTERACT, event, true);
                 } else {
                     switch (mat) {
                     case ENCHANTING_TABLE:
@@ -508,37 +466,37 @@ final class ClaimListener implements Listener {
                     case STONECUTTER:
                     case LEVER:
                     case SMITHING_TABLE:
-                        checkPlayerAction(player, block, Action.INTERACT, event, true);
+                        checkPlayerAction(player, block, TrustType.INTERACT, event, true);
                         break;
                     case RESPAWN_ANCHOR:
                         if (block.getWorld().getEnvironment() != World.Environment.NETHER) {
                             RespawnAnchor data = (RespawnAnchor) block.getBlockData();
                             if (data.getCharges() >= data.getMaximumCharges() && claim != null && !claim.getBoolSetting(Claim.Setting.EXPLOSIONS)) {
-                                plugin.sessions.of(player).notify(claim);
+                                plugin.sessions.of(player).notify(player, claim);
                                 event.setCancelled(true);
                                 return;
                             }
                         }
-                        checkPlayerAction(player, block, Action.BUILD, event, true);
+                        checkPlayerAction(player, block, TrustType.BUILD, event, true);
                         break;
                     case JUKEBOX:
-                        checkPlayerAction(player, block, Action.CONTAINER, event, true);
+                        checkPlayerAction(player, block, TrustType.CONTAINER, event, true);
                         break;
                     default:
                         if (block.getState() instanceof InventoryHolder) {
-                            checkPlayerAction(player, block, Action.CONTAINER, event, true);
+                            checkPlayerAction(player, block, TrustType.CONTAINER, event, true);
                         } else {
-                            checkPlayerAction(player, block, Action.BUILD, event, false);
+                            checkPlayerAction(player, block, TrustType.BUILD, event, false);
                         }
                         break;
                     }
                 }
             } else {
-                checkPlayerAction(player, block, Action.INTERACT, event, false);
+                checkPlayerAction(player, block, TrustType.INTERACT, event, false);
             }
             return;
         case LEFT_CLICK_BLOCK:
-            checkPlayerAction(player, block, Action.INTERACT, event, true);
+            checkPlayerAction(player, block, TrustType.INTERACT, event, true);
             return;
         default:
             break;
@@ -555,7 +513,7 @@ final class ClaimListener implements Listener {
         if (!block.getType().isSolid()) return false;
         if (event.getBlockFace() != BlockFace.UP) return false;
         if (block.getY() > 40) return false;
-        if (!claim.canBuild(player)) return false;
+        if (!claim.canBuild(player, BlockVector.of(block))) return false;
         if (block.getChunk().isSlimeChunk()) {
             player.sendMessage(ChatColor.GREEN + "Slime chunk!");
             Location loc = block.getRelative(event.getBlockFace())
@@ -583,7 +541,7 @@ final class ClaimListener implements Listener {
 
     @EventHandler(ignoreCancelled = true, priority = EventPriority.LOW)
     public void onEntityPlace(EntityPlaceEvent event) {
-        checkPlayerAction(event.getPlayer(), event.getBlock(), Action.BUILD, null, true);
+        checkPlayerAction(event.getPlayer(), event.getBlock(), TrustType.BUILD, null, true);
     }
 
     @EventHandler(ignoreCancelled = true, priority = EventPriority.LOW)
@@ -600,7 +558,7 @@ final class ClaimListener implements Listener {
     @EventHandler(ignoreCancelled = true, priority = EventPriority.LOW)
     public void onHangingPlace(HangingPlaceEvent event) {
         Block block = event.getEntity().getLocation().getBlock();
-        checkPlayerAction(event.getPlayer(), block, Action.BUILD, null, true);
+        checkPlayerAction(event.getPlayer(), block, TrustType.BUILD, null, true);
     }
 
     @EventHandler(ignoreCancelled = true, priority = EventPriority.LOW)
@@ -609,7 +567,7 @@ final class ClaimListener implements Listener {
         if (player != null) {
             boolean melee = player.equals(event.getRemover());
             Block block = event.getEntity().getLocation().getBlock();
-            checkPlayerAction(player, block, Action.BUILD, event, melee);
+            checkPlayerAction(player, block, TrustType.BUILD, event, melee);
         }
         if (event.getCause() == HangingBreakEvent.RemoveCause.EXPLOSION) {
             Claim claim = plugin.getClaimAt(event.getEntity().getLocation().getBlock());
@@ -621,12 +579,12 @@ final class ClaimListener implements Listener {
 
     @EventHandler(ignoreCancelled = true, priority = EventPriority.LOW)
     public void onPlayerBucketEmpty(PlayerBucketEmptyEvent event) {
-        checkPlayerAction(event.getPlayer(), event.getBlockClicked(), Action.BUILD, event, true);
+        checkPlayerAction(event.getPlayer(), event.getBlockClicked(), TrustType.BUILD, event, true);
     }
 
     @EventHandler(ignoreCancelled = true, priority = EventPriority.LOW)
     public void onPlayerBucketFill(PlayerBucketFillEvent event) {
-        checkPlayerAction(event.getPlayer(), event.getBlockClicked(), Action.BUCKET, event, true);
+        checkPlayerAction(event.getPlayer(), event.getBlockClicked(), TrustType.BUILD, event, true);
     }
 
     @EventHandler(ignoreCancelled = true, priority = EventPriority.LOW)
@@ -696,7 +654,7 @@ final class ClaimListener implements Listener {
             Player player = getPlayerDamager(entity);
             if (player == null) return;
             boolean melee = player.equals(entity);
-            checkPlayerAction(player, event.getBlock(), Action.BUILD, event, melee);
+            checkPlayerAction(player, event.getBlock(), TrustType.BUILD, event, melee);
         }
     }
 
@@ -706,7 +664,7 @@ final class ClaimListener implements Listener {
         Player player = getPlayerDamager(event.getEntity());
         if (player != null) {
             boolean melee = player.equals(event.getEntity());
-            checkPlayerAction(player, event.getBlock(), Action.BUILD, event, melee);
+            checkPlayerAction(player, event.getBlock(), TrustType.BUILD, event, melee);
         } else if (event.getEntity().getType() == EntityType.ENDERMAN) {
             event.setCancelled(true);
         }
@@ -844,7 +802,7 @@ final class ClaimListener implements Listener {
         Player player = event.getPlayer();
         Block block = event.getLectern().getBlock();
         if (block == null) return; // says @NotNull
-        checkPlayerAction(player, block, Action.BUILD, event, true);
+        checkPlayerAction(player, block, TrustType.BUILD, event, true);
     }
 
     @EventHandler(ignoreCancelled = true)
@@ -856,7 +814,7 @@ final class ClaimListener implements Listener {
             Claim claim = plugin.getClaimAt(event.getTo());
             if (claim == null) return;
             if (!claim.getBoolSetting(Claim.Setting.ENDER_PEARL)) {
-                plugin.sessions.of(player).notify(claim);
+                plugin.sessions.of(player).notify(player, claim);
                 event.setCancelled(true);
                 return;
             }
@@ -876,7 +834,7 @@ final class ClaimListener implements Listener {
         switch (projectile.getType()) {
         case ENDER_PEARL:
             if (!claim.getBoolSetting(Claim.Setting.ENDER_PEARL)) {
-                plugin.sessions.of(player).notify(claim);
+                plugin.sessions.of(player).notify(player, claim);
                 event.setCancelled(true);
                 return;
             }
@@ -892,7 +850,7 @@ final class ClaimListener implements Listener {
         if (claim == null) return;
         if (!claim.getBoolSetting(Claim.Setting.ELYTRA)) {
             if (event.isGliding()) {
-                plugin.sessions.of(player).notify(claim);
+                plugin.sessions.of(player).notify(player, claim);
                 event.setCancelled(true);
                 plugin.getServer().getScheduler().runTask(plugin,
                                                           () -> player.setGliding(false));
@@ -905,17 +863,17 @@ final class ClaimListener implements Listener {
         switch (query.getAction()) {
         case USE: // Buttons: Doors
         case READ: // Lectern
-            checkPlayerAction(query.getPlayer(), query.getBlock(), Action.INTERACT, query, false);
+            checkPlayerAction(query.getPlayer(), query.getBlock(), TrustType.INTERACT, query, false);
             break;
         case OPEN: // Chests
         case INVENTORY: // Lectern
-            checkPlayerAction(query.getPlayer(), query.getBlock(), Action.CONTAINER, query, false);
+            checkPlayerAction(query.getPlayer(), query.getBlock(), TrustType.CONTAINER, query, false);
             break;
         case BUILD:
         case PLACE_ENTITY:
         case SPAWN_MOB: // PocketMob (before the attempt)
         default:
-            checkPlayerAction(query.getPlayer(), query.getBlock(), Action.BUILD, query, false);
+            checkPlayerAction(query.getPlayer(), query.getBlock(), TrustType.BUILD, query, false);
         }
     }
 
@@ -929,7 +887,7 @@ final class ClaimListener implements Listener {
         case MOUNT:
         case DISMOUNT:
         case SIT:
-            checkPlayerAction(player, block, Action.INTERACT, query, false);
+            checkPlayerAction(player, block, TrustType.INTERACT, query, false);
             break;
         case SHEAR:
         case FEED:
@@ -937,7 +895,7 @@ final class ClaimListener implements Listener {
         case LEASH:
         case PICKUP:
         case INVENTORY:
-            checkPlayerAction(player, block, Action.CONTAINER, query, false);
+            checkPlayerAction(player, block, TrustType.CONTAINER, query, false);
             break;
         case DAMAGE:
         case POTION:
@@ -950,13 +908,13 @@ final class ClaimListener implements Listener {
             if (isHostileMob(entity) && entity.getCustomName() == null && entity.getType() != EntityType.SHULKER) {
                 return;
             }
-            checkPlayerAction(player, block, Action.BUILD, query, false);
+            checkPlayerAction(player, block, TrustType.BUILD, query, false);
         }
     }
 
     @EventHandler(ignoreCancelled = true, priority = EventPriority.LOW)
     public void onPlayerBreakBlock(PlayerBreakBlockEvent event) {
-        checkPlayerAction(event.getPlayer(), event.getBlock(), Action.BUILD, event, true);
+        checkPlayerAction(event.getPlayer(), event.getBlock(), TrustType.BUILD, event, true);
     }
 
     @EventHandler(ignoreCancelled = true, priority = EventPriority.MONITOR)
@@ -1001,12 +959,12 @@ final class ClaimListener implements Listener {
         Player player = (Player) event.getEntity();
         if (plugin.doesIgnoreClaims(player)) return;
         Vehicle vehicle = event.getVehicle();
-        checkPlayerAction(player, vehicle.getLocation().getBlock(), Action.VEHICLE, event, false);
+        checkPlayerAction(player, vehicle.getLocation().getBlock(), TrustType.BUILD, event, false);
     }
 
     @EventHandler(ignoreCancelled = true, priority = EventPriority.LOW)
     public void onPlayerEggThrow(PlayerEggThrowEvent event) {
-        if (!checkPlayerAction(event.getPlayer(), event.getEgg().getLocation().getBlock(), Action.BUILD, null, false)) {
+        if (!checkPlayerAction(event.getPlayer(), event.getEgg().getLocation().getBlock(), TrustType.BUILD, null, false)) {
             event.setHatching(false);
         }
     }

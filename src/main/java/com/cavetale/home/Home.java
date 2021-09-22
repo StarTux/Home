@@ -1,6 +1,7 @@
 package com.cavetale.home;
 
 import com.cavetale.core.util.Json;
+import com.cavetale.home.struct.BlockVector;
 import com.winthier.playercache.PlayerCache;
 import java.time.Instant;
 import java.util.ArrayList;
@@ -36,8 +37,9 @@ public final class Home {
     @Column(nullable = true, length = 32) String publicName;
     @Column(nullable = false) int score;
     @Column(nullable = true, length = 4096) String json;
-    final transient List<UUID> invites = new ArrayList<>();
-    transient Tag tag = new Tag();
+    protected final transient List<UUID> invites = new ArrayList<>();
+    protected transient Tag tag = new Tag();
+    protected transient BlockVector blockVector;
 
     public static final class Tag {
         Map<UUID, Long> visited = new HashMap<>(); // User=>Epoch
@@ -73,12 +75,20 @@ public final class Home {
         this.z = location.getZ();
         this.pitch = (double) location.getPitch();
         this.yaw = (double) location.getYaw();
+        this.blockVector = null;
     }
 
     public Location createLocation() {
         World bw = Bukkit.getServer().getWorld(world);
         if (bw == null) return null;
         return new Location(bw, x, y, z, (float) yaw, (float) pitch);
+    }
+
+    public BlockVector createBlockVector() {
+        if (blockVector == null) {
+            blockVector = BlockVector.of(world, (int) Math.floor(x), (int) Math.floor(y), (int) Math.floor(z));
+        }
+        return blockVector;
     }
 
     boolean isOwner(UUID playerId) {
@@ -98,6 +108,10 @@ public final class Home {
         if ((name == null) != (homeName == null)) return false;
         if (name == null) return true;
         return name.equalsIgnoreCase(homeName);
+    }
+
+    public String getNameNotNull() {
+        return name != null ? name : "";
     }
 
     public String getOwnerName() {

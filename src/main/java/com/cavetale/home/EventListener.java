@@ -46,7 +46,7 @@ public final class EventListener implements Listener {
             PluginPlayerQuery.Name.INSIDE_TRUSTED_CLAIM.respond(query, plugin, insideTrustedClaim);
         } else if (name == PluginPlayerQuery.Name.INSIDE_TRUSTED_CLAIM) {
             Claim claim = plugin.getClaimAt(player.getLocation());
-            boolean insideTrustedClaim = claim != null ? (!claim.isOwner(player) && claim.canBuild(player)) : false;
+            boolean insideTrustedClaim = claim != null ? (!claim.isOwner(player) && claim.getTrustType(player).canBuild()) : false;
             PluginPlayerQuery.Name.INSIDE_TRUSTED_CLAIM.respond(query, plugin, insideTrustedClaim);
         }
     }

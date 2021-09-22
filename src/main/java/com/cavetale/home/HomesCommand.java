@@ -137,6 +137,9 @@ public final class HomesCommand extends AbstractCommand<HomePlugin> {
                 if (claim != null && !claim.canBuild(home.getOwner(), blockVector)) {
                     throw new CommandWarn("This home location lacks build permission");
                 }
+                if (claim != null && claim.getTrustType(player).isBan()) {
+                    throw new CommandWarn("You are banned from this claim");
+                }
                 Location location = home.createLocation();
                 if (location == null) {
                     throw new CommandWarn("Primary home could not be found.");
@@ -533,6 +536,9 @@ public final class HomesCommand extends AbstractCommand<HomePlugin> {
         Claim claim = plugin.getClaimAt(blockVector);
         if (claim != null && !claim.canBuild(home.getOwner(), blockVector)) {
             throw new CommandWarn("The invite is no longer valid in this claim");
+        }
+        if (claim != null && claim.getTrustType(player).isBan()) {
+            throw new CommandWarn("You are banned from this claim");
         }
         final String ownerName = home.getOwnerName();
         final String publicName = home.getPublicName();

@@ -110,7 +110,7 @@ public final class SubclaimCommand implements TabExecutor {
     boolean create(Player player, String[] args) {
         if (args.length != 0) return false;
         Claim claim = requireClaim(player);
-        if (!claim.isOwner(player)) {
+        if (!claim.getTrustType(player).isCoOwner()) {
             throw new CommandWarn("You do not own this claim!");
         }
         plugin.sessions.of(player).setPlayerInteractCallback(event -> createPickBlock(player, player.getWorld(), event, claim, null));
@@ -292,7 +292,7 @@ public final class SubclaimCommand implements TabExecutor {
             if (!context.isPlayer()) return null;
             Location loc = context.player.getLocation();
             Claim claim = plugin.getClaimAt(loc);
-            if (claim == null || !claim.isOwner(context.player)) return Collections.emptyList();
+            if (claim == null || !claim.getTrustType(context.player).isCoOwner()) return Collections.emptyList();
             Subclaim subclaim = claim.getSubclaimAt(loc);
             if (subclaim == null) return Collections.emptyList();
             String arg = args[0].toLowerCase();
@@ -308,7 +308,7 @@ public final class SubclaimCommand implements TabExecutor {
     boolean delete(Player player, String[] args) {
         if (args.length != 0) return false;
         Subclaim subclaim = requireSubclaim(player);
-        if (!subclaim.getParent().isOwner(player)) {
+        if (!subclaim.getParent().getTrustType(player).isCoOwner()) {
             throw new CommandWarn("You do not own this claim");
         }
         plugin.sessions.of(player).requireConfirmation("Delete subclaim: " + subclaim.getListInfo(), () -> {
@@ -316,7 +316,7 @@ public final class SubclaimCommand implements TabExecutor {
                 if (subclaim2 != subclaim) {
                     throw new CommandWarn("You left the subclaim!");
                 }
-                if (!subclaim.getParent().isOwner(player)) return; // Safety first
+                if (!subclaim.getParent().getTrustType(player).isCoOwner()) return; // Safety first
                 if (!subclaim.getParent().removeSubclaim(subclaim)) return; // ???
                 plugin.db.delete(subclaim.toSQLRow());
                 player.sendMessage(ChatColor.GREEN + "Subclaim deleted: " + subclaim.getListInfo());

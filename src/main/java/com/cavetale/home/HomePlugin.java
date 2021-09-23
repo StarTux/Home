@@ -365,7 +365,7 @@ public final class HomePlugin extends JavaPlugin {
             Claim claim = findClaimWithId(trust.claimId);
             if (claim == null) {
                 getLogger().warning("Trust without claim: " + trust);
-                db.deleteAsync(trust, null)
+                db.deleteAsync(trust, null);
                 continue;
             }
             if (trust.parseTrustType().isNone()) {

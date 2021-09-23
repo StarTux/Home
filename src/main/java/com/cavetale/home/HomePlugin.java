@@ -364,11 +364,12 @@ public final class HomePlugin extends JavaPlugin {
         for (ClaimTrust trust : db.find(ClaimTrust.class).findList()) {
             Claim claim = findClaimWithId(trust.claimId);
             if (claim == null) {
-                getLogger().warning("Trust without claim found: " + trust);
+                getLogger().warning("Trust without claim: " + trust);
+                db.deleteAsync(trust, null)
                 continue;
             }
             if (trust.parseTrustType().isNone()) {
-                getLogger().warning("Empty trust found: " + trust);
+                getLogger().warning("Empty trust: " + trust);
                 continue;
             }
             claim.trusted.put(trust.getTrustee(), trust);
@@ -376,8 +377,8 @@ public final class HomePlugin extends JavaPlugin {
         for (Subclaim.SQLRow row : db.find(Subclaim.SQLRow.class).findList()) {
             Claim claim = getClaimById(row.getClaimId());
             if (claim == null) {
-                getLogger().warning("Subclaim lacks parent claim: id=" + row.getId() + " claim_id=" + row.getClaimId());
-                db.delete(row);
+                getLogger().warning("Subclaim without parent claim: id=" + row.getId() + " claim_id=" + row.getClaimId());
+                db.deleteAsync(row, null);
                 continue;
             }
             Subclaim subclaim = new Subclaim(this, claim, row);

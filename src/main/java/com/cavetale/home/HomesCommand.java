@@ -509,6 +509,9 @@ public final class HomesCommand extends AbstractCommand<HomePlugin> {
         } else {
             player.sendMessage(ChatColor.YELLOW + "Home \"" + homeName + "\" deleted");
         }
+        PluginPlayerEvent.Name.DELETE_HOME.ultimate(plugin, player)
+            .detail(Detail.NAME, homeName)
+            .call();
         return true;
     }
 

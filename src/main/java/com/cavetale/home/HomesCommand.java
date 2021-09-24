@@ -122,6 +122,9 @@ public final class HomesCommand extends AbstractCommand<HomePlugin> {
             plugin.sessions.of(player).setPages(pages);
             plugin.sessions.of(player).showStoredPage(player, 0);
         }
+        PluginPlayerEvent.Name.LIST_HOMES.ultimate(plugin, player)
+            .detail(Detail.COUNT, playerHomes.size())
+            .call();
         return true;
     }
 

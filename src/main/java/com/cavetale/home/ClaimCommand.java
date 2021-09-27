@@ -393,6 +393,7 @@ public final class ClaimCommand extends AbstractCommand<HomePlugin> {
             if (snippet != null && snippet.isNear(location) && claim.growTo(location.getBlockX(), location.getBlockZ()).isSuccessful()) {
                 player.sendMessage(Component.text("Added " + meta.amount + " and grew to your location!"));
                 plugin.highlightClaim(claim, player);
+                PluginPlayerEvent.Name.GROW_CLAIM.call(plugin, player);
             } else if (claim.getBoolSetting(Claim.Setting.AUTOGROW)) {
                 player.sendMessage(Component.text("Added " + meta.amount
                                                   + " blocks to this claim. It will grow automatically."));
@@ -664,6 +665,7 @@ public final class ClaimCommand extends AbstractCommand<HomePlugin> {
         claim.saveToDatabase();
         player.sendMessage(Component.text("Grew your claim to where you are standing", NamedTextColor.GREEN));
         plugin.highlightClaim(claim, player);
+        PluginPlayerEvent.Name.GROW_CLAIM.call(plugin, player);
         return true;
     }
 

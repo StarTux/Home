@@ -2,6 +2,7 @@ package com.cavetale.home;
 
 import com.cavetale.home.struct.BlockVector;
 import com.winthier.sql.SQLDatabase;
+import java.time.Duration;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashMap;
@@ -18,7 +19,8 @@ import lombok.Value;
 import net.kyori.adventure.text.Component;
 import net.kyori.adventure.text.format.NamedTextColor;
 import net.kyori.adventure.text.format.TextColor;
-import net.md_5.bungee.api.ChatColor;
+import net.kyori.adventure.text.format.TextDecoration;
+import net.kyori.adventure.title.Title;
 import org.bukkit.Chunk;
 import org.bukkit.GameMode;
 import org.bukkit.Location;
@@ -95,7 +97,7 @@ public final class HomePlugin extends JavaPlugin {
         eventListener.enable();
         getCommand("homeadmin").setExecutor(homeAdminCommand);
         claimCommand.enable();
-        getCommand("build").setExecutor(buildCommand);
+        buildCommand.enable();
         homesCommand.enable();
         setHomeCommand.enable();
         homeCommand.enable();
@@ -186,9 +188,10 @@ public final class HomePlugin extends JavaPlugin {
         if (player.isGliding() && ticks % 10 == 0) {
             for (Claim claim : claims) {
                 if (claim.isInWorld(worldName) && claim.getArea().isWithin(x, z, 64) && !claim.getBoolSetting(Claim.Setting.ELYTRA)) {
-                    player.sendTitle("" + ChatColor.RED + ChatColor.BOLD + "WARNING",
-                                     "" + ChatColor.RED + ChatColor.BOLD + "Approaching No-Fly Zone!",
-                                     0, 11, 0);
+                    Title title = Title.title(Component.text("WARNING", NamedTextColor.RED, TextDecoration.BOLD),
+                                              Component.text("Approaching No-Fly Zone!", NamedTextColor.RED, TextDecoration.BOLD),
+                                              Title.Times.of(Duration.ZERO, Duration.ofMillis(550), Duration.ZERO));
+                    player.showTitle(title);
                     player.playSound(player.getEyeLocation(),
                                      Sound.ENTITY_ARROW_HIT_PLAYER, SoundCategory.MASTER,
                                      1.0f, 2.0f);
@@ -232,10 +235,11 @@ public final class HomePlugin extends JavaPlugin {
                     if (oldClaim != null) {
                         if (!oldClaim.getBoolSetting(Claim.Setting.HIDDEN)) {
                             if (oldClaim.isOwner(player)) {
-                                player.sendActionBar(ChatColor.GRAY + "Leaving your claim");
+                                player.sendActionBar(Component.text("Leaving your claim",
+                                                                    NamedTextColor.GRAY));
                             } else {
-                                player.sendActionBar(ChatColor.GRAY + "Leaving "
-                                                     + oldClaim.getOwnerName() + "'s claim");
+                                player.sendActionBar(Component.text("Leaving " + oldClaim.getOwnerName() + "'s claim",
+                                                                    NamedTextColor.GRAY));
                             }
                             if (oldClaim.getBoolSetting(Claim.Setting.SHOW_BORDERS)) {
                                 highlightClaim(oldClaim, player);

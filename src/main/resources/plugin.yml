@@ -90,11 +90,11 @@ commands:
     description: Subclaim management
     permission: home.claim
     usage: /subclaim
-  build:
-    aliases: [wild]
+  wild:
+    aliases: [build]
     description: Find a place to build.
     permission: home.build
-    usage: /build - Find a place to build.
+    usage: /wild - Find a place to build.
 permissions:
   home.home:
     description: Use homes

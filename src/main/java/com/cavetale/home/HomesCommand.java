@@ -9,19 +9,20 @@ import com.cavetale.core.event.player.PluginPlayerEvent.Detail;
 import com.cavetale.core.event.player.PluginPlayerEvent;
 import com.cavetale.home.struct.BlockVector;
 import com.winthier.playercache.PlayerCache;
+import java.time.Duration;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.UUID;
 import java.util.function.Consumer;
 import java.util.stream.Collectors;
 import net.kyori.adventure.text.Component;
+import net.kyori.adventure.text.ComponentLike;
+import net.kyori.adventure.text.JoinConfiguration;
+import net.kyori.adventure.text.TextComponent;
 import net.kyori.adventure.text.event.ClickEvent;
 import net.kyori.adventure.text.event.HoverEvent;
 import net.kyori.adventure.text.format.NamedTextColor;
-import net.md_5.bungee.api.ChatColor;
-import net.md_5.bungee.api.chat.BaseComponent;
-import net.md_5.bungee.api.chat.ComponentBuilder;
-import net.md_5.bungee.api.chat.TextComponent;
+import net.kyori.adventure.title.Title;
 import org.bukkit.Chunk;
 import org.bukkit.Location;
 import org.bukkit.World;
@@ -89,9 +90,9 @@ public final class HomesCommand extends AbstractCommand<HomePlugin> {
             throw new CommandWarn("No homes to show");
         }
         if (playerHomes.size() == 1) {
-            player.sendMessage(PlayerCommand.frame("You have one home"));
+            player.sendMessage(Util.frame("You have one home"));
         } else {
-            player.sendMessage(PlayerCommand.frame("You have " + playerHomes.size() + " homes"));
+            player.sendMessage(Util.frame("You have " + playerHomes.size() + " homes"));
         }
         final int pageCount = (playerHomes.size() - 1) / pageLen + 1;
         final List<Component> pages = new ArrayList<>(pageCount);
@@ -109,12 +110,12 @@ public final class HomesCommand extends AbstractCommand<HomePlugin> {
                                   ? Component.text("Primary", NamedTextColor.GOLD)
                                   : Component.text(home.getName(), NamedTextColor.WHITE))
                           .clickEvent(ClickEvent.runCommand(cmd))
-                          .hoverEvent(HoverEvent.showText(Component.join(Component.newline(),
+                          .hoverEvent(HoverEvent.showText(Component.join(JoinConfiguration.separator(Component.newline()),
                                                                          Component.text(cmd, NamedTextColor.GREEN),
                                                                          Component.text("Visit this home", NamedTextColor.GRAY))))
                           .build());
             }
-            pages.add(Component.join(Component.newline(), lines));
+            pages.add(Component.join(JoinConfiguration.separator(Component.newline()), lines));
         }
         if (pages.size() == 1) {
             player.sendMessage(pages.get(0));
@@ -152,8 +153,12 @@ public final class HomesCommand extends AbstractCommand<HomePlugin> {
                     .call();
                 if (!allowed) return true;
                 plugin.warpTo(player, location, () -> {
-                        player.sendMessage(ChatColor.GREEN + "Welcome home :)");
-                        player.sendTitle("", ChatColor.GREEN + "Welcome home :)", 10, 20, 10);
+                        player.sendMessage(Component.text("Welcome home :)", NamedTextColor.GREEN));
+                        player.showTitle(Title.title(Component.empty(),
+                                                     Component.text("Welcome home :)", NamedTextColor.GREEN),
+                                                     Title.Times.of(Duration.ofMillis(500),
+                                                                    Duration.ofSeconds(1),
+                                                                    Duration.ofMillis(500))));
                     });
                 return true;
             }
@@ -181,7 +186,8 @@ public final class HomesCommand extends AbstractCommand<HomePlugin> {
                 bworld.getChunkAtAsync(x >> 4, z >> 4, (Consumer<Chunk>) c -> {
                         Location location = bworld.getHighestBlockAt(x, z).getLocation().add(0.5, 0.0, 0.5);
                         plugin.warpTo(player, location, () -> {
-                                player.sendMessage(ChatColor.GREEN + "Welcome to your claim. :)");
+                                player.sendMessage(Component.text("Welcome to your claim. :)",
+                                                                  NamedTextColor.GREEN));
                             });
                         plugin.highlightClaim(claim, player);
                     });
@@ -239,8 +245,12 @@ public final class HomesCommand extends AbstractCommand<HomePlugin> {
                 if (!allowed) return true;
             }
             plugin.warpTo(player, location, () -> {
-                    player.sendMessage(ChatColor.GREEN + "Welcome home.");
-                    player.sendTitle("", ChatColor.GREEN + "Welcome home.", 10, 20, 10);
+                    player.sendMessage(Component.text("Welcome home", NamedTextColor.GREEN));
+                    player.showTitle(Title.title(Component.empty(),
+                                                 Component.text("Welcome home", NamedTextColor.GREEN),
+                                                 Title.Times.of(Duration.ofMillis(500),
+                                                                Duration.ofSeconds(1),
+                                                                Duration.ofMillis(500))));
                 });
             return true;
         }
@@ -288,10 +298,10 @@ public final class HomesCommand extends AbstractCommand<HomePlugin> {
             plugin.getDb().updateAsync(home, null);
         }
         if (homeName == null) {
-            player.sendMessage(ChatColor.GREEN + "Primary home set");
+            player.sendMessage(Component.text("Primary home set", NamedTextColor.GREEN));
             PluginPlayerEvent.Name.SET_PRIMARY_HOME.call(plugin, player);
         } else {
-            player.sendMessage(ChatColor.GREEN + "Home \"" + homeName + "\" set");
+            player.sendMessage(Component.text("Home \"" + homeName + "\" set", NamedTextColor.GREEN));
             PluginPlayerEvent.Name.SET_NAMED_HOME.ultimate(plugin, player)
                 .detail(Detail.NAME, homeName)
                 .call();
@@ -309,58 +319,53 @@ public final class HomesCommand extends AbstractCommand<HomePlugin> {
         }
         if (home == null) throw new CommandWarn("Home not found.");
         if (home.getName() == null) {
-            ComponentBuilder cb = new ComponentBuilder("");
-            cb = PlayerCommand.frame(cb, "Primary Home Info");
-            player.spigot().sendMessage(cb.create());
+            player.sendMessage(Util.frame("Primary Home Info"));
         } else {
-            ComponentBuilder cb = new ComponentBuilder("");
-            cb = PlayerCommand.frame(cb, home.getName() + " Info");
-            player.spigot().sendMessage(cb.create());
+            player.sendMessage(Util.frame(home.getName() + " Info"));
         }
         StringBuilder sb = new StringBuilder();
         for (UUID inviteId : home.getInvites()) {
             sb.append(" ").append(PlayerCache.nameForUuid(inviteId));
         }
-        player.sendMessage(ChatColor.GRAY + " Location: " + ChatColor.WHITE
-                           + String.format("%s %d,%d,%d",
-                                           plugin.worldDisplayName(home.getWorld()),
-                                           (int) Math.floor(home.getX()),
-                                           (int) Math.floor(home.getY()),
-                                           (int) Math.floor(home.getZ())));
-        ComponentBuilder cb = new ComponentBuilder("");
-        cb.append(" Invited: " + home.getInvites().size()).color(ChatColor.GRAY);
+        player.sendMessage(Component.text().color(NamedTextColor.WHITE)
+                           .append(Component.text(" Location: ", NamedTextColor.GRAY))
+                           .append(Component.text(String.format("%s %d,%d,%d",
+                                                                plugin.worldDisplayName(home.getWorld()),
+                                                                (int) Math.floor(home.getX()),
+                                                                (int) Math.floor(home.getY()),
+                                                                (int) Math.floor(home.getZ())))));
+        TextComponent.Builder message = Component.text().color(NamedTextColor.WHITE)
+            .append(Component.text(" Invited: " + home.getInvites().size(), NamedTextColor.GRAY));
         for (UUID invitee : home.getInvites()) {
-            cb.append(" ").append(PlayerCache.nameForUuid(invitee));
-            cb.color(ChatColor.WHITE);
+            message.append(Component.text(" " + PlayerCache.nameForUuid(invitee)));
         }
-        player.spigot().sendMessage(cb.create());
-        player.sendMessage(ChatColor.GRAY + " Public: " + ChatColor.WHITE
-                           + (home.getPublicName() != null ? "yes" : "no"));
+        player.sendMessage(message);
+        player.sendMessage(Component.text().color(NamedTextColor.WHITE)
+                           .append(Component.text(" Public: ", NamedTextColor.GRAY))
+                           .append(Component.text(home.getPublicName() != null ? "yes" : "no")));
         return true;
     }
 
     public boolean invites(Player player, String[] args) {
         if (args.length != 0) return false;
-        ComponentBuilder cb = new ComponentBuilder("Your invites:");
-        cb.color(ChatColor.GRAY);
+        TextComponent.Builder message = Component.text().color(NamedTextColor.WHITE)
+            .append(Component.text("Your invites: ", NamedTextColor.GRAY));
         UUID playerId = player.getUniqueId();
         for (Home home : plugin.getHomes()) {
             if (home.isInvited(playerId)) {
                 String homename = home.getName() == null
                     ? home.getOwnerName() + ":"
                     : home.getOwnerName() + ":" + home.getName();
-                cb.append(" ");
-                cb.append(homename).color(ChatColor.GREEN);
-                cb.event(new net.md_5.bungee.api.chat.ClickEvent(net.md_5.bungee.api.chat.ClickEvent.Action.RUN_COMMAND,
-                                        "/home " + homename));
-                BaseComponent[] tooltip = TextComponent
-                    .fromLegacyText(ChatColor.GREEN + "home " + homename
-                                    + "\n" + ChatColor.WHITE + ChatColor.ITALIC
-                                    + "Use this home invite.");
-                cb.event(new net.md_5.bungee.api.chat.HoverEvent(net.md_5.bungee.api.chat.HoverEvent.Action.SHOW_TEXT, tooltip));
+                message.append(Component.space());
+                Component tooltip = Component.join(JoinConfiguration.separator(Component.newline()),
+                                                   Component.text("/home " + homename, NamedTextColor.GREEN),
+                                                   Component.text("Use this home invite", NamedTextColor.GRAY));
+                message.append(Component.text(homename, NamedTextColor.GREEN)
+                               .clickEvent(ClickEvent.runCommand("/home " + homename))
+                               .hoverEvent(HoverEvent.showText(tooltip)));
             }
         }
-        player.spigot().sendMessage(cb.create());
+        player.sendMessage(message);
         return true;
     }
 
@@ -387,35 +392,27 @@ public final class HomesCommand extends AbstractCommand<HomePlugin> {
             this.plugin.getDb().saveAsync(invite, null);
             home.invites.add(targetId);
         }
-        player.sendMessage(ChatColor.GREEN + "Invite sent to " + targetName);
+        player.sendMessage(Component.text("Invite sent to " + targetName, NamedTextColor.GREEN));
         Player target = this.plugin.getServer().getPlayer(targetId);
         if (target != null) {
             if (home.getName() == null) {
                 String cmd = "/home " + player.getName() + ":";
-                ComponentBuilder cb = new ComponentBuilder("");
-                cb.append(player.getName() + " invited you to their primary home: ")
-                    .color(ChatColor.WHITE);
-                cb.append("[Visit]").color(ChatColor.GREEN);
-                cb.event(new net.md_5.bungee.api.chat.ClickEvent(net.md_5.bungee.api.chat.ClickEvent.Action.RUN_COMMAND, cmd));
-                BaseComponent[] txt = TextComponent
-                    .fromLegacyText(ChatColor.GREEN + cmd + "\n"
-                                    + ChatColor.WHITE + ChatColor.ITALIC
-                                    + "Visit this home");
-                cb.event(new net.md_5.bungee.api.chat.HoverEvent(net.md_5.bungee.api.chat.HoverEvent.Action.SHOW_TEXT, txt));
-                target.spigot().sendMessage(cb.create());
+                Component tooltip = Component.join(JoinConfiguration.separator(Component.newline()),
+                                                   Component.text(cmd, NamedTextColor.GREEN),
+                                                   Component.text("Visit this home", NamedTextColor.GRAY));
+                target.sendMessage(Component.text(player.getName() + " invited you to their primary home ")
+                                   .append(Component.text("[Visit]", NamedTextColor.GREEN))
+                                   .clickEvent(ClickEvent.runCommand(cmd))
+                                   .hoverEvent(HoverEvent.showText(tooltip)));
             } else {
                 String cmd = "/home " + player.getName() + ":" + home.getName();
-                ComponentBuilder cb = new ComponentBuilder("");
-                cb.append(player.getName() + " invited you to their home: ")
-                    .color(ChatColor.WHITE);
-                cb.append("[" + home.getName() + "]").color(ChatColor.GREEN);
-                cb.event(new net.md_5.bungee.api.chat.ClickEvent(net.md_5.bungee.api.chat.ClickEvent.Action.RUN_COMMAND, cmd));
-                BaseComponent[] txt = TextComponent
-                    .fromLegacyText(ChatColor.GREEN + cmd + "\n"
-                                    + ChatColor.WHITE + ChatColor.ITALIC
-                                    + "Visit this home");
-                cb.event(new net.md_5.bungee.api.chat.HoverEvent(net.md_5.bungee.api.chat.HoverEvent.Action.SHOW_TEXT, txt));
-                target.spigot().sendMessage(cb.create());
+                Component tooltip = Component.join(JoinConfiguration.separator(Component.newline()),
+                                                   Component.text(cmd, NamedTextColor.GREEN),
+                                                   Component.text("Visit this home", NamedTextColor.GRAY));
+                target.sendMessage(Component.text(player.getName() + " invited you to their home " + home.getName() + " ")
+                                   .append(Component.text("[Visit]", NamedTextColor.GREEN))
+                                   .clickEvent(ClickEvent.runCommand(cmd))
+                                   .hoverEvent(HoverEvent.showText(tooltip)));
             }
         }
         PluginPlayerEvent.Name.INVITE_HOME.ultimate(plugin, player)
@@ -444,7 +441,7 @@ public final class HomesCommand extends AbstractCommand<HomePlugin> {
             .eq("home_id", home.getId())
             .eq("invitee", target).deleteAsync(null);
         home.getInvites().remove(target);
-        player.sendMessage(ChatColor.GREEN + targetName + " uninvited.");
+        player.sendMessage(Component.text(targetName + " was uninvited", NamedTextColor.GREEN));
         PluginPlayerEvent.Name.UNINVITE_HOME.ultimate(plugin, player)
             .detail(Detail.TARGET, target)
             .detail(Detail.NAME, home.getName())
@@ -459,7 +456,7 @@ public final class HomesCommand extends AbstractCommand<HomePlugin> {
         if (home == null) throw new CommandWarn("Home not found: " + homeName);
         if (home.getPublicName() != null) {
             throw new CommandWarn("Home is already public under the alias \""
-                            + home.getPublicName() + "\"");
+                                  + home.getPublicName() + "\"");
         }
         String publicName = args.length >= 2
             ? args[1]
@@ -469,19 +466,22 @@ public final class HomesCommand extends AbstractCommand<HomePlugin> {
         }
         if (plugin.findPublicHome(publicName) != null) {
             throw new CommandWarn("A public home by that name already exists."
-                            + " Please supply a different alias.");
+                                  + " Please supply a different alias.");
         }
         home.setPublicName(publicName);
         plugin.getDb().saveAsync(home, null, "public_name");
         String cmd = "/visit " + publicName;
-        ComponentBuilder cb = new ComponentBuilder("");
-        cb.append("Home made public. Players may visit via ").color(ChatColor.WHITE);
-        cb.append(cmd).color(ChatColor.GREEN);
-        cb.event(new net.md_5.bungee.api.chat.ClickEvent(net.md_5.bungee.api.chat.ClickEvent.Action.SUGGEST_COMMAND, cmd));
-        BaseComponent[] tooltip = TextComponent
-            .fromLegacyText(ChatColor.GREEN + cmd + "\nCan also be found under /visit.");
-        cb.event(new net.md_5.bungee.api.chat.HoverEvent(net.md_5.bungee.api.chat.HoverEvent.Action.SHOW_TEXT, tooltip));
-        player.spigot().sendMessage(cb.create());
+        Component tooltip = Component.join(JoinConfiguration.separator(Component.newline()),
+                                           Component.text(cmd, NamedTextColor.GREEN),
+                                           Component.text("Find all public homes", NamedTextColor.GRAY),
+                                           Component.text("via ", NamedTextColor.GRAY)
+                                           .append(Component.text("/visit", NamedTextColor.WHITE)));
+        ComponentLike message = Component.text()
+            .content("Home made public. Players may visit via ")
+            .append(Component.text(cmd, NamedTextColor.GREEN))
+            .clickEvent(ClickEvent.suggestCommand(cmd))
+            .hoverEvent(HoverEvent.showText(tooltip));
+        player.sendMessage(message);
         return true;
     }
 
@@ -502,12 +502,9 @@ public final class HomesCommand extends AbstractCommand<HomePlugin> {
         plugin.getDb().delete(home);
         plugin.getHomes().remove(home);
         if (homeName == null) {
-            player.sendMessage(ChatColor.YELLOW + "Primary home unset. The "
-                               + ChatColor.ITALIC + "/home" + ChatColor.YELLOW
-                               + " command will take you to your bed spawn"
-                               + " or primary claim.");
+            player.sendMessage(Component.text("Your primary home was unset", NamedTextColor.GREEN));
         } else {
-            player.sendMessage(ChatColor.YELLOW + "Home \"" + homeName + "\" deleted");
+            player.sendMessage(Component.text("Home \"" + homeName + "\" deleted", NamedTextColor.GREEN));
         }
         PluginPlayerEvent.Name.DELETE_HOME.ultimate(plugin, player)
             .detail(Detail.NAME, homeName)
@@ -560,9 +557,10 @@ public final class HomesCommand extends AbstractCommand<HomePlugin> {
             .call();
         if (!allowed) return true;
         plugin.warpTo(player, location, () -> {
-                player.sendMessage(ChatColor.GREEN + "Teleported to "
-                                   + ownerName + "'s public home \""
-                                   + publicName + "\"");
+                player.sendMessage(Component.text("Teleported to "
+                                                  + ownerName + "'s public home \""
+                                                  + publicName + "\"",
+                                                  NamedTextColor.GREEN));
                 home.onVisit(player.getUniqueId());
             });
         return true;
@@ -577,10 +575,9 @@ public final class HomesCommand extends AbstractCommand<HomePlugin> {
         if (publicHomes.isEmpty()) {
             throw new CommandWarn("No public homes to show");
         }
-        ComponentBuilder cb;
-        player.sendMessage(PlayerCommand.frame(publicHomes.size() == 1
-                                               ? "One public home"
-                                               : publicHomes.size() + " public homes"));
+        player.sendMessage(Util.frame(publicHomes.size() == 1
+                                      ? "One public home"
+                                      : publicHomes.size() + " public homes"));
         final int pageCount = (publicHomes.size() - 1) / pageLen + 1;
         List<Component> pages = new ArrayList<>(pageCount);
         for (int pageIndex = 0; pageIndex < pageCount; pageIndex += 1) {
@@ -590,7 +587,7 @@ public final class HomesCommand extends AbstractCommand<HomePlugin> {
                 if (homeIndex >= publicHomes.size()) break;
                 Home home = publicHomes.get(homeIndex);
                 String cmd = "/visit " + home.getPublicName();
-                Component tooltip = Component.join(Component.newline(),
+                Component tooltip = Component.join(JoinConfiguration.separator(Component.newline()),
                                                    Component.text(cmd, NamedTextColor.BLUE),
                                                    Component.text("Visit this home", NamedTextColor.GRAY));
                 lines.add(Component.text().color(NamedTextColor.WHITE)
@@ -601,7 +598,7 @@ public final class HomesCommand extends AbstractCommand<HomePlugin> {
                           .hoverEvent(HoverEvent.showText(tooltip))
                           .build());
             }
-            pages.add(Component.join(Component.newline(), lines));
+            pages.add(Component.join(JoinConfiguration.separator(Component.newline()), lines));
         }
         if (pages.size() == 1) {
             player.sendMessage(pages.get(0));

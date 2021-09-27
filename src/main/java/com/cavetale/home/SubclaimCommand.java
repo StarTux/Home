@@ -1,10 +1,12 @@
 package com.cavetale.home;
 
+import com.cavetale.core.command.AbstractCommand;
 import com.cavetale.core.command.CommandContext;
 import com.cavetale.core.command.CommandNode;
 import com.cavetale.core.command.CommandWarn;
 import com.cavetale.core.event.player.PluginPlayerEvent.Detail;
 import com.cavetale.core.event.player.PluginPlayerEvent;
+import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
 import java.util.Map;
@@ -13,28 +15,28 @@ import java.util.Set;
 import java.util.UUID;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
-import lombok.RequiredArgsConstructor;
-import net.md_5.bungee.api.ChatColor;
+import net.kyori.adventure.text.Component;
+import net.kyori.adventure.text.ComponentLike;
+import net.kyori.adventure.text.JoinConfiguration;
+import net.kyori.adventure.text.format.NamedTextColor;
+import net.kyori.adventure.title.Title;
 import org.bukkit.Location;
 import org.bukkit.Sound;
 import org.bukkit.SoundCategory;
 import org.bukkit.World;
 import org.bukkit.block.Block;
-import org.bukkit.command.Command;
-import org.bukkit.command.CommandSender;
-import org.bukkit.command.TabExecutor;
 import org.bukkit.entity.Player;
 import org.bukkit.event.player.PlayerInteractEvent;
 import org.bukkit.inventory.EquipmentSlot;
 
-@RequiredArgsConstructor
-public final class SubclaimCommand implements TabExecutor {
-    private final HomePlugin plugin;
-    private CommandNode rootNode;
+public final class SubclaimCommand extends AbstractCommand<HomePlugin> {
+    protected SubclaimCommand(final HomePlugin plugin) {
+        super(plugin, "subclaim");
+    }
 
-    public void enable() {
-        rootNode = new CommandNode("subclaim")
-            .description("Subclaims command interface");
+    @Override
+    protected void onEnable() {
+        rootNode.description("Subclaims command interface");
         rootNode.addChild("list")
             .description("List subclaims")
             .playerCaller(this::list)
@@ -69,20 +71,9 @@ public final class SubclaimCommand implements TabExecutor {
             .hidden(true)
             .denyTabCompletion()
             .playerCaller(this::cancel);
-        plugin.getCommand("subclaim").setExecutor(this);
     }
 
-    @Override
-    public boolean onCommand(CommandSender sender, Command command, String alias, String[] args) {
-        return rootNode.call(sender, command, alias, args);
-    }
-
-    @Override
-    public List<String> onTabComplete(CommandSender sender, Command command, String alias, String[] args) {
-        return rootNode.complete(sender, command, alias, args);
-    }
-
-    boolean list(Player player, String[] args) {
+    protected boolean list(Player player, String[] args) {
         if (args.length != 0) return false;
         Claim claim = requireClaim(player);
         if (!claim.getTrustType(player).canInteract()) {
@@ -90,16 +81,17 @@ public final class SubclaimCommand implements TabExecutor {
         }
         List<Subclaim> subclaims = claim.getSubclaims();
         if (subclaims.isEmpty()) {
-            player.sendMessage(ChatColor.AQUA + "There are no subclaims.");
-            return true;
+            throw new CommandWarn("There are no subclaims");
         }
-        player.sendMessage(ChatColor.AQUA + (subclaims.size() == 1
-                                             ? "There is 1 subclaim:"
-                                             : "There are " + subclaims.size() + " subclaims:"));
+        player.sendMessage(Component.text((subclaims.size() == 1
+                                           ? "There is 1 subclaim:"
+                                           : "There are " + subclaims.size() + " subclaims:"),
+                                          NamedTextColor.AQUA));
         int i = 0;
         for (Subclaim subclaim : subclaims) {
             int index = ++i;
-            player.sendMessage("  " + ChatColor.DARK_AQUA + index + ") " + subclaim.getListInfo());
+            player.sendMessage(Component.text(" " + index + ") " + subclaim.getListInfo(),
+                                              NamedTextColor.DARK_AQUA));
             if (subclaim.isInWorld(player.getWorld())) {
                 plugin.highlightSubclaim(subclaim, player);
             }
@@ -114,8 +106,9 @@ public final class SubclaimCommand implements TabExecutor {
             throw new CommandWarn("You do not own this claim!");
         }
         plugin.sessions.of(player).setPlayerInteractCallback(event -> createPickBlock(player, player.getWorld(), event, claim, null));
-        player.sendMessage(ChatColor.GREEN + "Click a corner block for the new subclaim");
-        player.sendTitle("", ChatColor.GREEN + "Click a corner block");
+        player.sendMessage(Component.text("Click a corner block for the new subclaim", NamedTextColor.AQUA));
+        player.showTitle(Title.title(Component.empty(),
+                                     Component.text("Click a corner block", NamedTextColor.AQUA)));
         player.playSound(player.getLocation(), Sound.UI_BUTTON_CLICK, SoundCategory.MASTER, 0.2f, 2.0f);
         return true;
     }
@@ -133,16 +126,19 @@ public final class SubclaimCommand implements TabExecutor {
         event.setCancelled(true);
         Claim clickedClaim = plugin.getClaimAt(block);
         if (clickedClaim != claim || !player.getWorld().equals(world)) {
-            player.sendMessage(ChatColor.RED + "You left the claim. Subclaim creation aborted.");
-            player.sendTitle("", ChatColor.RED + "Subclaim creation aborted");
+            player.sendMessage(Component.text("You left the claim. Subclaim creation aborted", NamedTextColor.RED));
+            player.showTitle(Title.title(Component.empty(),
+                                         Component.text("Subclaim creation aborted", NamedTextColor.RED)));
             plugin.sessions.of(player).setPlayerInteractCallback(null);
             player.playSound(player.getLocation(), Sound.UI_BUTTON_CLICK, SoundCategory.MASTER, 0.2f, 0.5f);
             return true;
         }
         Subclaim existing = claim.getSubclaimAt(block);
         if (existing != null) {
-            player.sendMessage(ChatColor.RED + "There's already a subclaim here! Subclaim creation aborted.");
-            player.sendTitle("", ChatColor.RED + "Subclaim creation aborted");
+            player.sendMessage(Component.text("There's already a subclaim here! Subclaim creation aborted",
+                                              NamedTextColor.RED));
+            player.showTitle(Title.title(Component.empty(),
+                                         Component.text("Subclaim creation aborted", NamedTextColor.RED)));
             plugin.sessions.of(player).setPlayerInteractCallback(null);
             player.playSound(player.getLocation(), Sound.UI_BUTTON_CLICK, SoundCategory.MASTER, 0.2f, 0.5f);
             plugin.highlightSubclaim(existing, player);
@@ -150,8 +146,10 @@ public final class SubclaimCommand implements TabExecutor {
         }
         if (blockA == null) {
             plugin.sessions.of(player).setPlayerInteractCallback(event2 -> createPickBlock(player, world, event2, claim, block));
-            player.sendMessage(ChatColor.GREEN + "Now click another corner block of the new subclaim");
-            player.sendTitle("", ChatColor.GREEN + "Click another corner block");
+            player.sendMessage(Component.text("Now click another corner block of the new subclaim",
+                                              NamedTextColor.AQUA));
+            player.showTitle(Title.title(Component.empty(),
+                                         Component.text("Click another corner block", NamedTextColor.AQUA)));
             player.playSound(player.getLocation(), Sound.UI_BUTTON_CLICK, SoundCategory.MASTER, 0.2f, 2.0f);
             plugin.highlightSubclaim(new Area(block.getX(), block.getZ(), block.getX(), block.getZ()), player);
             return true;
@@ -161,16 +159,20 @@ public final class SubclaimCommand implements TabExecutor {
                              Math.max(block.getX(), blockA.getX()),
                              Math.max(block.getZ(), blockA.getZ()));
         if (!claim.getArea().contains(area)) {
-            player.sendMessage(ChatColor.RED + "The subclaim would exceed the containing claim. Aborting");
-            player.sendTitle("", ChatColor.RED + "Subclaim creation aborted");
+            player.sendMessage(Component.text("The subclaim would exceed the containing claim. Aborting",
+                                              NamedTextColor.RED));
+            player.showTitle(Title.title(Component.empty(),
+                                         Component.text("Subclaim creation aborted", NamedTextColor.RED)));
             plugin.sessions.of(player).setPlayerInteractCallback(null);
             player.playSound(player.getLocation(), Sound.UI_BUTTON_CLICK, SoundCategory.MASTER, 0.2f, 0.5f);
             return true;
         }
         for (Subclaim other : claim.getSubclaims(world)) {
             if (other.getArea().overlaps(area)) {
-                player.sendMessage(ChatColor.RED + "The subclaim would overlap with an existing subclaim. Aborting.");
-                player.sendTitle("", ChatColor.RED + "Subclaim creation aborted");
+                player.sendMessage(Component.text("The subclaim would overlap with an existing subclaim. Aborting.",
+                                                  NamedTextColor.RED));
+                player.showTitle(Title.title(Component.empty(),
+                                             Component.text("Subclaim creation aborted", NamedTextColor.RED)));
                 plugin.sessions.of(player).setPlayerInteractCallback(null);
                 player.playSound(player.getLocation(), Sound.UI_BUTTON_CLICK, SoundCategory.MASTER, 0.2f, 0.5f);
                 plugin.highlightSubclaim(other, player);
@@ -182,8 +184,9 @@ public final class SubclaimCommand implements TabExecutor {
         subclaim.saveToDatabase();
         plugin.sessions.of(player).setPlayerInteractCallback(null);
         plugin.highlightSubclaim(subclaim, player);
-        player.sendMessage(ChatColor.GREEN + "Subclaim created!");
-        player.sendTitle("", ChatColor.GREEN + "Subclaim created");
+        player.sendMessage(Component.text("Subclaim created!", NamedTextColor.AQUA));
+        player.showTitle(Title.title(Component.empty(),
+                                     Component.text("Subclaim created", NamedTextColor.AQUA)));
         player.playSound(player.getLocation(), Sound.ENTITY_PLAYER_LEVELUP, SoundCategory.MASTER, 0.2f, 2.0f);
         PluginPlayerEvent.Name.CREATE_SUBCLAIM.call(plugin, player);
         return true;
@@ -192,19 +195,25 @@ public final class SubclaimCommand implements TabExecutor {
     boolean info(Player player, String[] args) {
         if (args.length != 0) return false;
         Subclaim subclaim = requireSubclaim(player);
-        player.sendMessage("");
-        player.sendMessage("" + ChatColor.AQUA + ChatColor.BOLD + "Subclaim Info");
-        player.sendMessage("  " + ChatColor.AQUA + "Area " + ChatColor.WHITE + subclaim.getArea());
-        player.sendMessage("  " + ChatColor.AQUA + "Parent claim " + ChatColor.WHITE + subclaim.getParent().getOwnerName());
+        List<ComponentLike> lines = new ArrayList<>();
+        lines.add(Component.empty());
+        lines.add(Util.frame(Component.text("Subclaim Info", NamedTextColor.WHITE),
+                             NamedTextColor.AQUA));
+        lines.add(Component.text(" Area ", NamedTextColor.AQUA)
+                  .append(Component.text("" + subclaim.getArea(), NamedTextColor.WHITE)));
+        lines.add(Component.text(" Parent claim ", NamedTextColor.AQUA)
+                  .append(Component.text(subclaim.getParent().getOwnerName(), NamedTextColor.WHITE)));
         for (Map.Entry<Subclaim.Trust, Set<UUID>> entry : subclaim.getTrustedMap().entrySet()) {
             Set<UUID> set = entry.getValue();
             if (set == null || set.isEmpty()) continue;
             Subclaim.Trust trust = entry.getKey();
-            player.sendMessage("  " + ChatColor.AQUA + trust.displayName + " Trust " + ChatColor.WHITE + set.stream()
-                               .map(Subclaim::cachedPlayerName)
-                               .collect(Collectors.joining(", ")));
+            lines.add(Component.text(" " + trust.displayName + " Trust ", NamedTextColor.AQUA)
+                      .append(Component.text(set.stream()
+                                             .map(Subclaim::cachedPlayerName)
+                                             .collect(Collectors.joining(", ")), NamedTextColor.WHITE)));
         }
-        player.sendMessage("");
+        lines.add(Component.empty());
+        player.sendMessage(Component.join(JoinConfiguration.separator(Component.newline()), lines));
         plugin.highlightSubclaim(subclaim, player);
         return true;
     }
@@ -234,7 +243,8 @@ public final class SubclaimCommand implements TabExecutor {
         }
         subclaim.setTrust(uuid, trust);
         subclaim.saveToDatabase();
-        player.sendMessage(ChatColor.AQUA + "Player trusted: " + playerName + " (" + trust.displayName + ")");
+        player.sendMessage(Component.text("Player trusted: " + playerName + " (" + trust.displayName + ")",
+                                          NamedTextColor.AQUA));
         PluginPlayerEvent.Name.SUBCLAIM_TRUST.ultimate(plugin, player)
             .detail(Detail.TARGET, uuid)
             .detail(Detail.NAME, trust.key)
@@ -319,7 +329,8 @@ public final class SubclaimCommand implements TabExecutor {
                 if (!subclaim.getParent().getTrustType(player).isCoOwner()) return; // Safety first
                 if (!subclaim.getParent().removeSubclaim(subclaim)) return; // ???
                 plugin.db.delete(subclaim.toSQLRow());
-                player.sendMessage(ChatColor.GREEN + "Subclaim deleted: " + subclaim.getListInfo());
+                player.sendMessage(Component.text("Subclaim deleted: " + subclaim.getListInfo(),
+                                                  NamedTextColor.AQUA));
             });
         return true;
     }

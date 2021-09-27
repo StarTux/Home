@@ -1,8 +1,6 @@
 package com.cavetale.home;
 
 import com.cavetale.core.command.CommandWarn;
-import com.cavetale.home.util.Colors;
-import com.cavetale.home.util.Msg;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.UUID;
@@ -11,11 +9,12 @@ import lombok.Getter;
 import lombok.Setter;
 import lombok.Value;
 import net.kyori.adventure.text.Component;
+import net.kyori.adventure.text.JoinConfiguration;
 import net.kyori.adventure.text.event.ClickEvent;
 import net.kyori.adventure.text.event.HoverEvent;
 import net.kyori.adventure.text.format.NamedTextColor;
+import net.kyori.adventure.text.format.TextColor;
 import org.bukkit.Bukkit;
-import org.bukkit.ChatColor;
 import org.bukkit.Location;
 import org.bukkit.entity.Player;
 import org.bukkit.event.player.PlayerInteractEvent;
@@ -70,10 +69,10 @@ public final class Session {
     public void requireConfirmation(String message, Runnable callback) {
         confirmCallback = callback;
         confirmMessage = message;
-        Component confirmTooltip = Component.join(Component.newline(),
+        Component confirmTooltip = Component.join(JoinConfiguration.separator(Component.newline()),
                                                   Component.text("Confirm", NamedTextColor.GREEN),
                                                   Component.text(message, NamedTextColor.GRAY));
-        Component cancelTooltip = Component.join(Component.newline(),
+        Component cancelTooltip = Component.join(JoinConfiguration.separator(Component.newline()),
                                                  Component.text("Cancel", NamedTextColor.GREEN),
                                                  Component.text(message, NamedTextColor.GRAY));
         getPlayer().sendMessage(Component.text().color(NamedTextColor.WHITE)
@@ -96,7 +95,7 @@ public final class Session {
         String message = confirmMessage;
         confirmCallback = null;
         confirmMessage = null;
-        getPlayer().sendMessage(ChatColor.RED + "Cancelled: " + message);
+        getPlayer().sendMessage(Component.text("Cancelled: " + message, NamedTextColor.RED));
     }
 
     /**
@@ -110,7 +109,7 @@ public final class Session {
         try {
             callback.run();
         } catch (CommandWarn warn) {
-            getPlayer().sendMessage(ChatColor.RED + warn.getMessage());
+            getPlayer().sendMessage(Component.text(warn.getMessage(), NamedTextColor.RED));
         }
     }
 
@@ -137,7 +136,8 @@ public final class Session {
         long now = System.currentTimeMillis();
         if (notifyCooldown > now) return;
         notifyCooldown = now + 1000L;
-        player.sendActionBar(Msg.builder("This claim belongs to " + claim.getOwnerName()).color(Colors.RED).create());
+        player.sendActionBar(Component.text("This claim belongs to " + claim.getOwnerName(),
+                                            TextColor.color(0xFF0000)));
     }
 
     public boolean notify(Player player, Component component) {

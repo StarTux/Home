@@ -15,17 +15,18 @@ import java.util.Collections;
 import java.util.List;
 import java.util.UUID;
 import java.util.concurrent.ThreadLocalRandom;
+import java.util.function.Consumer;
 import java.util.stream.Collectors;
 import lombok.Value;
 import net.kyori.adventure.text.Component;
+import net.kyori.adventure.text.ComponentLike;
+import net.kyori.adventure.text.JoinConfiguration;
 import net.kyori.adventure.text.TextComponent;
 import net.kyori.adventure.text.event.ClickEvent;
 import net.kyori.adventure.text.event.HoverEvent;
 import net.kyori.adventure.text.format.NamedTextColor;
-import net.md_5.bungee.api.ChatColor;
-import net.md_5.bungee.api.chat.BaseComponent;
-import net.md_5.bungee.api.chat.ComponentBuilder;
 import org.bukkit.Bukkit;
+import org.bukkit.Chunk;
 import org.bukkit.Location;
 import org.bukkit.World;
 import org.bukkit.block.Block;
@@ -165,7 +166,7 @@ public final class ClaimCommand extends AbstractCommand<HomePlugin> {
             if (claim == null) return true;
         }
         player.sendMessage("");
-        player.sendMessage(PlayerCommand.frame("Claim Info"));
+        player.sendMessage(Util.frame("Claim Info"));
         player.sendMessage(makeClaimInfo(player, claim));
         if (claim.getTrustType(player).canBuild()) {
             player.sendMessage(Component.text().content("Teleport ").color(NamedTextColor.GRAY)
@@ -226,41 +227,43 @@ public final class ClaimCommand extends AbstractCommand<HomePlugin> {
         NewClaimMeta ncmeta = new NewClaimMeta(playerWorldName, x, y, area, claimCost, ""
                                                + ThreadLocalRandom.current().nextInt(9999));
         plugin.setMetadata(player, plugin.META_NEWCLAIM, ncmeta);
-        player.sendMessage("");
-        player.spigot().sendMessage(PlayerCommand.frame(new ComponentBuilder(""), "New Claim").create());
-        StringBuilder sb = new StringBuilder();
-        sb.append(ChatColor.AQUA + "You are about to create a claim of "
-                  + ChatColor.WHITE + area.width() + "x" + area.height() + " blocks"
-                  + ChatColor.AQUA + " around your current location.");
+        // Here we use Aqua as base color and White as highlight. Perhaps rethink this?
+        TextComponent.Builder message = Component.text().color(NamedTextColor.WHITE);
+        message.append(Component.newline())
+            .append(Util.frame("New Claim"))
+            .append(Component.newline())
+            .append(Component.text("You are about to create a claim of "))
+            .append(Component.text(area.width() + "x" + area.height() + " blocks", NamedTextColor.BLUE))
+            .append(Component.text(" around your current location."));
         if (claimCost >= 0.01) {
-            sb.append(" " + ChatColor.AQUA + "This will cost you " + ChatColor.WHITE
-                      + Money.format(claimCost) + ChatColor.AQUA + ".");
+            message.append(Component.text(" This will cost you "))
+                .append(Component.text(Money.format(claimCost), NamedTextColor.GOLD))
+                .append(Component.text("."));
         }
-        sb.append(" " + ChatColor.AQUA + "Your new claim will have "
-                  + ChatColor.WHITE + area.size() + ChatColor.AQUA + " claim blocks.");
+        message.append(Component.text(" Your new claim will have "))
+            .append(Component.text(area.size(), NamedTextColor.BLUE))
+            .append(Component.text(" claim blocks."));
         if (settings.claimBlockCost >= 0.01) {
-            sb.append(" " + ChatColor.AQUA + "You can buy additional claim blocks for "
-                      + ChatColor.WHITE + Money.format(settings.claimBlockCost)
-                      + ChatColor.AQUA + " per block.");
+            message.append(Component.text(" You can buy additional claim blocks for "))
+                .append(Component.text(Money.format(settings.claimBlockCost), NamedTextColor.GOLD))
+                .append(Component.text(" per block."));
         }
-        sb.append(ChatColor.AQUA + " You can abandon the claim after a cooldown of "
-                  + ChatColor.WHITE + settings.claimAbandonCooldown + " minutes"
-                  + ChatColor.AQUA + ". Claim blocks will " + ChatColor.WHITE + "not"
-                  + ChatColor.AQUA + " be refunded.");
-        player.sendMessage(sb.toString());
-        ComponentBuilder cb = new ComponentBuilder("");
-        cb.append("Proceed?  ").color(ChatColor.WHITE);
-        cb.append("[Confirm]").color(ChatColor.GREEN);
-        cb.event(new net.md_5.bungee.api.chat.ClickEvent(net.md_5.bungee.api.chat.ClickEvent.Action.RUN_COMMAND, "/claim confirm " + ncmeta.token));
-        cb.event(new net.md_5.bungee.api.chat.HoverEvent(net.md_5.bungee.api.chat.HoverEvent.Action.SHOW_TEXT, net.md_5.bungee.api.chat.TextComponent
-                                                         .fromLegacyText(ChatColor.GREEN + "Confirm this purchase")));
-        cb.append("  ").reset();
-        cb.append("[Cancel]").color(ChatColor.RED);
-        cb.event(new net.md_5.bungee.api.chat.ClickEvent(net.md_5.bungee.api.chat.ClickEvent.Action.RUN_COMMAND, "/claim cancel"));
-        cb.event(new net.md_5.bungee.api.chat.HoverEvent(net.md_5.bungee.api.chat.HoverEvent.Action.SHOW_TEXT, net.md_5.bungee.api.chat.TextComponent
-                                                         .fromLegacyText(ChatColor.RED + "Cancel this purchase")));
-        player.spigot().sendMessage(cb.create());
-        player.sendMessage("");
+        message.append(Component.text(" You can abandon the claim after a cooldown of "))
+            .append(Component.text(settings.claimAbandonCooldown + " minutes", NamedTextColor.BLUE))
+            .append(Component.text(". Claim blocks will "))
+            .append(Component.text("not", NamedTextColor.BLUE))
+            .append(Component.text(" be refunded."))
+            .append(Component.newline())
+            .append(Component.text("Proceed? ", NamedTextColor.GRAY))
+            .append(Component.text("[Confirm]", NamedTextColor.GREEN)
+                    .clickEvent(ClickEvent.runCommand("/claim confirm " + ncmeta.token))
+                    .hoverEvent(HoverEvent.showText(Component.text("Confirm this purchase", NamedTextColor.GREEN))))
+            .append(Component.space())
+            .append(Component.text("[Cancel]", NamedTextColor.RED)
+                    .clickEvent(ClickEvent.runCommand("/claim cancel"))
+                    .hoverEvent(HoverEvent.showText(Component.text("Cancel this purchase", NamedTextColor.RED))))
+            .append(Component.newline());
+        player.sendMessage(message);
         return true;
     }
 
@@ -288,7 +291,7 @@ public final class ClaimCommand extends AbstractCommand<HomePlugin> {
         if (world == null) return true;
         final int x = claim.centerX;
         final int z = claim.centerY;
-        world.getChunkAtAsync(x >> 4, z >> 4, chunk -> {
+        world.getChunkAtAsync(x >> 4, z >> 4, (Consumer<Chunk>) chunk -> {
                 if (!player.isValid()) return;
                 final Location target;
                 if (world.getEnvironment() == World.Environment.NETHER) {
@@ -304,7 +307,7 @@ public final class ClaimCommand extends AbstractCommand<HomePlugin> {
                 target.setYaw(ploc.getYaw());
                 target.setPitch(ploc.getPitch());
                 player.teleport(target, TeleportCause.COMMAND);
-                player.sendMessage(ChatColor.BLUE + "Teleporting to claim.");
+                player.sendMessage(Component.text("Teleporting to claim", NamedTextColor.BLUE));
             });
         return true;
     }
@@ -344,22 +347,26 @@ public final class ClaimCommand extends AbstractCommand<HomePlugin> {
         BuyClaimBlocks meta = new BuyClaimBlocks(buyClaimBlocks, price, claim.getId(), ""
                                                  + ThreadLocalRandom.current().nextInt(9999));
         plugin.setMetadata(player, plugin.META_BUY, meta);
-        player.sendMessage(ChatColor.WHITE + "Buying " + ChatColor.GREEN + buyClaimBlocks
-                           + ChatColor.WHITE + " for " + ChatColor.GREEN + priceFormat
-                           + ChatColor.WHITE + ".");
-        ComponentBuilder cb = new ComponentBuilder("");
-        cb.append("Confirm this purchase: ").color(ChatColor.GRAY);
-        cb.append("[Confirm]").color(ChatColor.GREEN);
-        cb.event(new net.md_5.bungee.api.chat.ClickEvent(net.md_5.bungee.api.chat.ClickEvent.Action.RUN_COMMAND, "/claim confirm " + meta.token));
-        cb.event(new net.md_5.bungee.api.chat.HoverEvent(net.md_5.bungee.api.chat.HoverEvent.Action.SHOW_TEXT, net.md_5.bungee.api.chat.TextComponent
-                                                         .fromLegacyText(ChatColor.GREEN + "Confirm\nBuy "
-                                                                         + buyClaimBlocks + " for " + priceFormat + ".")));
-        cb.append("  ").reset();
-        cb.append("[Cancel]").color(ChatColor.RED);
-        cb.event(new net.md_5.bungee.api.chat.ClickEvent(net.md_5.bungee.api.chat.ClickEvent.Action.RUN_COMMAND, "/claim cancel"));
-        cb.event(new net.md_5.bungee.api.chat.HoverEvent(net.md_5.bungee.api.chat.HoverEvent.Action.SHOW_TEXT, net.md_5.bungee.api.chat.TextComponent
-                                                         .fromLegacyText(ChatColor.RED + "Cancel purchase.")));
-        player.spigot().sendMessage(cb.create());
+        ComponentLike message = Component.text().color(NamedTextColor.WHITE)
+            .content("Buying ")
+            .append(Component.text(buyClaimBlocks, NamedTextColor.GREEN))
+            .append(Component.text(" for "))
+            .append(Component.text(priceFormat, NamedTextColor.GOLD))
+            .append(Component.text("."))
+            .append(Component.newline())
+            .append(Component.text("Confirm this purchase ", NamedTextColor.GRAY))
+            .append(Component.text("[Confirm]", NamedTextColor.GREEN)
+                    .clickEvent(ClickEvent.runCommand("/claim confirm " + meta.token))
+                    .hoverEvent(HoverEvent.showText(Component.join(JoinConfiguration.separator(Component.newline()),
+                                                                   Component.text("Confirm", NamedTextColor.GREEN),
+                                                                   Component.text("Buy " + buyClaimBlocks
+                                                                                  + " for " + priceFormat,
+                                                                                  NamedTextColor.GRAY)))))
+            .append(Component.space())
+            .append(Component.text("[Cancel]", NamedTextColor.RED)
+                    .clickEvent(ClickEvent.runCommand("/claim cancel"))
+                    .hoverEvent(HoverEvent.showText(Component.text("Cancel purchase", NamedTextColor.RED))));
+        player.sendMessage(message);
         return true;
     }
 
@@ -384,16 +391,15 @@ public final class ClaimCommand extends AbstractCommand<HomePlugin> {
             plugin.sessions.of(player).setClaimGrowSnippet(null);
             Location location = player.getLocation();
             if (snippet != null && snippet.isNear(location) && claim.growTo(location.getBlockX(), location.getBlockZ()).isSuccessful()) {
-                player.sendMessage(ChatColor.WHITE + "Added " + meta.amount
-                                   + " and grew to your location!");
+                player.sendMessage(Component.text("Added " + meta.amount + " and grew to your location!"));
                 plugin.highlightClaim(claim, player);
             } else if (claim.getBoolSetting(Claim.Setting.AUTOGROW)) {
-                player.sendMessage(ChatColor.WHITE + "Added " + meta.amount
-                                   + " blocks to this claim. It will grow automatically.");
+                player.sendMessage(Component.text("Added " + meta.amount
+                                                  + " blocks to this claim. It will grow automatically."));
             } else {
-                player.sendMessage(ChatColor.WHITE + "Added " + meta.amount
-                                   + " blocks to this claim."
-                                   + " Grow it manually or enable \"autogrow\" in the settings.");
+                player.sendMessage(Component.text("Added " + meta.amount
+                                                  + " blocks to this claim."
+                                                  + " Grow it manually or enable \"autogrow\" in the settings."));
             }
             claim.saveToDatabase();
             PluginPlayerEvent.Name.BUY_CLAIM_BLOCKS.ultimate(plugin, player)
@@ -411,7 +417,7 @@ public final class ClaimCommand extends AbstractCommand<HomePlugin> {
                 throw new CommandWarn("Claim removal expired");
             }
             plugin.deleteClaim(claim);
-            player.sendMessage(ChatColor.YELLOW + "Claim removed");
+            player.sendMessage(Component.text("Claim removed", NamedTextColor.YELLOW));
             return true;
         }
         // NewClaim confirm
@@ -428,21 +434,24 @@ public final class ClaimCommand extends AbstractCommand<HomePlugin> {
                     throw new CommandWarn("Your claim would overlap an existing claim.");
                 }
             }
-            if (ncmeta.price >= 0.01 && !Money.take(playerId, ncmeta.price, plugin, "Make new claim in " + plugin.worldDisplayName(ncmeta.world))) {
-                throw new CommandWarn("You cannot afford " + Money.format(ncmeta.price) + "!");
+            if (ncmeta.price >= 0.01) {
+                if (!Money.take(playerId, ncmeta.price, plugin,
+                                "Make new claim in " + plugin.worldDisplayName(ncmeta.world))) {
+                    throw new CommandWarn("You cannot afford " + Money.format(ncmeta.price) + "!");
+                }
             }
             Claim claim = new Claim(plugin, playerId, ncmeta.world, ncmeta.area);
             claim.saveToDatabase();
             plugin.getClaims().add(claim);
-            ComponentBuilder cb = new ComponentBuilder("");
-            cb.append("Claim created!  ").color(ChatColor.WHITE);
-            cb.append("[View]").color(ChatColor.GREEN);
-            cb.event(new net.md_5.bungee.api.chat.ClickEvent(net.md_5.bungee.api.chat.ClickEvent.Action.RUN_COMMAND, "/claim"));
-            cb.event(new net.md_5.bungee.api.chat.HoverEvent(net.md_5.bungee.api.chat.HoverEvent.Action.SHOW_TEXT, net.md_5.bungee.api.chat.TextComponent
-                                                             .fromLegacyText(ChatColor.GREEN + "/claim\n"
-                                                                             + ChatColor.WHITE + ChatColor.ITALIC
-                                                                             + "The command to access all your claims.")));
-            player.spigot().sendMessage(cb.create());
+            ComponentLike message = Component.text().color(NamedTextColor.WHITE)
+                .append(Component.text("Claim created!  "))
+                .append(Component.text("[View]", NamedTextColor.GREEN))
+                .clickEvent(ClickEvent.runCommand("/claim info"))
+                .hoverEvent(HoverEvent.showText(Component.join(JoinConfiguration.separator(Component.newline()),
+                                                               Component.text("/claim info"),
+                                                               Component.text("View claim info and highlight your claim",
+                                                                              NamedTextColor.GRAY))));
+            player.sendMessage(message);
             plugin.highlightClaim(claim, player);
             PluginPlayerEvent.Name.CREATE_CLAIM.call(plugin, player);
             return true;
@@ -458,7 +467,7 @@ public final class ClaimCommand extends AbstractCommand<HomePlugin> {
             plugin.removeMetadata(player, plugin.META_BUY);
             plugin.removeMetadata(player, plugin.META_ABANDON);
             plugin.removeMetadata(player, plugin.META_NEWCLAIM);
-            player.sendMessage(ChatColor.GREEN + "Cancelled");
+            player.sendMessage(Component.text("Claim operation cancelled", NamedTextColor.RED));
         }
         return true;
     }
@@ -583,41 +592,28 @@ public final class ClaimCommand extends AbstractCommand<HomePlugin> {
     }
 
     private void showClaimSettings(Claim claim, Player player) {
-        player.sendMessage("");
-        BaseComponent[] txt;
-        ComponentBuilder cb = new ComponentBuilder("");
-        PlayerCommand.frame(cb, "Claim Settings");
-        player.spigot().sendMessage(cb.create());
+        List<ComponentLike> lines = new ArrayList<>();
+        lines.add(Component.empty());
+        lines.add(Util.frame("Claim Settings"));
         for (Claim.Setting setting : Claim.Setting.values()) {
             if (setting.isAdminOnly() && !Claim.ownsAdminClaims(player)) continue;
-            cb = new ComponentBuilder(" ");
+            TextComponent.Builder line = Component.text().color(NamedTextColor.WHITE);
             Object value = claim.getSetting(setting);
             String key = setting.name().toLowerCase();
-            if (value == Boolean.TRUE) {
-                cb.append("[ON]").color(ChatColor.BLUE);
-                cb.append("  ", ComponentBuilder.FormatRetention.NONE);
-                cb.append("[OFF]").color(ChatColor.GRAY);
-                cb.event(new net.md_5.bungee.api.chat.ClickEvent(net.md_5.bungee.api.chat.ClickEvent.Action.RUN_COMMAND,
-                                                                 "/claim set " + key + " off"));
-                txt = net.md_5.bungee.api.chat.TextComponent
-                    .fromLegacyText(ChatColor.RED + "Disable " + setting.displayName);
-                cb.event(new net.md_5.bungee.api.chat.HoverEvent(net.md_5.bungee.api.chat.HoverEvent.Action.SHOW_TEXT, txt));
-            } else if (value == Boolean.FALSE) {
-                cb.append("[ON]").color(ChatColor.GRAY);
-                cb.event(new net.md_5.bungee.api.chat.ClickEvent(net.md_5.bungee.api.chat.ClickEvent.Action.RUN_COMMAND,
-                                                                 "/claim set " + key + " on"));
-                txt = net.md_5.bungee.api.chat.TextComponent
-                    .fromLegacyText(ChatColor.GREEN + "Enable " + setting.displayName);
-                cb.event(new net.md_5.bungee.api.chat.HoverEvent(net.md_5.bungee.api.chat.HoverEvent.Action.SHOW_TEXT, txt));
-                cb.append("  ", ComponentBuilder.FormatRetention.NONE);
-                cb.append("[OFF]").color(ChatColor.RED);
-            }
-            cb.append(" " + setting.displayName).color(setting.isAdminOnly()
-                                                       ? ChatColor.RED
-                                                       : ChatColor.WHITE);
-            player.spigot().sendMessage(cb.create());
+            boolean on = value == Boolean.TRUE;
+            line.append(Component.text("[ON]", (on ? NamedTextColor.GREEN : NamedTextColor.DARK_GRAY))
+                        .clickEvent(ClickEvent.runCommand("/claim set " + key + " on"))
+                        .hoverEvent(HoverEvent.showText(Component.text("Enable " + setting.displayName, NamedTextColor.GREEN))));
+            line.append(Component.space());
+            line.append(Component.text("[OFF]", (on ? NamedTextColor.DARK_GRAY : NamedTextColor.RED))
+                        .clickEvent(ClickEvent.runCommand("/claim set " + key + " off"))
+                        .hoverEvent(HoverEvent.showText(Component.text("Disable " + setting.displayName, NamedTextColor.RED))));
+            line.append(Component.space());
+            line.append(Component.text(setting.displayName, setting.isAdminOnly() ? NamedTextColor.RED : NamedTextColor.WHITE));
+            lines.add(line);
         }
-        player.sendMessage("");
+        lines.add(Component.empty());
+        player.sendMessage(Component.join(JoinConfiguration.separator(Component.newline()), lines));
     }
 
     private boolean grow(Player player, String[] args) {
@@ -643,18 +639,19 @@ public final class ClaimCommand extends AbstractCommand<HomePlugin> {
         if (claim.getBlocks() < newArea.size()) {
             int needed = newArea.size() - claim.getBlocks();
             String formatMoney = Money.format((double) needed * settings.claimBlockCost);
-            ComponentBuilder cb = new ComponentBuilder("");
-            cb.append(needed + " more claim blocks required. ").color(ChatColor.RED);
-            cb.append("[Buy More]").color(ChatColor.GRAY);
-            cb.event(new net.md_5.bungee.api.chat.ClickEvent(net.md_5.bungee.api.chat.ClickEvent.Action.RUN_COMMAND, "/claim buy " + needed));
-            cb.event(new net.md_5.bungee.api.chat.HoverEvent(net.md_5.bungee.api.chat.HoverEvent.Action.SHOW_TEXT, net.md_5.bungee.api.chat.TextComponent
-                                                             .fromLegacyText(ChatColor.GRAY + "/claim buy "
-                                                                             + ChatColor.ITALIC + needed
-                                                                             + "\n" + ChatColor.WHITE + ChatColor.ITALIC
-                                                                             + "Buy more " + needed + " claim blocks for "
-                                                                             + formatMoney + ".")));
-            player.spigot().sendMessage(cb.create());
-            plugin.sessions.of(player).setClaimGrowSnippet(new Session.ClaimGrowSnippet(player.getWorld().getName(), x, z, claim.getId()));
+            Component tooltip = Component.join(JoinConfiguration.separator(Component.newline()),
+                                               Component.text("/claim buy " + needed, NamedTextColor.YELLOW),
+                                               Component.text("Buy more " + needed + " claim blocks", NamedTextColor.GRAY),
+                                               Component.text("for ", NamedTextColor.GRAY)
+                                               .append(Component.text(formatMoney, NamedTextColor.GOLD)));
+            ComponentLike message = Component.text().color(NamedTextColor.YELLOW)
+                .append(Component.text(needed + " more claim blocks required. "))
+                .append(Component.text("[Buy More]", NamedTextColor.GRAY)
+                        .clickEvent(ClickEvent.runCommand("/claim buy " + needed))
+                        .hoverEvent(HoverEvent.showText(tooltip)));
+            player.sendMessage(message);
+            Session.ClaimGrowSnippet snippet = new Session.ClaimGrowSnippet(player.getWorld().getName(), x, z, claim.getId());
+            plugin.sessions.of(player).setClaimGrowSnippet(snippet);
             return true;
         }
         for (Claim other : plugin.getClaims()) {
@@ -665,7 +662,7 @@ public final class ClaimCommand extends AbstractCommand<HomePlugin> {
         }
         claim.setArea(newArea);
         claim.saveToDatabase();
-        player.sendMessage(ChatColor.BLUE + "Grew your claim to where you are standing");
+        player.sendMessage(Component.text("Grew your claim to where you are standing", NamedTextColor.GREEN));
         plugin.highlightClaim(claim, player);
         return true;
     }
@@ -700,7 +697,7 @@ public final class ClaimCommand extends AbstractCommand<HomePlugin> {
         Area newArea = new Area(ax, ay, bx, by);
         claim.setArea(newArea);
         claim.saveToDatabase();
-        player.sendMessage(ChatColor.BLUE + "Shrunk your claim to where you are standing");
+        player.sendMessage(Component.text("Shrunk your claim to where you are standing", NamedTextColor.GREEN));
         plugin.highlightClaim(claim, player);
         return true;
     }
@@ -726,42 +723,38 @@ public final class ClaimCommand extends AbstractCommand<HomePlugin> {
             }
         }
         plugin.setMetadata(player, plugin.META_ABANDON, claim.getId());
-        BaseComponent[] txt = net.md_5.bungee.api.chat.TextComponent
-            .fromLegacyText("Really delete this claim? All claim blocks will be lost.",
-                            ChatColor.WHITE);
-        player.spigot().sendMessage(txt);
-        ComponentBuilder cb = new ComponentBuilder("");
-        cb.append("This cannot be undone! ").color(ChatColor.RED);
-        cb.append("[Confirm]").color(ChatColor.YELLOW);
-        cb.event(new net.md_5.bungee.api.chat.ClickEvent(net.md_5.bungee.api.chat.ClickEvent.Action.RUN_COMMAND, "/claim confirm " + claim.getId()));
-        txt = net.md_5.bungee.api.chat.TextComponent.fromLegacyText(ChatColor.YELLOW + "Confirm claim removal.");
-        cb.event(new net.md_5.bungee.api.chat.HoverEvent(net.md_5.bungee.api.chat.HoverEvent.Action.SHOW_TEXT, txt));
-        cb.append(" ").reset();
-        cb.append("[Cancel]").color(ChatColor.RED);
-        cb.event(new net.md_5.bungee.api.chat.ClickEvent(net.md_5.bungee.api.chat.ClickEvent.Action.RUN_COMMAND, "/claim cancel"));
-        txt = net.md_5.bungee.api.chat.TextComponent.fromLegacyText(ChatColor.RED + "Cancel claim removal.");
-        cb.event(new net.md_5.bungee.api.chat.HoverEvent(net.md_5.bungee.api.chat.HoverEvent.Action.SHOW_TEXT, txt));
-        player.spigot().sendMessage(cb.create());
+        ComponentLike message = Component.text().color(NamedTextColor.DARK_RED)
+            .append(Component.text("Really delete this claim? All claim blocks will be lost."))
+            .append(Component.newline())
+            .append(Component.text("This cannot be undone! "))
+            .append(Component.text("[Confirm]", NamedTextColor.RED)
+                    .clickEvent(ClickEvent.runCommand("/claim confirm " + claim.getId()))
+                    .hoverEvent(HoverEvent.showText(Component.text("Confirm Claim Abandonment", NamedTextColor.RED))))
+            .append(Component.space())
+            .append(Component.text("[Cancel]", NamedTextColor.GREEN)
+                    .clickEvent(ClickEvent.runCommand("/claim cancel"))
+                    .hoverEvent(HoverEvent.showText(Component.text("Cancel Claim Abandonment", NamedTextColor.GREEN))));
+        player.sendMessage(message);
         return true;
     }
 
     public Component makeClaimInfo(Player player, Claim claim) {
         List<Component> lines = new ArrayList<>();
         if (claim.getName() != null) {
-            lines.add(TextComponent.ofChildren(new Component[] {
+            lines.add(Component.join(JoinConfiguration.noSeparators(), new Component[] {
                         Component.text("Name ", NamedTextColor.GRAY),
                         Component.text(claim.getName(), NamedTextColor.WHITE),
                     }));
         }
-        lines.add(TextComponent.ofChildren(new Component[] {
+        lines.add(Component.join(JoinConfiguration.noSeparators(), new Component[] {
                     Component.text("Owner ", NamedTextColor.GRAY),
                     Component.text(claim.getOwnerName(), NamedTextColor.WHITE),
                 }));
-        lines.add(TextComponent.ofChildren(new Component[] {
+        lines.add(Component.join(JoinConfiguration.noSeparators(), new Component[] {
                     Component.text("Location ", NamedTextColor.GRAY),
                     Component.text(plugin.worldDisplayName(claim.getWorld() + " " + claim.centerX + "," + claim.centerY)),
                 }));
-        lines.add(TextComponent.ofChildren(new Component[] {
+        lines.add(Component.join(JoinConfiguration.noSeparators(), new Component[] {
                     Component.text("Size ", NamedTextColor.GRAY),
                     Component.text("" + claim.getArea().width()),
                     Component.text("x", NamedTextColor.GRAY),
@@ -781,7 +774,7 @@ public final class ClaimCommand extends AbstractCommand<HomePlugin> {
                 : Component.text(trustType.displayName + " Trust ", NamedTextColor.GRAY);
             lines.add(Component.text().color(trustType.isBan() ? NamedTextColor.RED : NamedTextColor.WHITE)
                       .append(header)
-                      .append(Component.join(Component.text(", ", NamedTextColor.GRAY),
+                      .append(Component.join(JoinConfiguration.separator(Component.text(", ", NamedTextColor.GRAY)),
                                              list.stream()
                                              .map(PlayerCache::getName)
                                              .sorted()
@@ -792,7 +785,7 @@ public final class ClaimCommand extends AbstractCommand<HomePlugin> {
         // Subclaims
         List<Subclaim> subclaims = claim.getSubclaims(player.getWorld());
         if (!subclaims.isEmpty()) {
-            lines.add(TextComponent.ofChildren(new Component[] {
+            lines.add(Component.join(JoinConfiguration.noSeparators(), new Component[] {
                         Component.text("Subclaims ", NamedTextColor.GRAY),
                         Component.text("" + subclaims.size(), NamedTextColor.WHITE),
                     }));
@@ -819,12 +812,12 @@ public final class ClaimCommand extends AbstractCommand<HomePlugin> {
                                             (setting.isAdminOnly() ? NamedTextColor.DARK_RED : valueColor)));
         }
         if (settingsList.isEmpty()) {
-            lines.add(TextComponent.ofChildren(new Component[] {
+            lines.add(Component.join(JoinConfiguration.noSeparators(), new Component[] {
                         Component.text("Settings ", NamedTextColor.GRAY),
-                        Component.join(Component.text(" "), settingsList),
+                        Component.join(JoinConfiguration.separator(Component.text(" ")), settingsList),
                     }));
         }
-        return Component.join(Component.newline(), lines);
+        return Component.join(JoinConfiguration.separator(Component.newline()), lines);
     }
 
     private boolean list(Player player, String[] args) {
@@ -834,9 +827,9 @@ public final class ClaimCommand extends AbstractCommand<HomePlugin> {
             throw new CommandWarn("No claims to show");
         }
         int ci = 0;
-        player.sendMessage(PlayerCommand.frame(playerClaims.size() > 1
-                                               ? "You have " + playerClaims.size() + " claims"
-                                               : "You have one claim"));
+        player.sendMessage(Util.frame(playerClaims.size() > 1
+                                      ? "You have " + playerClaims.size() + " claims"
+                                      : "You have one claim"));
         final int pageCount = (playerClaims.size() - 1) / pageLen + 1;
         List<Component> pages = new ArrayList<>(pageCount);
         for (int pageIndex = 0; pageIndex < pageCount; pageIndex += 1) {
@@ -855,7 +848,7 @@ public final class ClaimCommand extends AbstractCommand<HomePlugin> {
                           .hoverEvent(HoverEvent.showText(makeClaimInfo(player, claim)))
                           .build());
             }
-            pages.add(Component.join(Component.newline(), lines));
+            pages.add(Component.join(JoinConfiguration.separator(Component.newline()), lines));
         }
         if (pages.size() == 1) {
             player.sendMessage(pages.get(0));
@@ -877,20 +870,18 @@ public final class ClaimCommand extends AbstractCommand<HomePlugin> {
         if (playerClaims.isEmpty()) {
             throw new CommandWarn("No claims to show");
         }
-        ComponentBuilder cb = new ComponentBuilder("");
-        cb.append("Invited").color(ChatColor.GRAY);
+        TextComponent.Builder message = Component.text();
+        message.append(Component.text("Invited", NamedTextColor.GRAY));
         for (Claim claim : playerClaims) {
             String claimName = claim.getName() != null ? claim.getName() : claim.getOwnerName();
-            cb.append("  ");
-            cb.append("[" + claimName + "]").color(ChatColor.GREEN);
-            cb.event(new net.md_5.bungee.api.chat.ClickEvent(net.md_5.bungee.api.chat.ClickEvent.Action.RUN_COMMAND,
-                                                             "/claim info " + claim.getId()));
-            BaseComponent[] txt = net.md_5.bungee.api.chat.TextComponent
-                .fromLegacyText(ChatColor.GREEN + claim.getOwnerName()
-                                + " invited you to this claim.");
-            cb.event(new net.md_5.bungee.api.chat.HoverEvent(net.md_5.bungee.api.chat.HoverEvent.Action.SHOW_TEXT, txt));
+            message.append(Component.space());
+            message.append(Component.text("[" + claimName + "]", NamedTextColor.GREEN)
+                           .clickEvent(ClickEvent.runCommand("/claim info " + claim.getId()))
+                           .hoverEvent(HoverEvent.showText(Component.text(claim.getOwnerName()
+                                                                          + " invited you to this claim",
+                                                                          NamedTextColor.GREEN))));
         }
-        player.spigot().sendMessage(cb.create());
+        player.sendMessage(message);
         return true;
     }
 

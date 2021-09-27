@@ -4,12 +4,12 @@ import com.cavetale.core.event.player.PluginPlayerEvent;
 import java.util.List;
 import java.util.function.Consumer;
 import lombok.RequiredArgsConstructor;
-import net.md_5.bungee.api.ChatColor;
-import net.md_5.bungee.api.chat.BaseComponent;
-import net.md_5.bungee.api.chat.ClickEvent;
-import net.md_5.bungee.api.chat.ComponentBuilder;
-import net.md_5.bungee.api.chat.HoverEvent;
-import net.md_5.bungee.api.chat.TextComponent;
+import net.kyori.adventure.text.Component;
+import net.kyori.adventure.text.ComponentLike;
+import net.kyori.adventure.text.JoinConfiguration;
+import net.kyori.adventure.text.event.ClickEvent;
+import net.kyori.adventure.text.event.HoverEvent;
+import net.kyori.adventure.text.format.NamedTextColor;
 import org.bukkit.Chunk;
 import org.bukkit.Location;
 import org.bukkit.World;
@@ -37,14 +37,14 @@ final class WildTask {
             long cooldown = (long) settings.wildCooldown;
             long remain = cooldown - since;
             if (remain > 0) {
-                player.sendMessage(ChatColor.RED + "Please wait "
-                                   + remain + " more seconds");
+                player.sendMessage(Component.text("Please wait " + remain + " more seconds",
+                                                  NamedTextColor.RED));
                 return;
             }
         }
         plugin.setMetadata(player, META_COOLDOWN_WILD, now);
-        player.sendMessage(ChatColor.YELLOW
-                           + "Looking for an unclaimed place to build...");
+        player.sendMessage(Component.text("Looking for an unclaimed place to build...",
+                                          NamedTextColor.YELLOW));
         plugin.getServer().getScheduler().runTask(plugin, this::findPlaceToBuild);
     }
 
@@ -54,15 +54,15 @@ final class WildTask {
         long now = System.nanoTime() / NANOS;
         plugin.setMetadata(player, META_COOLDOWN_WILD, now);
         if (attempts++ > 100) {
-            player.sendMessage(ChatColor.RED
-                               + "Could not find a place to build. Please try again");
+            player.sendMessage(Component.text("Could not find a place to build. Please try again",
+                                              NamedTextColor.RED));
             return;
         }
         // Determine center and border
         if (!plugin.isHomeWorld(world)) {
             plugin.getLogger().warning("WildTask: World not found: " + world.getName());
-            player.sendMessage(ChatColor.RED
-                               + "Something went wrong. Please contact an administrator.");
+            player.sendMessage(Component.text("Something went wrong. Please contact an administrator",
+                                              NamedTextColor.RED));
         }
         // Borders
         WorldSettings settings = plugin.worldSettings.get(world.getName());
@@ -84,8 +84,8 @@ final class WildTask {
             }
         }
         if (!foundSpot) {
-            player.sendMessage(ChatColor.RED
-                               + "Could not find a place to build. Please try again");
+            player.sendMessage(Component.text("Could not find a place to build. Please try again",
+                                              NamedTextColor.RED));
         }
         world.getChunkAtAsync(blockX >> 4, blockZ >> 4, (Consumer<Chunk>) this::onChunkLoaded);
     }
@@ -119,29 +119,30 @@ final class WildTask {
         location.setYaw(ploc.getYaw());
         // Teleport, notify, and set cooldown
         plugin.warpTo(player, location, () -> {
-                ComponentBuilder cb = new ComponentBuilder("");
-                cb.append("Found you a place to build.").color(ChatColor.WHITE);
-                player.spigot().sendMessage(cb.create());
-                cb = new ComponentBuilder("");
-                cb.append("Click here: ").color(ChatColor.WHITE);
-                cb.append("[Claim]").color(ChatColor.GREEN);
-                cb.event(new ClickEvent(ClickEvent.Action.SUGGEST_COMMAND, "/claim new"));
-                String endl = "\n" + ChatColor.WHITE + ChatColor.ITALIC;
-                BaseComponent[] tooltip = TextComponent
-                    .fromLegacyText(ChatColor.GREEN + "/claim new"
-                                    + endl + "Create a claim and set a home"
-                                    + endl + "at this location so you can"
-                                    + endl + "build and return any time.");
-                cb.event(new HoverEvent(HoverEvent.Action.SHOW_TEXT, tooltip));
-                cb.append(" ", ComponentBuilder.FormatRetention.NONE).reset();
-                cb.append("or here: ").color(ChatColor.WHITE);
-                cb.append("[Retry]").color(ChatColor.YELLOW);
-                cb.event(new ClickEvent(ClickEvent.Action.SUGGEST_COMMAND, "/wild"));
-                tooltip = TextComponent
-                    .fromLegacyText(ChatColor.GREEN + "/wild"
-                                    + endl + "Find another place to build.");
-                cb.event(new HoverEvent(HoverEvent.Action.SHOW_TEXT, tooltip));
-                player.spigot().sendMessage(cb.create());
+                Component claimNewTooltip = Component
+                    .join(JoinConfiguration.separator(Component.newline()),
+                          Component.text("/claim new", NamedTextColor.GREEN),
+                          Component.text("Create a claim and set a home"),
+                          Component.text("at this location so you can"),
+                          Component.text("build and return any time."))
+                    .color(NamedTextColor.GRAY);
+                Component wildTooltip = Component
+                    .join(JoinConfiguration.separator(Component.newline()),
+                          Component.text("/wild", NamedTextColor.GREEN),
+                          Component.text("Find another place to build"))
+                    .color(NamedTextColor.GRAY);
+                ComponentLike message = Component.text().color(NamedTextColor.WHITE)
+                    .append(Component.text("Found you a place to build."))
+                    .append(Component.newline())
+                    .append(Component.text("Do you like it? ", NamedTextColor.GRAY))
+                    .append(Component.text("[Claim]", NamedTextColor.GREEN)
+                            .clickEvent(ClickEvent.suggestCommand("/claim new"))
+                            .hoverEvent(HoverEvent.showText(claimNewTooltip)))
+                    .append(Component.text(" or "))
+                    .append(Component.text("[Try Again]", NamedTextColor.AQUA)
+                            .clickEvent(ClickEvent.suggestCommand("/wild"))
+                            .hoverEvent(HoverEvent.showText(wildTooltip)));
+                player.sendMessage(message);
                 PluginPlayerEvent.Name.USE_WILD.call(plugin, player);
             });
     }

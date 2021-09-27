@@ -10,8 +10,8 @@ import java.util.Iterator;
 import java.util.Objects;
 import lombok.RequiredArgsConstructor;
 import net.kyori.adventure.text.Component;
+import net.kyori.adventure.text.format.NamedTextColor;
 import net.kyori.adventure.text.format.TextColor;
-import net.md_5.bungee.api.ChatColor;
 import org.bukkit.Bukkit;
 import org.bukkit.Location;
 import org.bukkit.Material;
@@ -515,7 +515,7 @@ final class ClaimListener implements Listener {
         if (block.getY() > 40) return false;
         if (!claim.canBuild(player, BlockVector.of(block))) return false;
         if (block.getChunk().isSlimeChunk()) {
-            player.sendMessage(ChatColor.GREEN + "Slime chunk!");
+            player.sendMessage(Component.text("Slime chunk!", NamedTextColor.GREEN));
             Location loc = block.getRelative(event.getBlockFace())
                 .getLocation().add(0.5, 0.05, 0.5);
             player.playSound(loc, Sound.BLOCK_SLIME_BLOCK_BREAK,
@@ -523,7 +523,7 @@ final class ClaimListener implements Listener {
             player.spawnParticle(Particle.SLIME, loc, 8,
                                  0.25, 0.0, 0.25, 0);
         } else {
-            player.sendMessage(ChatColor.RED + "Not a slime chunk.");
+            player.sendMessage(Component.text("Not a slime chunk!", NamedTextColor.RED));
         }
         return true;
     }
@@ -947,10 +947,6 @@ final class ClaimListener implements Listener {
             + " " + loc.getBlockY()
             + " " + loc.getBlockZ();
         plugin.getLogger().warning(msg);
-        for (Player player : plugin.getServer().getOnlinePlayers()) {
-            if (!(player.hasPermission("home.admin"))) continue;
-            player.sendMessage(ChatColor.RED + "[Home] " + msg);
-        }
     }
 
     @EventHandler(ignoreCancelled = true, priority = EventPriority.LOW)

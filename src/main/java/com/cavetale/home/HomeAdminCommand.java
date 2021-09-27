@@ -6,7 +6,8 @@ import java.util.List;
 import java.util.UUID;
 import java.util.stream.Collectors;
 import lombok.RequiredArgsConstructor;
-import net.md_5.bungee.api.ChatColor;
+import net.kyori.adventure.text.Component;
+import net.kyori.adventure.text.format.NamedTextColor;
 import org.bukkit.Location;
 import org.bukkit.command.Command;
 import org.bukkit.command.CommandSender;
@@ -33,10 +34,10 @@ public final class HomeAdminCommand implements TabExecutor {
             if (args.length == 1) {
                 if (plugin.doesIgnoreClaims(player)) {
                     plugin.ignoreClaims(player, false);
-                    player.sendMessage(ChatColor.YELLOW + "Respecting home and claim permissions");
+                    player.sendMessage(Component.text("Respecting home and claim permissions", NamedTextColor.YELLOW));
                 } else {
                     plugin.ignoreClaims(player, true);
-                    player.sendMessage(ChatColor.YELLOW + "Ignoring home and claim permissions");
+                    player.sendMessage(Component.text("Ignoring home and claim permissions", NamedTextColor.YELLOW));
                 }
                 return true;
             }
@@ -69,22 +70,23 @@ public final class HomeAdminCommand implements TabExecutor {
                 }
                 Claim claim = plugin.getClaimAt(player.getLocation());
                 if (claim == null) {
-                    player.sendMessage(ChatColor.RED + "No claim here.");
+                    player.sendMessage(Component.text("No claim here.", NamedTextColor.RED));
                     return true;
                 }
                 int blocks;
                 try {
                     blocks = Integer.parseInt(args[1]);
                 } catch (NumberFormatException nfe) {
-                    player.sendMessage(ChatColor.RED + "Invalid amount: " + args[1]);
+                    player.sendMessage(Component.text("Invalid amount: " + args[1], NamedTextColor.RED));
                     return true;
                 }
                 int newblocks = claim.getBlocks() + blocks;
                 if (newblocks < 0) newblocks = 0;
                 claim.setBlocks(newblocks);
                 claim.saveToDatabase();
-                player.sendMessage(ChatColor.YELLOW + "Claim owned by " + claim.getOwnerName()
-                                   + " now has " + newblocks + " claim blocks.");
+                player.sendMessage(Component.text("Claim owned by " + claim.getOwnerName()
+                                                  + " now has " + newblocks + " claim blocks.",
+                                                  NamedTextColor.YELLOW));
                 return true;
             }
             break;
@@ -96,12 +98,12 @@ public final class HomeAdminCommand implements TabExecutor {
                 }
                 Claim claim = plugin.getClaimAt(player.getLocation());
                 if (claim == null) {
-                    player.sendMessage(ChatColor.RED + "No claim here.");
+                    player.sendMessage(Component.text("No claim here.", NamedTextColor.RED));
                     return true;
                 }
                 plugin.deleteClaim(claim);
-                player.sendMessage(ChatColor.YELLOW + "Deleted claim owned by "
-                                   + claim.getOwnerName() + ".");
+                player.sendMessage(Component.text("Deleted claim owned by " + claim.getOwnerName(),
+                                                  NamedTextColor.YELLOW));
                 return true;
             }
             break;
@@ -112,16 +114,16 @@ public final class HomeAdminCommand implements TabExecutor {
                                  loc.getBlockX() + 32, loc.getBlockZ() + 32);
             for (Claim other : plugin.findClaimsInWorld(player.getWorld().getName())) {
                 if (other.area.contains(area)) {
-                    sender.sendMessage(ChatColor.RED
-                                       + "This claim would intersect an existing claim owned by "
-                                       + other.getOwnerName() + ".");
+                    sender.sendMessage(Component.text("This claim would intersect an existing claim owned by "
+                                                      + other.getOwnerName() + ".",
+                                                      NamedTextColor.RED));
                     return true;
                 }
             }
             Claim claim = new Claim(plugin, Claim.ADMIN_ID, player.getWorld().getName(), area);
             plugin.getClaims().add(claim);
             claim.saveToDatabase();
-            sender.sendMessage(ChatColor.YELLOW + "Admin claim created");
+            sender.sendMessage(Component.text("Admin claim created", NamedTextColor.YELLOW));
             plugin.highlightClaim(claim, player);
             return true;
         }
@@ -134,26 +136,27 @@ public final class HomeAdminCommand implements TabExecutor {
             } else {
                 targetId = PlayerCache.uuidForName(targetName);
                 if (targetId == null) {
-                    sender.sendMessage(ChatColor.RED + "Player not found: " + targetName);
+                    sender.sendMessage(Component.text("Player not found: " + targetName, NamedTextColor.RED));
                     return true;
                 }
             }
             Claim claim = plugin.getClaimAt(player.getLocation());
             if (claim == null) {
-                sender.sendMessage(ChatColor.RED + "There is no claim here.");
+                sender.sendMessage(Component.text("There is no claim here.", NamedTextColor.RED));
                 return true;
             }
             claim.setOwner(targetId);
             claim.saveToDatabase();
-            sender.sendMessage(ChatColor.YELLOW + "Claim transferred to "
-                               + claim.getOwnerName() + ".");
+            sender.sendMessage(Component.text("Claim transferred to "
+                                              + claim.getOwnerName() + ".",
+                                              NamedTextColor.YELLOW));
             return true;
         }
         case "claiminfo": {
             if (args.length != 1 || player == null) return false;
             Claim claim = plugin.getClaimAt(player.getLocation());
             if (claim == null) {
-                sender.sendMessage(ChatColor.RED + "No claim here.");
+                sender.sendMessage(Component.text("No claim here.", NamedTextColor.RED));
                 return true;
             }
             sender.sendMessage("" + claim);
@@ -186,22 +189,23 @@ public final class HomeAdminCommand implements TabExecutor {
         String name = args[0];
         UUID uuid = PlayerCache.uuidForName(name);
         if (uuid == null) {
-            sender.sendMessage(ChatColor.RED + "Player not found: " + name);
+            sender.sendMessage(Component.text("Player not found: " + name, NamedTextColor.RED));
             return true;
         }
         name = PlayerCache.nameForUuid(uuid);
         List<Claim> claims = plugin.findClaims(uuid);
         int count = claims.size();
-        sender.sendMessage(ChatColor.YELLOW + name + " has " + count
-                           + (count == 1 ? " claim:" : " claims:"));
+        sender.sendMessage(Component.text(name + " has " + count
+                                          + (count == 1 ? " claim:" : " claims:"),
+                                          NamedTextColor.YELLOW));
         int id = 0;
         for (Claim claim : claims) {
-            String brief = "-" + ChatColor.YELLOW
+            String brief = "-"
                 + "id=" + claim.id
                 + (" loc=" + claim.world + ":"
                    + claim.area.centerX() + "," + claim.area.centerY())
                 + " blocks=" + claim.blocks;
-            sender.sendMessage(brief);
+            sender.sendMessage(Component.text(brief, NamedTextColor.YELLOW));
         }
         return true;
     }
@@ -215,23 +219,24 @@ public final class HomeAdminCommand implements TabExecutor {
         String name = args[0];
         UUID uuid = PlayerCache.uuidForName(name);
         if (uuid == null) {
-            sender.sendMessage(ChatColor.RED + "Player not found: " + name);
+            sender.sendMessage(Component.text("Player not found: " + name, NamedTextColor.RED));
             return true;
         }
         name = PlayerCache.nameForUuid(uuid);
         List<Home> homes = plugin.findHomes(uuid);
         int count = homes.size();
-        sender.sendMessage(ChatColor.YELLOW + name + " has " + count
-                           + (count == 1 ? " home:" : " homes:"));
+        sender.sendMessage(Component.text(name + " has " + count
+                                          + (count == 1 ? " home:" : " homes:"),
+                                          NamedTextColor.YELLOW));
         for (Home home : homes) {
-            String brief = "-" + ChatColor.YELLOW
+            String brief = "-"
                 + "id=" + home.id
                 + " name=" + (home.name != null ? home.name : "-")
                 + (" loc=" + home.world + ":"
                    + blk(home.x) + "," + blk(home.y) + "," + blk(home.z))
                 + " public=" + (home.publicName != null
                                  ? home.publicName : "-");
-            sender.sendMessage(brief);
+            sender.sendMessage(Component.text(brief, NamedTextColor.YELLOW));
         }
         return true;
     }

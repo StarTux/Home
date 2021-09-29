@@ -541,7 +541,7 @@ final class ClaimListener implements Listener {
 
     @EventHandler(ignoreCancelled = true, priority = EventPriority.LOW)
     public void onEntityPlace(EntityPlaceEvent event) {
-        checkPlayerAction(event.getPlayer(), event.getBlock(), TrustType.BUILD, null, true);
+        checkPlayerAction(event.getPlayer(), event.getBlock(), TrustType.BUILD, event, true);
     }
 
     @EventHandler(ignoreCancelled = true, priority = EventPriority.LOW)

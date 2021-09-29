@@ -378,6 +378,9 @@ public final class HomesCommand extends AbstractCommand<HomePlugin> {
         if (targetId == null) {
             throw new CommandWarn("Player not found: " + targetName);
         }
+        if (player.getUniqueId().equals(targetId)) {
+            throw new CommandWarn("You cannot invite yourself!");
+        }
         String homeName = args.length >= 2 ? args[1] : null;
         Home home = this.plugin.findHome(playerId, homeName);
         if (home == null) {

@@ -663,6 +663,10 @@ final class ClaimListener implements Listener {
         if (!plugin.isHomeWorld(event.getEntity().getWorld())) return;
         Player player = getPlayerDamager(event.getEntity());
         if (player != null) {
+            if (event.getBlock().getType() == Material.BIG_DRIPLEAF
+                && event.getTo() == Material.BIG_DRIPLEAF) {
+                return;
+            }
             boolean melee = player.equals(event.getEntity());
             checkPlayerAction(player, event.getBlock(), TrustType.BUILD, event, melee);
         } else if (event.getEntity().getType() == EntityType.ENDERMAN) {

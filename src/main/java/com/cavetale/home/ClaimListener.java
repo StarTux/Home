@@ -873,6 +873,14 @@ final class ClaimListener implements Listener {
         case INVENTORY: // Lectern
             checkPlayerAction(query.getPlayer(), query.getBlock(), TrustType.CONTAINER, query, false);
             break;
+        case FLY: {
+            Claim claim = plugin.getClaimAt(query.getBlock());
+            if (claim == null) return;
+            if (!claim.getBoolSetting(Claim.Setting.ELYTRA)) {
+                query.setCancelled(true);
+            }
+            break;
+        }
         case BUILD:
         case PLACE_ENTITY:
         case SPAWN_MOB: // PocketMob (before the attempt)

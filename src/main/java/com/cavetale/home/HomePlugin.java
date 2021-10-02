@@ -1,5 +1,6 @@
 package com.cavetale.home;
 
+import com.cavetale.core.event.player.PluginPlayerQuery;
 import com.cavetale.home.struct.BlockVector;
 import com.winthier.sql.SQLDatabase;
 import java.time.Duration;
@@ -185,7 +186,8 @@ public final class HomePlugin extends JavaPlugin {
         }
         int x = loc.getBlockX();
         int z = loc.getBlockZ();
-        if (player.isGliding() && ticks % 10 == 0) {
+        boolean flying = player.isGliding() || PluginPlayerQuery.Name.IS_FLYING.call(this, player);
+        if (flying && ticks % 10 == 0) {
             for (Claim claim : claims) {
                 if (claim.isInWorld(worldName) && claim.getArea().isWithin(x, z, 64) && !claim.getBoolSetting(Claim.Setting.ELYTRA)) {
                     Title title = Title.title(Component.text("WARNING", NamedTextColor.RED, TextDecoration.BOLD),

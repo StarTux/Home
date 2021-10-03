@@ -24,6 +24,7 @@ import org.bukkit.block.Block;
 import org.bukkit.block.BlockFace;
 import org.bukkit.block.data.type.RespawnAnchor;
 import org.bukkit.entity.AnimalTamer;
+import org.bukkit.entity.Animals;
 import org.bukkit.entity.Entity;
 import org.bukkit.entity.EntityType;
 import org.bukkit.entity.LivingEntity;
@@ -410,6 +411,7 @@ final class ClaimListener implements Listener {
         final Player player = (Player) event.getEntity();
         if (plugin.doesIgnoreClaims(player)) return;
         final Entity mount = event.getMount();
+        if (!(mount instanceof Animals)) return; // quick and dirty chair fix
         if (isOwner(player, mount)) return;
         checkPlayerAction(player, mount.getLocation().getBlock(), TrustType.INTERACT, event, true);
     }

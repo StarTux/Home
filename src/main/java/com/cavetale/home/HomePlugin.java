@@ -186,7 +186,7 @@ public final class HomePlugin extends JavaPlugin {
         }
         int x = loc.getBlockX();
         int z = loc.getBlockZ();
-        boolean flying = player.isGliding() || PluginPlayerQuery.Name.IS_FLYING.call(this, player);
+        boolean flying = player.isGliding() || PluginPlayerQuery.Name.IS_FLYING.call(this, player, false);
         if (flying && ticks % 10 == 0) {
             for (Claim claim : claims) {
                 if (claim.isInWorld(worldName) && claim.getArea().isWithin(x, z, 64) && !claim.getBoolSetting(Claim.Setting.ELYTRA)) {

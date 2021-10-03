@@ -186,18 +186,20 @@ public final class HomePlugin extends JavaPlugin {
         }
         int x = loc.getBlockX();
         int z = loc.getBlockZ();
-        boolean flying = player.isGliding() || PluginPlayerQuery.Name.IS_FLYING.call(this, player, false);
-        if (flying && ticks % 10 == 0) {
-            for (Claim claim : claims) {
-                if (claim.isInWorld(worldName) && claim.getArea().isWithin(x, z, 64) && !claim.getBoolSetting(Claim.Setting.ELYTRA)) {
-                    Title title = Title.title(Component.text("WARNING", NamedTextColor.RED, TextDecoration.BOLD),
-                                              Component.text("Approaching No-Fly Zone!", NamedTextColor.RED, TextDecoration.BOLD),
-                                              Title.Times.of(Duration.ZERO, Duration.ofMillis(550), Duration.ZERO));
-                    player.showTitle(title);
-                    player.playSound(player.getEyeLocation(),
-                                     Sound.ENTITY_ARROW_HIT_PLAYER, SoundCategory.MASTER,
-                                     1.0f, 2.0f);
-                    break;
+        if (ticks % 10 == 0) {
+            boolean flying = player.isGliding() || PluginPlayerQuery.Name.IS_FLYING.call(this, player, false);
+            if (flying) {
+                for (Claim claim : claims) {
+                    if (claim.isInWorld(worldName) && claim.getArea().isWithin(x, z, 64) && !claim.getBoolSetting(Claim.Setting.ELYTRA)) {
+                        Title title = Title.title(Component.text("WARNING", NamedTextColor.RED, TextDecoration.BOLD),
+                                                  Component.text("Approaching No-Fly Zone!", NamedTextColor.RED, TextDecoration.BOLD),
+                                                  Title.Times.of(Duration.ZERO, Duration.ofMillis(550), Duration.ZERO));
+                        player.showTitle(title);
+                        player.playSound(player.getEyeLocation(),
+                                         Sound.ENTITY_ARROW_HIT_PLAYER, SoundCategory.MASTER,
+                                         1.0f, 2.0f);
+                        break;
+                    }
                 }
             }
         }

@@ -912,6 +912,7 @@ final class ClaimListener implements Listener {
             checkPlayerAction(player, block, TrustType.CONTAINER, query, false);
             break;
         case DAMAGE:
+        case IGNITE:
         case POTION:
         case CATCH:
         case OPEN:

@@ -71,6 +71,7 @@ final class Claim {
         SHOW_BORDERS("Show claim borders", true),
         ELYTRA("Allow flight", true),
         ENDER_PEARL("Allow ender teleport", true),
+        INHERITANCE("Subclaims inherit claim trust", true),
         // Admin only
         HIDDEN("Hide this claim", false),
         MOB_SPAWNING("Allow mob spawning", true);
@@ -209,11 +210,12 @@ final class Claim {
     public TrustType getTrustType(UUID uuid, BlockVector vec) {
         TrustType claimTrustType = getTrustType(uuid);
         if (claimTrustType.isBan()) return TrustType.BAN;
-        if (claimTrustType.isOwner()) return TrustType.OWNER;
+        if (claimTrustType.isCoOwner()) return claimTrustType;
         Subclaim subclaim = getSubclaimAt(vec);
-        return subclaim != null
+        if (subclaim == null) return claimTrustType;
+        return getBoolSetting(Setting.INHERITANCE)
             ? claimTrustType.max(subclaim.getTrustType(uuid))
-            : claimTrustType;
+            : subclaim.getTrustType(uuid);
     }
 
     public TrustType getTrustType(Player player, BlockVector vec) {

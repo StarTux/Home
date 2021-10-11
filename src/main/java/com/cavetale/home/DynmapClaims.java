@@ -7,6 +7,7 @@ import java.util.UUID;
 import java.util.stream.Collectors;
 import org.bukkit.Bukkit;
 import org.bukkit.plugin.Plugin;
+import org.bukkit.scheduler.BukkitTask;
 import org.dynmap.DynmapAPI;
 import org.dynmap.markers.AreaMarker;
 import org.dynmap.markers.MarkerAPI;
@@ -20,12 +21,32 @@ import org.dynmap.markers.MarkerSet;
 final class DynmapClaims {
     private final HomePlugin plugin;
     private static final String MARKER_SET = "home.claims";
+    private BukkitTask task;
 
     DynmapClaims(final HomePlugin plugin) {
         this.plugin = plugin;
     }
 
-    boolean update() {
+    public DynmapClaims enable() {
+        task = Bukkit.getScheduler().runTaskTimer(plugin, this::update, 200L, 200L);
+        return this;
+    }
+
+    public void disable() {
+        Plugin dplugin = Bukkit.getServer().getPluginManager().getPlugin("dynmap");
+        if (dplugin == null) return;
+        DynmapAPI dynmap = (DynmapAPI) dplugin;
+        MarkerAPI dmarker = dynmap.getMarkerAPI();
+        if (dmarker == null) return;
+        MarkerSet markerSet = dmarker.getMarkerSet(MARKER_SET);
+        if (markerSet != null) markerSet.deleteMarkerSet();
+    }
+
+    private void update() {
+        tryToUpdate();
+    }
+
+    private boolean tryToUpdate() {
         Plugin dplugin = Bukkit.getServer().getPluginManager().getPlugin("dynmap");
         if (dplugin == null) return false;
         if (!dplugin.isEnabled()) return false;
@@ -131,15 +152,5 @@ final class DynmapClaims {
             marker.setCornerLocations(x, z);
         }
         return marker;
-    }
-
-    void disable() {
-        Plugin dplugin = Bukkit.getServer().getPluginManager().getPlugin("dynmap");
-        if (dplugin == null) return;
-        DynmapAPI dynmap = (DynmapAPI) dplugin;
-        MarkerAPI dmarker = dynmap.getMarkerAPI();
-        if (dmarker == null) return;
-        MarkerSet markerSet = dmarker.getMarkerSet(MARKER_SET);
-        if (markerSet != null) markerSet.deleteMarkerSet();
     }
 }

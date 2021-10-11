@@ -310,7 +310,7 @@ final class ClaimListener implements Listener {
         Player damager = getPlayerDamager(event.getCombuster());
         if (damager == null) return;
         boolean melee = event.getCombuster().equals(damager);
-        if (damager.hasMetadata(plugin.META_IGNORE)) return;
+        if (plugin.doesIgnoreClaims(damager)) return;
         Entity damaged = event.getEntity();
         if (damaged instanceof Player) {
             // PVP
@@ -854,13 +854,11 @@ final class ClaimListener implements Listener {
         Player player = (Player) event.getEntity();
         Claim claim = plugin.getClaimAt(player.getLocation());
         if (claim == null) return;
-        if (!claim.getBoolSetting(Claim.Setting.ELYTRA)) {
-            if (event.isGliding()) {
-                plugin.sessions.of(player).notify(player, claim);
-                event.setCancelled(true);
-                plugin.getServer().getScheduler().runTask(plugin,
-                                                          () -> player.setGliding(false));
-            }
+        if (event.isGliding() && !claim.getBoolSetting(Claim.Setting.ELYTRA)) {
+            Component msg = Component.text("You cannot fly in this claim!", TextColor.color(0xFF0000));
+            plugin.sessions.of(player).notify(player, msg);
+            event.setCancelled(true);
+            plugin.getServer().getScheduler().runTask(plugin, () -> player.setGliding(false));
         }
     }
 

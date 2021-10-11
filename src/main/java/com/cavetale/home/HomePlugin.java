@@ -1,9 +1,7 @@
 package com.cavetale.home;
 
-import com.cavetale.core.event.player.PluginPlayerQuery;
 import com.cavetale.home.struct.BlockVector;
 import com.winthier.sql.SQLDatabase;
-import java.time.Duration;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashMap;
@@ -15,19 +13,14 @@ import java.util.UUID;
 import java.util.concurrent.ThreadLocalRandom;
 import java.util.function.BiConsumer;
 import java.util.function.Consumer;
+import java.util.logging.Level;
 import lombok.Getter;
-import lombok.Value;
 import net.kyori.adventure.text.Component;
 import net.kyori.adventure.text.format.NamedTextColor;
-import net.kyori.adventure.text.format.TextColor;
-import net.kyori.adventure.text.format.TextDecoration;
-import net.kyori.adventure.title.Title;
 import org.bukkit.Chunk;
 import org.bukkit.GameMode;
 import org.bukkit.Location;
 import org.bukkit.Particle;
-import org.bukkit.Sound;
-import org.bukkit.SoundCategory;
 import org.bukkit.World;
 import org.bukkit.block.Block;
 import org.bukkit.block.BlockFace;
@@ -43,11 +36,9 @@ import org.bukkit.plugin.java.JavaPlugin;
 public final class HomePlugin extends JavaPlugin {
     @Getter private static HomePlugin instance;
     // Globals
-    static final String META_LOCATION = "home.location";
     static final String META_BUY = "home.buyclaimblocks";
     static final String META_ABANDON = "home.abandonclaim";
     static final String META_NEWCLAIM = "home.newclaim";
-    static final String META_IGNORE = "home.ignore";
     private final boolean deleteOverlappingClaims = false;
     // Database
     SQLDatabase db;
@@ -64,10 +55,10 @@ public final class HomePlugin extends JavaPlugin {
     private MagicMapListener magicMapListener;
     private ClaimListener claimListener;
     // Utilty
-    long ticks;
+    protected long ticks;
     Random random = ThreadLocalRandom.current();
     // Interface
-    DynmapClaims dynmapClaims;
+    private DynmapClaims dynmapClaims;
     // Commands
     final HomeAdminCommand homeAdminCommand = new HomeAdminCommand(this);
     final ClaimCommand claimCommand = new ClaimCommand(this);
@@ -110,9 +101,7 @@ public final class HomePlugin extends JavaPlugin {
         loadFromConfig();
         loadFromDatabase();
         getServer().getScheduler().runTaskTimer(this, this::onTick, 1, 1);
-        if (getServer().getPluginManager().isPluginEnabled("dynmap")) {
-            enableDynmap();
-        }
+        enableDynmap();
         if (getServer().getPluginManager().isPluginEnabled("MagicMap")) {
             magicMapListener = new MagicMapListener(this).enable();
         }
@@ -123,157 +112,44 @@ public final class HomePlugin extends JavaPlugin {
         cachedClaimIndex = -1;
         claims.clear();
         homes.clear();
-        disableDynmap();
         db.waitForAsyncTask();
         db.close();
+        disableDynmap();
     }
 
-    // --- Inner classes for utility
-
-    @Value
-    class CachedLocation {
-        final String world;
-        final int x;
-        final int z;
-        final int claimId;
-    }
-
-    // --- Ticking
-
-    void onTick() {
-        ticks += 1;
+    private void onTick() {
         for (Player player : getServer().getOnlinePlayers()) {
-            tickPlayer(player);
+            sessions.of(player).tick(player);
         }
         for (World world : getServer().getWorlds()) {
             if (!(isHomeWorld(world))) continue;
-            if (world.getEnvironment() == World.Environment.NORMAL
-                && world.getTime() > 13000L && world.getTime() < 23000L) {
-                int total = 0;
-                int sleeping = 0;
+            tickHomeWorld(world);
+        }
+        ticks += 1;
+    }
+
+    private void tickHomeWorld(World world) {
+        if (world.getEnvironment() == World.Environment.NORMAL && !world.isDayTime()) {
+            int total = 0;
+            int sleeping = 0;
+            for (Player player : world.getPlayers()) {
+                if (player.isSleepingIgnored()) continue;
+                if (player.getGameMode() == GameMode.SPECTATOR) continue;
+                total += 1;
+                if (player.isDeeplySleeping()) {
+                    sleeping += 1;
+                }
+            }
+            int half = (total - 1) / 2 + 1;
+            if (total > 0 && sleeping > 0 && sleeping >= half) {
+                getLogger().info("Skipping night in " + world.getName());
+                world.setTime(0L);
                 for (Player player : world.getPlayers()) {
-                    if (player.isSleepingIgnored()) continue;
-                    if (player.getGameMode() == GameMode.SPECTATOR) continue;
-                    total += 1;
-                    if (player.isSleeping() && player.getSleepTicks() >= 100) {
-                        sleeping += 1;
-                    }
-                }
-                int half = (total - 1) / 2 + 1;
-                if (total > 0 && sleeping > 0 && sleeping >= half) {
-                    getLogger().info("Skipping night in " + world.getName());
-                    world.setTime(0L);
-                    for (Player player : world.getPlayers()) {
-                        // false = seSpawnLocation
-                        if (player.isSleeping()) player.wakeup(false);
-                    }
-                }
-            }
-        }
-        if ((ticks % 200L) == 0L) {
-            if (dynmapClaims != null) dynmapClaims.update();
-        }
-    }
-
-    private void tickPlayer(Player player) {
-        if (player.getGameMode() == GameMode.SPECTATOR) return;
-        Location loc = player.getLocation();
-        final World world = loc.getWorld();
-        final String worldName = world.getName();
-        if (!isHomeWorld(world)) {
-            player.removeMetadata(META_LOCATION, this);
-            return;
-        }
-        int x = loc.getBlockX();
-        int z = loc.getBlockZ();
-        if (ticks % 10 == 0) {
-            boolean flying = player.isGliding() || PluginPlayerQuery.Name.IS_FLYING.call(this, player, false);
-            if (flying) {
-                for (Claim claim : claims) {
-                    if (claim.isInWorld(worldName) && claim.getArea().isWithin(x, z, 64) && !claim.getBoolSetting(Claim.Setting.ELYTRA)) {
-                        Title title = Title.title(Component.text("WARNING", NamedTextColor.RED, TextDecoration.BOLD),
-                                                  Component.text("Approaching No-Fly Zone!", NamedTextColor.RED, TextDecoration.BOLD),
-                                                  Title.Times.of(Duration.ZERO, Duration.ofMillis(550), Duration.ZERO));
-                        player.showTitle(title);
-                        player.playSound(player.getEyeLocation(),
-                                         Sound.ENTITY_ARROW_HIT_PLAYER, SoundCategory.MASTER,
-                                         1.0f, 2.0f);
-                        break;
-                    }
-                }
-            }
-        }
-        Claim claim = getClaimAt(loc);
-        if (claim != null) {
-            if (claim.isOwner(player) && (ticks % 100) == 0
-                && claim.getBlocks() > claim.getArea().size()
-                && claim.getBoolSetting(Claim.Setting.AUTOGROW)
-                && autoGrowClaim(claim)) {
-                highlightClaim(claim, player);
-            }
-            if (player.isGliding() && !claim.getBoolSetting(Claim.Setting.ELYTRA)) {
-                player.setGliding(false);
-            }
-            if (claim.getTrustType(player).isBan()) {
-                claim.kick(player);
-                Component msg = Component.text("You cannot enter this claim!", TextColor.color(0xFF0000));
-                if (sessions.of(player).notify(player, msg)) {
-                    player.sendMessage(msg);
-                    highlightClaim(claim, player);
-                }
-                return;
-            }
-        }
-        CachedLocation cl1 = getMetadata(player, META_LOCATION, CachedLocation.class)
-            .orElse(null);
-        if (cl1 == null || !cl1.world.equals(worldName)
-            || cl1.x != loc.getBlockX() || cl1.z != loc.getBlockZ()) {
-            CachedLocation cl2 = new CachedLocation(worldName,
-                                                    loc.getBlockX(), loc.getBlockZ(),
-                                                    claim == null ? -1 : claim.getId());
-            if (cl1 == null) cl1 = cl2; // Taking the easy way out
-            player.setMetadata(META_LOCATION, new FixedMetadataValue(this, cl2));
-            if (claim == null) {
-                if (cl1.claimId != cl2.claimId) {
-                    Claim oldClaim = getClaimById(cl1.claimId);
-                    if (oldClaim != null) {
-                        if (!oldClaim.getBoolSetting(Claim.Setting.HIDDEN)) {
-                            if (oldClaim.isOwner(player)) {
-                                player.sendActionBar(Component.text("Leaving your claim",
-                                                                    NamedTextColor.GRAY));
-                            } else {
-                                player.sendActionBar(Component.text("Leaving " + oldClaim.getOwnerName() + "'s claim",
-                                                                    NamedTextColor.GRAY));
-                            }
-                            if (oldClaim.getBoolSetting(Claim.Setting.SHOW_BORDERS)) {
-                                highlightClaim(oldClaim, player);
-                            }
-                        }
-                    }
-                }
-            } else { // (claim != null)
-                if (cl1.claimId != cl2.claimId) {
-                    if (!claim.getBoolSetting(Claim.Setting.HIDDEN)) {
-                        String name = claim.getName();
-                        if (claim.isOwner(player)) {
-                            player.sendActionBar(Component.text("Entering your claim"
-                                                                + (claim.getName() != null ? " " + claim.getName() : ""),
-                                                                NamedTextColor.GRAY));
-                        } else {
-                            player.sendActionBar(Component.text("Entering " + claim.getOwnerName() + "'s claim"
-                                                                + (claim.getName() != null ? " " + claim.getName() : ""),
-                                                                NamedTextColor.GRAY));
-                        }
-                        if (claim.getBoolSetting(Claim.Setting.SHOW_BORDERS)) {
-                            highlightClaim(claim, player);
-                        }
-                    }
+                    if (player.isSleeping()) player.wakeup(false);
                 }
             }
         }
     }
-
-    // --- Player interactivity
 
     void findPlaceToBuild(Player player) {
         // Determine center and border
@@ -649,6 +525,7 @@ public final class HomePlugin extends JavaPlugin {
         int trustCount = db.find(ClaimTrust.class).eq("claimId", claimId).delete();
         int subclaimCount = db.find(Subclaim.SQLRow.class).eq("claimId", claimId).delete();
         claims.remove(claim);
+        claim.setDeleted(true);
         cachedClaimIndex = -1;
         getLogger().info("Deleted claim #" + claimId
                          + " claims=" + claimCount
@@ -681,26 +558,6 @@ public final class HomePlugin extends JavaPlugin {
         return sessions.of(player).isIgnoreClaims();
     }
 
-    // --- Dynmap
-
-    void enableDynmap() {
-        try {
-            dynmapClaims = new DynmapClaims(this);
-            dynmapClaims.update();
-        } catch (Exception e) {
-            getLogger().warning("Cancelling connection with dynmap.");
-            e.printStackTrace();
-            dynmapClaims = null;
-        }
-    }
-
-    void disableDynmap() {
-        if (dynmapClaims != null) {
-            dynmapClaims.disable();
-            dynmapClaims = null;
-        }
-    }
-
     void warpTo(Player player, final Location loc, Runnable task) {
         final World world = loc.getWorld();
         int cx = loc.getBlockX() >> 4;
@@ -718,5 +575,21 @@ public final class HomePlugin extends JavaPlugin {
         return claim != null
             ? claim.isPvPAllowed(blockVector)
             : false;
+    }
+
+    protected void enableDynmap() {
+        if (!getServer().getPluginManager().isPluginEnabled("dynmap")) return;
+        try {
+            dynmapClaims = new DynmapClaims(this).enable();
+        } catch (Exception e) {
+            getLogger().log(Level.SEVERE, "Enabling dynmap", e);
+            dynmapClaims = null;
+        }
+    }
+
+    protected void disableDynmap() {
+        if (dynmapClaims == null) return;
+        dynmapClaims.disable();
+        dynmapClaims = null;
     }
 }

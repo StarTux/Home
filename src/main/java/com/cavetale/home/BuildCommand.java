@@ -19,7 +19,7 @@ public final class BuildCommand extends AbstractCommand<HomePlugin> {
 
     protected boolean wild(Player player, String[] args) {
         if (args.length != 0) return false;
-        if (!player.hasMetadata(plugin.META_IGNORE) && !player.isOp()) {
+        if (!plugin.doesIgnoreClaims(player)) {
             if (plugin.hasAClaim(player.getUniqueId())) {
                 PluginPlayerEvent.Name.USE_WILD_WITH_CLAIM.call(plugin, player);
                 throw new CommandWarn("You already have a claim!");

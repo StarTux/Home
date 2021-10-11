@@ -43,6 +43,7 @@ final class Claim {
     protected int centerX;
     protected int centerY;
     protected String name;
+    protected boolean deleted;
 
     Claim(final HomePlugin plugin) {
         this.plugin = plugin;
@@ -61,15 +62,15 @@ final class Claim {
 
     enum Setting {
         PVP("PvP Combat", false),
-        EXPLOSIONS("Explosion Damage", false),
-        FIRE("Fire Burns Blocks", false),
-        AUTOGROW("Claim Grows Automatically", true),
+        EXPLOSIONS("Explosion damage", false),
+        FIRE("Fire burns blocks", false),
+        AUTOGROW("Claim grows automatically", true),
         PUBLIC("Anyone can build", false),
         PUBLIC_CONTAINER("Anyone can open containers", false),
-        PUBLIC_INVITE("Anyone can interact with blocks such as doors", false),
-        SHOW_BORDERS("Show claim borders as you enter or leave", true),
-        ELYTRA("Allow elytra flight", true),
-        ENDER_PEARL("Allow ender pearls", true),
+        PUBLIC_INVITE("Anyone can interact", false),
+        SHOW_BORDERS("Show claim borders", true),
+        ELYTRA("Allow flight", true),
+        ENDER_PEARL("Allow ender teleport", true),
         // Admin only
         HIDDEN("Hide this claim", false),
         MOB_SPAWNING("Allow mob spawning", true);
@@ -247,9 +248,14 @@ final class Claim {
         return ADMIN_ID.equals(owner);
     }
 
-    String getOwnerName() {
+    public String getOwnerName() {
         if (ADMIN_ID.equals(owner)) return "admin";
         return PlayerCache.nameForUuid(owner);
+    }
+
+    public String getOwnerGenitive() {
+        String result = getOwnerName();
+        return result.endsWith("s") ? result + "'" : result + "'s";
     }
 
     boolean contains(Location location) {
@@ -347,10 +353,14 @@ final class Claim {
         World w = player.getWorld();
         if (!isInWorld(w.getName())) return;
         Vec2i vec = area.getNearestOutside(Vec2i.of(player.getLocation()));
-        w.getChunkAtAsync(vec.x, vec.y, (Consumer<Chunk>) chunk -> {
+        w.getChunkAtAsync(vec.x >> 4, vec.y >> 4, (Consumer<Chunk>) chunk -> {
                 Location target = w.getHighestBlockAt(vec.x, vec.y).getLocation().add(0.5, 1.0, 0.5);
                 target.setDirection(player.getLocation().getDirection());
                 player.teleport(target, TeleportCause.PLUGIN);
             });
+    }
+
+    public boolean isValid() {
+        return !deleted;
     }
 }

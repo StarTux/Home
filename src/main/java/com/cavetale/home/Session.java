@@ -1,6 +1,10 @@
 package com.cavetale.home;
 
 import com.cavetale.core.command.CommandWarn;
+import com.cavetale.core.event.player.PluginPlayerQuery;
+import com.cavetale.sidebar.PlayerSidebarEvent;
+import com.cavetale.sidebar.Priority;
+import java.time.Duration;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.UUID;
@@ -14,8 +18,14 @@ import net.kyori.adventure.text.event.ClickEvent;
 import net.kyori.adventure.text.event.HoverEvent;
 import net.kyori.adventure.text.format.NamedTextColor;
 import net.kyori.adventure.text.format.TextColor;
+import net.kyori.adventure.text.format.TextDecoration;
+import net.kyori.adventure.title.Title;
 import org.bukkit.Bukkit;
+import org.bukkit.GameMode;
 import org.bukkit.Location;
+import org.bukkit.Sound;
+import org.bukkit.SoundCategory;
+import org.bukkit.World;
 import org.bukkit.entity.Player;
 import org.bukkit.event.player.PlayerInteractEvent;
 
@@ -29,6 +39,9 @@ public final class Session {
     private long notifyCooldown = 0L;
     @Getter @Setter private boolean ignoreClaims = false;
     @Getter @Setter private ClaimGrowSnippet claimGrowSnippet;
+    private Claim currentClaim;
+    private int ticks;
+    @Setter private int sidebarTicks;
 
     public Session(final HomePlugin plugin, final Player player) {
         this.plugin = plugin;
@@ -166,5 +179,152 @@ public final class Session {
                 && location.getBlockX() == x
                 && location.getBlockZ() == z;
         }
+    }
+
+    /**
+     * Currently zombified.
+     */
+    private void tickNoFlyZone(Player player) {
+        if (ticks % 10 != 0) return;
+        boolean flying = player.isGliding() || PluginPlayerQuery.Name.IS_FLYING.call(plugin, player, false);
+        if (!flying) return;
+        if (!plugin.isHomeWorld(player.getWorld())) return;
+        Location location = player.getLocation();
+        String worldName = location.getWorld().getName();
+        final int x = location.getBlockX();
+        final int z = location.getBlockZ();
+        for (Claim claim : plugin.claims) {
+            if (claim.isInWorld(worldName) && claim.getArea().isWithin(x, z, 64) && !claim.getBoolSetting(Claim.Setting.ELYTRA)) {
+                Title title = Title.title(Component.text("WARNING", NamedTextColor.RED, TextDecoration.BOLD),
+                                          Component.text("Approaching No-Fly Zone!", NamedTextColor.RED, TextDecoration.BOLD),
+                                          Title.Times.of(Duration.ZERO, Duration.ofMillis(550), Duration.ZERO));
+                player.showTitle(title);
+                player.playSound(player.getEyeLocation(),
+                                 Sound.ENTITY_ARROW_HIT_PLAYER, SoundCategory.MASTER,
+                                 1.0f, 2.0f);
+                break;
+            }
+        }
+    }
+
+    protected void tick(Player player) {
+        if (player.getGameMode() == GameMode.SPECTATOR) return;
+        final World world = player.getWorld();
+        if (!plugin.isHomeWorld(world)) {
+            currentClaim = null;
+            ticks = 0;
+            sidebarTicks = 0;
+            return;
+        }
+        final Location location = player.getLocation();
+        final Claim oldClaim = currentClaim;
+        final Claim newClaim;
+        if (currentClaim != null && currentClaim.isValid() && currentClaim.contains(location)) {
+            newClaim = currentClaim;
+        } else {
+            newClaim = plugin.getClaimAt(location);
+        }
+        final boolean kicked;
+        if (newClaim != null) {
+            if (newClaim.getTrustType(player).isBan()) {
+                newClaim.kick(player);
+                Component msg = Component.text("You cannot enter this claim!", TextColor.color(0xFF0000));
+                player.sendActionBar(msg);
+                player.sendMessage(msg);
+                plugin.highlightClaim(newClaim, player);
+                currentClaim = plugin.getClaimAt(location);
+                kicked = true;
+            } else {
+                currentClaim = newClaim;
+                kicked = false;
+            }
+        } else {
+            currentClaim = null;
+            kicked = false;
+        }
+        if (kicked) {
+            sidebarTicks = 0;
+        }
+        if (!kicked && oldClaim != currentClaim) {
+            notifyClaimChange(player, oldClaim, currentClaim);
+            sidebarTicks = 0;
+        }
+        if (!kicked && currentClaim != null) {
+            triggerClaimActions(player);
+        }
+        ticks += 1;
+    }
+
+    private void triggerClaimActions(Player player) {
+        if (currentClaim.isOwner(player)) {
+            if (currentClaim.getBoolSetting(Claim.Setting.AUTOGROW)
+                && currentClaim.getBlocks() > currentClaim.getArea().size()
+                && (ticks % 100) == 0
+                && plugin.autoGrowClaim(currentClaim)) {
+                plugin.highlightClaim(currentClaim, player);
+            }
+        }
+        if (player.isGliding() && !currentClaim.getBoolSetting(Claim.Setting.ELYTRA)) {
+            player.setGliding(false);
+            Component msg = Component.text("You cannot fly in this claim!", TextColor.color(0xFF0000));
+            if (notify(player, msg)) {
+                player.sendMessage(msg);
+                plugin.highlightClaim(currentClaim, player);
+            }
+        }
+    }
+
+    private void notifyClaimChange(Player player, Claim oldClaim, Claim newClaim) {
+        if (newClaim == null && oldClaim != null) {
+            if (oldClaim.getBoolSetting(Claim.Setting.HIDDEN)) return;
+            String name = oldClaim.getName();
+            String namePart = name != null ? " " + name : "";
+            Component message = oldClaim.isOwner(player)
+                ? Component.text("Leaving your claim" + namePart, NamedTextColor.GRAY)
+                : Component.text("Leaving " + oldClaim.getOwnerGenitive() + " claim" + namePart, NamedTextColor.GRAY);
+            player.sendActionBar(message);
+            if (oldClaim.getBoolSetting(Claim.Setting.SHOW_BORDERS)) {
+                plugin.highlightClaim(oldClaim, player);
+            }
+            return;
+        } else if (newClaim != null) {
+            if (newClaim.getBoolSetting(Claim.Setting.HIDDEN)) return;
+            String name = newClaim.getName();
+            String namePart = name != null ? " " + name : "";
+            Component message = newClaim.isOwner(player)
+                ? Component.text("Entering your claim" + namePart, NamedTextColor.GRAY)
+                : Component.text("Entering " + newClaim.getOwnerGenitive() + " claim" + namePart, NamedTextColor.GRAY);
+            player.sendActionBar(message);
+            if (newClaim.getBoolSetting(Claim.Setting.SHOW_BORDERS)) {
+                plugin.highlightClaim(newClaim, player);
+            }
+        }
+    }
+
+    protected void onPlayerSidebar(Player player, PlayerSidebarEvent event) {
+        if (ticks == 0) return;
+        if (sidebarTicks > 300) return;
+        sidebarTicks += 1;
+        List<Component> lines = new ArrayList<>();
+        lines.add(Component.text().color(NamedTextColor.AQUA)
+                  .append(Component.text("Current "))
+                  .append(Component.text("/claim", NamedTextColor.YELLOW))
+                  .append(Component.text(":"))
+                  .build());
+        if (currentClaim == null) {
+            lines.add(Component.text(" None", NamedTextColor.DARK_GRAY, TextDecoration.ITALIC));
+        } else {
+            boolean canBuild = currentClaim.getTrustType(player).canBuild();
+            if (canBuild) {
+                lines.add(Component.text(" Yours", NamedTextColor.GREEN, TextDecoration.ITALIC));
+            } else {
+                lines.add(Component.text(" " + currentClaim.getOwnerGenitive(), NamedTextColor.GRAY));
+            }
+            if (currentClaim.getName() != null) {
+                lines.add(Component.text(" " + currentClaim.getName(),
+                                         (canBuild ? NamedTextColor.GREEN : NamedTextColor.GRAY)));
+            }
+        }
+        event.add(plugin, Priority.DEFAULT, lines);
     }
 }

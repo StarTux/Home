@@ -202,17 +202,22 @@ public final class HomesCommand extends AbstractCommand<HomePlugin> {
             String arg = args[0];
             if (arg.contains(":")) {
                 String[] toks = arg.split(":", 2);
-                UUID targetId = PlayerCache.uuidForName(toks[0]);
-                if (targetId == null) {
-                    throw new CommandWarn("Player not found: " + toks[0]);
+                String ownerName = toks[0];
+                String homeName = !toks[1].isEmpty() ? toks[1] : null;
+                PlayerCache target = PlayerCache.forName(ownerName);
+                if (target == null) {
+                    throw new CommandWarn("Player not found: " + ownerName);
                 }
-                home = plugin.findHome(targetId, toks[1].isEmpty() ? null : toks[1]);
+                home = plugin.findHome(target.uuid, homeName);
                 if (home == null) {
-                    throw new CommandWarn("Home not found.");
+                    throw new CommandWarn(homeName != null
+                                          ? "Home not found: " + homeName + "!"
+                                          : "Home not found!");
                 }
-                if (!player.hasMetadata(plugin.META_IGNORE)
-                    && !home.isInvited(player.getUniqueId())) {
-                    throw new CommandWarn("Home not found.");
+                if (!plugin.doesIgnoreClaims(player) && !home.isInvited(player.getUniqueId())) {
+                    throw new CommandWarn(homeName != null
+                                          ? "Home not found: " + homeName + "!"
+                                          : "Home not found!");
                 }
             } else {
                 home = plugin.findHome(player.getUniqueId(), arg);

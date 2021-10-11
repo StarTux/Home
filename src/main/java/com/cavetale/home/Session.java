@@ -306,24 +306,31 @@ public final class Session {
         if (sidebarTicks > 300) return;
         sidebarTicks += 1;
         List<Component> lines = new ArrayList<>();
-        lines.add(Component.text().color(NamedTextColor.AQUA)
-                  .append(Component.text("Current "))
-                  .append(Component.text("/claim", NamedTextColor.YELLOW))
-                  .append(Component.text(":"))
-                  .build());
         if (currentClaim == null) {
-            lines.add(Component.text(" None", NamedTextColor.DARK_GRAY, TextDecoration.ITALIC));
+            lines.add(Component.text().color(NamedTextColor.AQUA)
+                      .append(Component.text("Area not "))
+                      .append(Component.text("/claim", NamedTextColor.YELLOW))
+                      .append(Component.text("ed"))
+                      .build());
         } else {
+            lines.add(Component.text().color(NamedTextColor.AQUA)
+                      .append(Component.text("Current "))
+                      .append(Component.text("/claim", NamedTextColor.YELLOW))
+                      .append(Component.text(":"))
+                      .build());
             boolean canBuild = currentClaim.getTrustType(player).canBuild();
-            if (canBuild) {
-                lines.add(Component.text(" Yours", NamedTextColor.GREEN, TextDecoration.ITALIC));
-            } else {
-                lines.add(Component.text(" " + currentClaim.getOwnerGenitive(), NamedTextColor.GRAY));
-            }
-            if (currentClaim.getName() != null) {
-                lines.add(Component.text(" " + currentClaim.getName(),
-                                         (canBuild ? NamedTextColor.GREEN : NamedTextColor.GRAY)));
-            }
+            Component ownerName = Component.text((currentClaim.isOwner(player)
+                                                  ? "Your"
+                                                  : currentClaim.getOwnerGenitive()));
+            Component claimName = currentClaim.getName() != null
+                ? Component.text(currentClaim.getName(), null, TextDecoration.ITALIC)
+                : Component.text("Claim");
+            lines.add(Component.text().color(canBuild ? NamedTextColor.GREEN : NamedTextColor.AQUA)
+                      .append(Component.space())
+                      .append(ownerName)
+                      .append(Component.space())
+                      .append(claimName)
+                      .build());
         }
         event.add(plugin, Priority.DEFAULT, lines);
     }

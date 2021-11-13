@@ -53,7 +53,7 @@ final class WildTask {
         // Attempts
         long now = System.nanoTime() / NANOS;
         plugin.setMetadata(player, META_COOLDOWN_WILD, now);
-        if (attempts++ > 100) {
+        if (attempts++ > 10) {
             player.sendMessage(Component.text("Could not find a place to build. Please try again",
                                               NamedTextColor.RED));
             return;
@@ -83,11 +83,11 @@ final class WildTask {
                 break;
             }
         }
-        if (!foundSpot) {
-            player.sendMessage(Component.text("Could not find a place to build. Please try again",
-                                              NamedTextColor.RED));
+        if (foundSpot) {
+            world.getChunkAtAsync(blockX >> 4, blockZ >> 4, (Consumer<Chunk>) this::onChunkLoaded);
+        } else {
+            plugin.getServer().getScheduler().runTask(plugin, this::findPlaceToBuild);
         }
-        world.getChunkAtAsync(blockX >> 4, blockZ >> 4, (Consumer<Chunk>) this::onChunkLoaded);
     }
 
     private boolean findUnclaimedSpot(List<Claim> worldClaims,
@@ -108,6 +108,10 @@ final class WildTask {
     private void onChunkLoaded(Chunk chunk) {
         if (!player.isValid()) return;
         Block block = world.getHighestBlockAt(blockX, blockZ);
+        for (int i = 0; i < 255; i += 1) {
+            if (!block.isSolid() && !block.isLiquid()) break;
+            block = block.getRelative(0, 1, 0);
+        }
         Block below = block.getRelative(0, -1, 0);
         if (!below.getType().isSolid()) {
             plugin.getServer().getScheduler().runTask(plugin, this::findPlaceToBuild);

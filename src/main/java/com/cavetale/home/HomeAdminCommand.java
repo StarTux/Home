@@ -1,6 +1,8 @@
 package com.cavetale.home;
 
 import com.winthier.playercache.PlayerCache;
+import com.winthier.playerinfo.PlayerInfo;
+import java.time.Duration;
 import java.util.Arrays;
 import java.util.List;
 import java.util.UUID;
@@ -19,7 +21,7 @@ public final class HomeAdminCommand implements TabExecutor {
     private final HomePlugin plugin;
     static final List<String> COMMANDS = Arrays
         .asList("claims", "homes", "ignore", "reload", "debug", "giveclaimblocks",
-                "deleteclaim", "adminclaim", "transferclaim", "claiminfo");
+                "deleteclaim", "adminclaim", "transferclaim", "claiminfo", "findold");
 
     @Override
     public boolean onCommand(CommandSender sender, Command command, String alias, String[] args) {
@@ -154,6 +156,23 @@ public final class HomeAdminCommand implements TabExecutor {
                 return true;
             }
             sender.sendMessage("" + claim);
+            return true;
+        }
+        case "findold": {
+            long now = System.currentTimeMillis();
+            long then = now - Duration.ofDays(90).toMillis();
+            for (Claim claim : plugin.getClaimCache().getAllClaims()) {
+                if (claim.getOwner() == null) continue;
+                if (claim.getCreated() > then) continue;
+                int initialSize = plugin.getWorldSettings().get(claim.getWorld()).initialClaimSize;
+                if (claim.getArea().width() > initialSize) continue;
+                if (claim.getArea().height() > initialSize) continue;
+                PlayerInfo.getInstance().lastLog(claim.getOwner(), date -> {
+                        if (date.getTime() > then) return;
+                        sender.sendMessage("Claim #" + claim.getId() + " owned by "
+                                           + claim.getOwnerName() + ", last seen " + date);
+                    });
+            }
             return true;
         }
         default:

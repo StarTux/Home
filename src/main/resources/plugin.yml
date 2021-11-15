@@ -6,7 +6,7 @@ api-version: 1.17
 website: https://cavetale.com
 main: com.cavetale.home.HomePlugin
 depend: [Core, SQL, Exploits, PlayerCache, Money, Perm, Sidebar]
-softdepend: [dynmap, MagicMap]
+softdepend: [dynmap, MagicMap, PlayerInfo]
 commands:
   homeadmin:
     aliases: [claimadmin]

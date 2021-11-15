@@ -117,6 +117,14 @@
       <scope>provided</scope>
     </dependency>
 
+    <!-- PlayerInfo -->
+    <dependency>
+      <groupId>com.winthier.playerinfo</groupId>
+      <artifactId>playerinfo</artifactId>
+      <version>0.1-SNAPSHOT</version>
+      <scope>provided</scope>
+    </dependency>
+
   </dependencies>
   <build>
     <finalName>${project.name}</finalName>

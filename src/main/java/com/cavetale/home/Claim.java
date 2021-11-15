@@ -28,7 +28,7 @@ import org.bukkit.entity.Player;
 import org.bukkit.event.player.PlayerTeleportEvent.TeleportCause;
 
 @Data
-final class Claim {
+public final class Claim {
     public static final UUID ADMIN_ID = new UUID(0L, 0L);
     protected final HomePlugin plugin;
     protected int id;
@@ -45,11 +45,11 @@ final class Claim {
     protected String name;
     protected boolean deleted;
 
-    Claim(final HomePlugin plugin) {
+    public Claim(final HomePlugin plugin) {
         this.plugin = plugin;
     }
 
-    Claim(final HomePlugin plugin, final UUID owner, final String world, final Area area) {
+    public Claim(final HomePlugin plugin, final UUID owner, final String world, final Area area) {
         this.plugin = plugin;
         this.owner = owner;
         this.world = world;
@@ -60,7 +60,7 @@ final class Claim {
         this.centerY = (area.ay + area.by) / 2;
     }
 
-    enum Setting {
+    public enum Setting {
         PVP("PvP Combat", false),
         EXPLOSIONS("Explosion damage", false),
         FIRE("Fire burns blocks", false),
@@ -76,9 +76,9 @@ final class Claim {
         HIDDEN("Hide this claim", false),
         MOB_SPAWNING("Allow mob spawning", true);
 
-        final String key;
-        final String displayName;
-        final Object defaultValue;
+        public final String key;
+        public final String displayName;
+        public final Object defaultValue;
 
         Setting(final String displayName, final Object defaultValue) {
             this.key = name().toLowerCase();
@@ -86,7 +86,7 @@ final class Claim {
             this.defaultValue = defaultValue;
         }
 
-        boolean isAdminOnly() {
+        public boolean isAdminOnly() {
             switch (this) {
             case HIDDEN:
             case MOB_SPAWNING:
@@ -97,17 +97,25 @@ final class Claim {
         }
     }
 
-    Object getSetting(Setting setting) {
+    public Object getSetting(Setting setting) {
         Object result = settings.get(setting);
         return result != null
             ? result
             : setting.defaultValue;
     }
 
-    boolean getBoolSetting(Setting setting) {
+    public boolean getBoolSetting(Setting setting) {
         Object result = settings.get(setting);
         if (result == null) result = setting.defaultValue;
         return result == Boolean.TRUE;
+    }
+
+    public void setArea(Area newArea) {
+        Area oldArea = this.area;
+        this.area = newArea;
+        if (oldArea != null) {
+            plugin.claimCache.resize(this, oldArea, newArea);
+        }
     }
 
     // SQL Interface
@@ -127,7 +135,7 @@ final class Claim {
         @Column(nullable = false) private Date created;
     }
 
-    SQLRow toSQLRow() {
+    public SQLRow toSQLRow() {
         SQLRow row = new SQLRow();
         if (this.id > 0) row.id = this.id;
         row.owner = this.owner;
@@ -148,7 +156,7 @@ final class Claim {
         return row;
     }
 
-    void loadSQLRow(SQLRow row) {
+    public void loadSQLRow(SQLRow row) {
         this.id = row.id;
         this.owner = row.owner;
         this.world = row.world;
@@ -174,7 +182,7 @@ final class Claim {
         name = row.getName();
     }
 
-    void saveToDatabase() {
+    public void saveToDatabase() {
         SQLRow row = toSQLRow();
         plugin.getDb().save(row);
         this.id = row.id;
@@ -242,11 +250,11 @@ final class Claim {
         return getBoolSetting(Setting.PVP);
     }
 
-    boolean isInWorld(String worldName) {
+    public boolean isInWorld(String worldName) {
         return this.world.equals(worldName);
     }
 
-    boolean isAdminClaim() {
+    public boolean isAdminClaim() {
         return ADMIN_ID.equals(owner);
     }
 
@@ -260,13 +268,13 @@ final class Claim {
         return result.endsWith("s") ? result + "'" : result + "'s";
     }
 
-    boolean contains(Location location) {
+    public boolean contains(Location location) {
         String lwn = location.getWorld().getName();
         if (!world.equals(lwn) && !world.equals(plugin.getMirrorWorlds().get(lwn))) return false;
         return area.contains(location.getBlockX(), location.getBlockZ());
     }
 
-    boolean isHidden() {
+    public boolean isHidden() {
         return getBoolSetting(Setting.HIDDEN);
     }
 

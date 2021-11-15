@@ -1,5 +1,6 @@
 package com.cavetale.home;
 
+import com.cavetale.home.claimcache.ClaimCache;
 import com.cavetale.home.struct.BlockVector;
 import com.winthier.sql.SQLDatabase;
 import java.util.ArrayList;
@@ -36,22 +37,22 @@ import org.bukkit.plugin.java.JavaPlugin;
 public final class HomePlugin extends JavaPlugin {
     @Getter private static HomePlugin instance;
     // Globals
-    static final String META_BUY = "home.buyclaimblocks";
-    static final String META_ABANDON = "home.abandonclaim";
-    static final String META_NEWCLAIM = "home.newclaim";
+    protected static final String META_BUY = "home.buyclaimblocks";
+    protected static final String META_ABANDON = "home.abandonclaim";
+    protected static final String META_NEWCLAIM = "home.newclaim";
     private final boolean deleteOverlappingClaims = false;
     // Database
     SQLDatabase db;
     // Worlds
     String primaryHomeWorld;
-    final Map<String, WorldSettings> worldSettings = new HashMap<>();
-    final Map<String, String> mirrorWorlds = new HashMap<>();
+    protected final Map<String, WorldSettings> worldSettings = new HashMap<>();
+    protected final Map<String, String> mirrorWorlds = new HashMap<>();
     // Homes
-    final List<Home> homes = new ArrayList<>();
-    final List<String> homeWorlds = new ArrayList<>();
-    final List<Claim> claims = new ArrayList<>();
-    final Sessions sessions = new Sessions(this);
-    final EventListener eventListener = new EventListener(this);
+    protected final List<Home> homes = new ArrayList<>();
+    protected final List<String> homeWorlds = new ArrayList<>();
+    protected final ClaimCache claimCache = new ClaimCache();
+    protected final Sessions sessions = new Sessions(this);
+    protected final EventListener eventListener = new EventListener(this);
     private MagicMapListener magicMapListener;
     private ClaimListener claimListener;
     // Utilty
@@ -60,22 +61,17 @@ public final class HomePlugin extends JavaPlugin {
     // Interface
     private DynmapClaims dynmapClaims;
     // Commands
-    final HomeAdminCommand homeAdminCommand = new HomeAdminCommand(this);
-    final ClaimCommand claimCommand = new ClaimCommand(this);
-    final HomesCommand homesCommand = new HomesCommand(this);
-    final HomeCommand homeCommand = new HomeCommand(this);
-    final ListHomesCommand listHomesCommand = new ListHomesCommand(this);
-    final VisitCommand visitCommand = new VisitCommand(this);
-    final SetHomeCommand setHomeCommand = new SetHomeCommand(this);
-    final BuildCommand buildCommand = new BuildCommand(this);
-    final InviteHomeCommand inviteHomeCommand = new InviteHomeCommand(this);
-    final UnInviteHomeCommand unInviteHomeCommand = new UnInviteHomeCommand(this);
-    final SubclaimCommand subclaimCommand = new SubclaimCommand(this);
-    // Cache
-    private int cachedClaimIndex = -1;
-    private long cacheLookups = 0;
-    private long cacheHits = 0;
-    private long cacheMisses = 0;
+    protected final HomeAdminCommand homeAdminCommand = new HomeAdminCommand(this);
+    protected final ClaimCommand claimCommand = new ClaimCommand(this);
+    protected final HomesCommand homesCommand = new HomesCommand(this);
+    protected final HomeCommand homeCommand = new HomeCommand(this);
+    protected final ListHomesCommand listHomesCommand = new ListHomesCommand(this);
+    protected final VisitCommand visitCommand = new VisitCommand(this);
+    protected final SetHomeCommand setHomeCommand = new SetHomeCommand(this);
+    protected final BuildCommand buildCommand = new BuildCommand(this);
+    protected final InviteHomeCommand inviteHomeCommand = new InviteHomeCommand(this);
+    protected final UnInviteHomeCommand unInviteHomeCommand = new UnInviteHomeCommand(this);
+    protected final SubclaimCommand subclaimCommand = new SubclaimCommand(this);
 
     @Override
     public void onEnable() {
@@ -109,8 +105,7 @@ public final class HomePlugin extends JavaPlugin {
 
     @Override
     public void onDisable() {
-        cachedClaimIndex = -1;
-        claims.clear();
+        claimCache.clear();
         homes.clear();
         db.waitForAsyncTask();
         db.close();
@@ -151,7 +146,7 @@ public final class HomePlugin extends JavaPlugin {
         }
     }
 
-    void findPlaceToBuild(Player player) {
+    protected void findPlaceToBuild(Player player) {
         // Determine center and border
         String worldName = primaryHomeWorld; // Set up for future expansion
         World bworld = getServer().getWorld(worldName);
@@ -165,25 +160,22 @@ public final class HomePlugin extends JavaPlugin {
         wildTask.withCooldown();
     }
 
-    boolean autoGrowClaim(Claim claim) {
+    protected ClaimOperationResult autoGrowClaim(Claim claim) {
         Area area = claim.getArea();
         Area newArea = new Area(area.ax - 1, area.ay - 1, area.bx + 1, area.by + 1);
-        if (newArea.size() > claim.getBlocks()) return false;
+        if (newArea.size() > claim.getBlocks()) return ClaimOperationResult.INSUFFICIENT_BLOCKS;
         String claimWorld = claim.getWorld();
-        for (Claim other : claims) {
-            if (other != claim && other.isInWorld(claimWorld)
-                && other.getArea().overlaps(newArea)) {
-                return false;
-            }
+        for (Claim other : claimCache.within(claim.getWorld(), newArea)) {
+            if (other != claim) return ClaimOperationResult.OVERLAP;
         }
         claim.setArea(newArea);
         claim.saveToDatabase();
-        return true;
+        return ClaimOperationResult.SUCCESS;
     }
 
     // --- Configuration utility
 
-    void loadFromConfig() {
+    protected void loadFromConfig() {
         reloadConfig();
         ConfigurationSection section = getConfig().getConfigurationSection("Worlds");
         homeWorlds.clear();
@@ -208,16 +200,16 @@ public final class HomePlugin extends JavaPlugin {
         }
     }
 
-    void loadFromDatabase() {
-        cachedClaimIndex = -1;
-        claims.clear();
+    protected void loadFromDatabase() {
+        claimCache.clear();
         homes.clear();
         for (Claim.SQLRow row : db.find(Claim.SQLRow.class).findList()) {
             Claim claim = new Claim(this);
             claim.loadSQLRow(row);
-            claims.add(claim);
+            claimCache.add(claim);
         }
         if (deleteOverlappingClaims) {
+            List<Claim> claims = claimCache.getAllClaims();
             List<Claim> deleteClaims = new ArrayList<>();
             for (int i = 0; i < claims.size() - 1; i += 1) {
                 Claim a = claims.get(i);
@@ -299,83 +291,50 @@ public final class HomePlugin extends JavaPlugin {
 
     // --- Claim Utility
 
-    boolean isHomeWorld(World world) {
+    public boolean isHomeWorld(World world) {
         return homeWorlds.contains(world.getName());
     }
 
-    Claim getClaimById(int claimId) {
-        for (Claim claim : claims) {
+    public Claim getClaimById(int claimId) {
+        for (Claim claim : getClaimCache().getAllClaims()) {
             if (claim.getId() == claimId) return claim;
         }
         return null;
     }
 
-    Claim getClaimAt(Block block) {
+    public Claim getClaimAt(Block block) {
         return getClaimAt(block.getWorld().getName(), block.getX(), block.getZ());
     }
 
-    Claim getClaimAt(Location location) {
-        return getClaimAt(location.getWorld().getName(),
-                          location.getBlockX(),
-                          location.getBlockZ());
+    public Claim getClaimAt(Location location) {
+        return getClaimAt(location.getWorld().getName(), location.getBlockX(), location.getBlockZ());
     }
 
-    Claim getClaimAt(BlockVector blockVector) {
+    public Claim getClaimAt(BlockVector blockVector) {
         return getClaimAt(blockVector.world, blockVector.x, blockVector.z);
     }
 
-    Claim getClaimAt(String w, int x, int y) {
+    public Claim getClaimAt(String w, int x, int y) {
         if (!homeWorlds.contains(w)) return null;
-        final String world = mirrorWorlds.containsKey(w) ? mirrorWorlds.get(w) : w;
-        cacheLookups += 1L;
-        if (cachedClaimIndex >= 0 && cachedClaimIndex < claims.size()) {
-            Claim cachedClaim = claims.get(cachedClaimIndex);
-            if (cachedClaim.isInWorld(world) && cachedClaim.getArea().contains(x, y)) {
-                cacheHits += 1L;
-                if (cachedClaimIndex >= 1) {
-                    claims.set(cachedClaimIndex, claims.get(cachedClaimIndex - 1));
-                    claims.set(cachedClaimIndex - 1, cachedClaim);
-                    cachedClaimIndex -= 1;
-                }
-                return cachedClaim;
-            }
-        }
-        cacheMisses += 1L;
-        for (int i = 0; i < claims.size(); i += 1) {
-            Claim claim = claims.get(i);
-            if (claim.isInWorld(world) && claim.getArea().contains(x, y)) {
-                if (i >= 1) {
-                    claims.set(i, claims.get(i - 1));
-                    claims.set(i - 1, claim);
-                    cachedClaimIndex = i - 1;
-                } else {
-                    cachedClaimIndex = i;
-                }
-                return claim;
-            }
-        }
-        return null;
+        w = mirrorWorlds.getOrDefault(w, w);
+        return claimCache.at(w, x, y);
     }
 
     protected Claim findNearestOwnedClaim(Player player, int radius) {
         Location playerLocation = player.getLocation();
         String playerWorld = playerLocation.getWorld().getName();
-        final String w = mirrorWorlds.containsKey(playerWorld)
-            ? mirrorWorlds.get(playerWorld)
-            : playerWorld;
+        final String w = mirrorWorlds.getOrDefault(playerWorld, playerWorld);
         int x = playerLocation.getBlockX();
         int z = playerLocation.getBlockZ();
-        List<Claim> list = new ArrayList<>();
         int minDist = Integer.MAX_VALUE;
         Claim result = null;
-        for (Claim claim : claims) {
-            if (claim.isOwner(player) && claim.isInWorld(w) && claim.getArea().isWithin(x, z, radius)) {
-                int dist = claim.getArea().distanceToPoint(x, z);
-                if (dist < minDist) {
-                    result = claim;
-                    minDist = dist;
-                }
-            }
+        Area area = new Area(x - radius, z - radius, x + radius, z + radius);
+        for (Claim claim : claimCache.within(w, area)) {
+            if (!claim.isOwner(player)) continue;
+            int dist = claim.getArea().distanceToPoint(x, z);
+            if (dist >= minDist) continue;
+            result = claim;
+            minDist = dist;
         }
         return result;
     }
@@ -465,14 +424,12 @@ public final class HomePlugin extends JavaPlugin {
     }
 
     public Claim findPrimaryClaim(UUID owner) {
-        for (Claim claim : claims) {
-            if (claim.isOwner(owner)) return claim;
-        }
-        return null;
+        List<Claim> playerClaims = findClaims(owner);
+        return playerClaims.isEmpty() ? null : playerClaims.get(0);
     }
 
     public boolean hasAClaim(UUID owner) {
-        for (Claim claim : claims) {
+        for (Claim claim : claimCache.getAllClaims()) {
             if (claim.isOwner(owner)) return true;
         }
         return false;
@@ -480,40 +437,33 @@ public final class HomePlugin extends JavaPlugin {
 
     public List<Claim> findClaims(UUID owner) {
         List<Claim> list = new ArrayList<>();
-        for (Claim claim : claims) {
+        for (Claim claim : claimCache.getAllClaims()) {
             if (claim.isOwner(owner)) list.add(claim);
         }
+        Collections.sort(list, (a, b) -> Long.compare(b.created, a.created));
         return list;
     }
 
     public List<Claim> findClaims(Player player) {
-        List<Claim> list = new ArrayList<>();
-        for (Claim claim : claims) {
-            if (claim.isOwner(player)) list.add(claim);
-        }
-        return list;
+        return findClaims(player.getUniqueId());
     }
 
     public List<Claim> findClaimsInWorld(UUID owner, String w) {
-        final String world = mirrorWorlds.containsKey(w) ? mirrorWorlds.get(w) : w;
         List<Claim> list = new ArrayList<>();
-        for (Claim claim : claims) {
-            if (claim.isOwner(owner) && claim.isInWorld(world)) list.add(claim);
+        for (Claim claim : claimCache.inWorld(mirrorWorlds.getOrDefault(w, w))) {
+            if (claim.isOwner(owner)) {
+                list.add(claim);
+            }
         }
         return list;
     }
 
     public List<Claim> findClaimsInWorld(String w) {
-        final String world = mirrorWorlds.containsKey(w) ? mirrorWorlds.get(w) : w;
-        List<Claim> list = new ArrayList<>();
-        for (Claim claim : claims) {
-            if (claim.isInWorld(world)) list.add(claim);
-        }
-        return list;
+        return claimCache.inWorld(mirrorWorlds.getOrDefault(w, w));
     }
 
     public Claim findClaimWithId(int id) {
-        for (Claim claim : claims) {
+        for (Claim claim : claimCache.getAllClaims()) {
             if (claim.getId() == id) return claim;
         }
         return null;
@@ -524,9 +474,8 @@ public final class HomePlugin extends JavaPlugin {
         int claimCount = db.find(Claim.SQLRow.class).eq("id", claimId).delete();
         int trustCount = db.find(ClaimTrust.class).eq("claimId", claimId).delete();
         int subclaimCount = db.find(Subclaim.SQLRow.class).eq("claimId", claimId).delete();
-        claims.remove(claim);
+        claimCache.remove(claim);
         claim.setDeleted(true);
-        cachedClaimIndex = -1;
         getLogger().info("Deleted claim #" + claimId
                          + " claims=" + claimCount
                          + " trusted=" + trustCount

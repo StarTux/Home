@@ -182,28 +182,30 @@ public final class Session {
     }
 
     /**
-     * Currently zombified.
+     * Send no fly zone warnings if necessary.
+     * Player must be in home world!
+     * Ticks must be checked beforehand!
      */
     private void tickNoFlyZone(Player player) {
-        if (ticks % 10 != 0) return;
         boolean flying = player.isGliding() || PluginPlayerQuery.Name.IS_FLYING.call(plugin, player, false);
         if (!flying) return;
-        if (!plugin.isHomeWorld(player.getWorld())) return;
         Location location = player.getLocation();
         String worldName = location.getWorld().getName();
+        final String w = plugin.mirrorWorlds.getOrDefault(worldName, worldName);
         final int x = location.getBlockX();
         final int z = location.getBlockZ();
-        for (Claim claim : plugin.claims) {
-            if (claim.isInWorld(worldName) && claim.getArea().isWithin(x, z, 64) && !claim.getBoolSetting(Claim.Setting.ELYTRA)) {
-                Title title = Title.title(Component.text("WARNING", NamedTextColor.RED, TextDecoration.BOLD),
-                                          Component.text("Approaching No-Fly Zone!", NamedTextColor.RED, TextDecoration.BOLD),
-                                          Title.Times.of(Duration.ZERO, Duration.ofMillis(550), Duration.ZERO));
-                player.showTitle(title);
-                player.playSound(player.getEyeLocation(),
-                                 Sound.ENTITY_ARROW_HIT_PLAYER, SoundCategory.MASTER,
-                                 1.0f, 2.0f);
-                break;
-            }
+        final int range = 64;
+        Area area = new Area(x - range, z - range, x + range, z + range);
+        for (Claim claim : plugin.getClaimCache().within(w, area)) {
+            if (claim.getBoolSetting(Claim.Setting.ELYTRA)) continue;
+            Title title = Title.title(Component.text("WARNING", NamedTextColor.RED, TextDecoration.BOLD),
+                                      Component.text("Approaching No-Fly Zone!", NamedTextColor.RED, TextDecoration.BOLD),
+                                      Title.Times.of(Duration.ZERO, Duration.ofMillis(550), Duration.ZERO));
+            player.showTitle(title);
+            player.playSound(player.getEyeLocation(),
+                             Sound.ENTITY_ARROW_HIT_PLAYER, SoundCategory.MASTER,
+                             1.0f, 2.0f);
+            break;
         }
     }
 
@@ -252,6 +254,9 @@ public final class Session {
         if (!kicked && currentClaim != null) {
             triggerClaimActions(player);
         }
+        if (!kicked && ticks % 10 == 0) {
+            tickNoFlyZone(player);
+        }
         ticks += 1;
     }
 
@@ -260,7 +265,7 @@ public final class Session {
             if (currentClaim.getBoolSetting(Claim.Setting.AUTOGROW)
                 && currentClaim.getBlocks() > currentClaim.getArea().size()
                 && (ticks % 100) == 0
-                && plugin.autoGrowClaim(currentClaim)) {
+                && plugin.autoGrowClaim(currentClaim).isSuccessful()) {
                 plugin.highlightClaim(currentClaim, player);
             }
         }

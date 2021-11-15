@@ -51,15 +51,7 @@ public final class HomeAdminCommand implements TabExecutor {
             }
             break;
         case "debug": {
-            long hitPercentage = (plugin.getCacheHits() * 100L) / plugin.getCacheLookups();
-            sender.sendMessage("Cache hits=" + plugin.getCacheHits() + "(" + hitPercentage + "%)"
-                               + " misses=" + plugin.getCacheMisses());
-            if (player != null) {
-                Claim claim = plugin.getClaimAt(player.getLocation());
-                if (claim != null) {
-                    player.sendMessage("Claim index: " + plugin.getClaims().indexOf(claim));
-                }
-            }
+            sender.sendMessage("Nothing to show!");
             return true;
         }
         case "giveclaimblocks":
@@ -110,18 +102,20 @@ public final class HomeAdminCommand implements TabExecutor {
         case "adminclaim": {
             if (args.length != 1 || player == null) return false;
             Location loc = player.getLocation();
+            String playerWorld = loc.getWorld().getName();
+            final String w = plugin.mirrorWorlds.getOrDefault(playerWorld, playerWorld);
             Area area = new Area(loc.getBlockX() - 31, loc.getBlockZ() - 31,
                                  loc.getBlockX() + 32, loc.getBlockZ() + 32);
-            for (Claim other : plugin.findClaimsInWorld(player.getWorld().getName())) {
+            for (Claim other : plugin.getClaimCache().within(w, area)) {
                 if (other.area.contains(area)) {
-                    sender.sendMessage(Component.text("This claim would intersect an existing claim owned by "
+                    sender.sendMessage(Component.text("This claim would overlap an existing claim owned by "
                                                       + other.getOwnerName() + ".",
                                                       NamedTextColor.RED));
                     return true;
                 }
             }
-            Claim claim = new Claim(plugin, Claim.ADMIN_ID, player.getWorld().getName(), area);
-            plugin.getClaims().add(claim);
+            Claim claim = new Claim(plugin, Claim.ADMIN_ID, w, area);
+            plugin.getClaimCache().add(claim);
             claim.saveToDatabase();
             sender.sendMessage(Component.text("Admin claim created", NamedTextColor.YELLOW));
             plugin.highlightClaim(claim, player);
@@ -178,14 +172,7 @@ public final class HomeAdminCommand implements TabExecutor {
     }
 
     boolean claimsCommand(CommandSender sender, String[] args) {
-        if (args.length > 1) return false;
-        if (args.length == 0) {
-            int i = 0;
-            for (Claim claim : plugin.getClaims()) {
-                sender.sendMessage(i++ + " " + claim);
-            }
-            return true;
-        }
+        if (args.length != 1) return false;
         String name = args[0];
         UUID uuid = PlayerCache.uuidForName(name);
         if (uuid == null) {

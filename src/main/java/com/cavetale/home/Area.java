@@ -4,46 +4,48 @@ import com.cavetale.home.struct.Vec2i;
 import lombok.Value;
 
 @Value
-final class Area {
+public final class Area {
     public final int ax;
     public final int ay;
     public final int bx;
     public final int by;
 
-    boolean contains(int x, int y) {
+    public boolean contains(int x, int y) {
         return x >= ax && x <= bx && y >= ay && y <= by;
     }
 
-    boolean isWithin(int x, int y, int d) {
+    public boolean isWithin(int x, int y, int d) {
         return x >= ax - d && x <= bx + d && y >= ay - d && y <= by + d;
     }
 
-    boolean overlaps(Area o) {
+    public boolean overlaps(Area o) {
         boolean h = o.ax <= this.bx && o.bx >= this.ax;
         boolean v = o.ay <= this.by && o.by >= this.ay;
         return h && v;
     }
 
-    boolean contains(Area o) {
+    public boolean contains(Area o) {
         return o.ax >= this.ax && o.bx <= this.bx && o.ay >= this.ay && o.by <= this.by;
     }
 
-    int width() {
+    public int width() {
         return bx - ax + 1;
     }
 
-    int height() {
+    public int height() {
         return by - ay + 1;
     }
 
-    int size() {
+    public int size() {
         return (bx - ax + 1) * (by - ay + 1);
     }
 
-    // Rough distance function getting the sum of the horizontal and
-    // vertical distance.  Only to be used to find nearest claim;
-    // never for precision operations!
-    int distanceToPoint(int x, int y) {
+    /**
+     * Rough distance function getting the sum of the horizontal and
+     * vertical distance.  Only to be used to find nearest claim;
+     * never for precision operations!
+     */
+    public int distanceToPoint(int x, int y) {
         int dx;
         int dy;
         if (x < ax) {
@@ -63,11 +65,11 @@ final class Area {
         return dx + dy;
     }
 
-    int centerX() {
+    public int centerX() {
         return (ax + bx) / 2;
     }
 
-    int centerY() {
+    public int centerY() {
         return (ay + by) / 2;
     }
 

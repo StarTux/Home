@@ -13,7 +13,7 @@ commands:
     description: Admin command
     permission: home.admin
     usage: |-
-      /homeadmin claims - list claims
+      /homeadmin claims <player> - list claims
       /homeadmin ignore - ignore claims
       /homeadmin reload - db and config
       /homeadmin debug - debug spam

@@ -444,7 +444,7 @@ public final class ClaimCommand extends AbstractCommand<HomePlugin> {
             }
             Claim claim = new Claim(plugin, playerId, ncmeta.world, ncmeta.area);
             claim.saveToDatabase();
-            plugin.getClaims().add(claim);
+            plugin.getClaimCache().add(claim);
             ComponentLike message = Component.text().color(NamedTextColor.WHITE)
                 .append(Component.text("Claim created!  "))
                 .append(Component.text("[View]", NamedTextColor.GREEN))
@@ -656,11 +656,8 @@ public final class ClaimCommand extends AbstractCommand<HomePlugin> {
             plugin.sessions.of(player).setClaimGrowSnippet(snippet);
             return true;
         }
-        for (Claim other : plugin.getClaims()) {
-            if (other != claim && other.isInWorld(claim.getWorld())
-                && other.getArea().overlaps(newArea)) {
-                throw new CommandWarn("Your claim would connect with another claim");
-            }
+        for (Claim other : plugin.getClaimCache().within(claim.getWorld(), newArea)) {
+            if (other != claim) throw new CommandWarn("Your claim would overlap with another claim");
         }
         claim.setArea(newArea);
         claim.saveToDatabase();
@@ -698,6 +695,11 @@ public final class ClaimCommand extends AbstractCommand<HomePlugin> {
             by = z;
         }
         Area newArea = new Area(ax, ay, bx, by);
+        for (Subclaim subclaim : claim.getSubclaims()) {
+            if (!newArea.contains(subclaim.getArea())) {
+                throw new CommandWarn("There are subclaims in the way!");
+            }
+        }
         claim.setArea(newArea);
         claim.saveToDatabase();
         player.sendMessage(Component.text("Shrunk your claim to where you are standing", NamedTextColor.GREEN));
@@ -865,7 +867,7 @@ public final class ClaimCommand extends AbstractCommand<HomePlugin> {
     private boolean listInvites(Player player, String[] args) {
         if (args.length != 0) return false;
         List<Claim> playerClaims = new ArrayList<>();
-        for (Claim claim : plugin.getClaims()) {
+        for (Claim claim : plugin.getClaimCache().getAllClaims()) {
             if (!claim.isOwner(player) && !claim.isHidden() && claim.getTrustType(player).canBuild()) {
                 playerClaims.add(claim);
             }

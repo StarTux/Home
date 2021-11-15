@@ -59,7 +59,7 @@ final class DynmapClaims {
         markerSet.setMinZoom(0);
         markerSet.setLayerPriority(10);
         markerSet.setHideByDefault(false);
-        for (Claim claim : plugin.getClaims()) {
+        for (Claim claim : plugin.getClaimCache().getAllClaims()) {
             if (claim.isHidden()) continue;
             AreaMarker marker = createOrUpdateAreaMarker(markerSet, "claim-" + claim.getId(), claim.getWorld(), claim.getArea());
             if (claim.isAdminClaim()) {

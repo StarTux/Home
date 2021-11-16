@@ -9,7 +9,7 @@ depend: [Core, SQL, Exploits, PlayerCache, Money, Perm, Sidebar]
 softdepend: [dynmap, MagicMap, PlayerInfo]
 commands:
   homeadmin:
-    aliases: [claimadmin]
+    aliases: [claimadmin, ha, ca]
     description: Admin command
     permission: home.admin
     usage: |-

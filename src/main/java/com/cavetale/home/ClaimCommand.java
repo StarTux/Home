@@ -288,7 +288,7 @@ public final class ClaimCommand extends AbstractCommand<HomePlugin> {
                 throw new CommandWarn("You don't have a claim yet.");
             }
         }
-        final World world = plugin.getServer().getWorld(claim.getWorld());
+        final World world = Bukkit.getWorld(claim.getWorld());
         if (world == null) return true;
         final int x = claim.centerX;
         final int z = claim.centerY;

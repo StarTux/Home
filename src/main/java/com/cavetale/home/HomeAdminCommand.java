@@ -3,24 +3,36 @@ package com.cavetale.home;
 import com.winthier.playercache.PlayerCache;
 import com.winthier.playerinfo.PlayerInfo;
 import java.time.Duration;
+import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.Collections;
+import java.util.Date;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.UUID;
+import java.util.function.Consumer;
 import java.util.stream.Collectors;
 import lombok.RequiredArgsConstructor;
+import lombok.Value;
 import net.kyori.adventure.text.Component;
 import net.kyori.adventure.text.format.NamedTextColor;
+import org.bukkit.Bukkit;
+import org.bukkit.Chunk;
 import org.bukkit.Location;
+import org.bukkit.World;
+import org.bukkit.block.Block;
 import org.bukkit.command.Command;
 import org.bukkit.command.CommandSender;
 import org.bukkit.command.TabExecutor;
 import org.bukkit.entity.Player;
+import org.bukkit.event.player.PlayerTeleportEvent.TeleportCause;
 
 @RequiredArgsConstructor
 public final class HomeAdminCommand implements TabExecutor {
     private final HomePlugin plugin;
     static final List<String> COMMANDS = Arrays
-        .asList("claims", "homes", "ignore", "reload", "debug", "giveclaimblocks",
+        .asList("claims", "homes", "ignore", "reload", "debug", "giveclaimblocks", "tp",
                 "deleteclaim", "adminclaim", "transferclaim", "claiminfo", "findold");
 
     @Override
@@ -163,23 +175,8 @@ public final class HomeAdminCommand implements TabExecutor {
             sender.sendMessage("" + claim);
             return true;
         }
-        case "findold": {
-            long now = System.currentTimeMillis();
-            long then = now - Duration.ofDays(90).toMillis();
-            for (Claim claim : plugin.getClaimCache().getAllClaims()) {
-                if (claim.getOwner() == null) continue;
-                if (claim.getCreated() > then) continue;
-                int initialSize = plugin.getWorldSettings().get(claim.getWorld()).initialClaimSize;
-                if (claim.getArea().width() > initialSize) continue;
-                if (claim.getArea().height() > initialSize) continue;
-                PlayerInfo.getInstance().lastLog(claim.getOwner(), date -> {
-                        if (date.getTime() > then) return;
-                        sender.sendMessage("Claim #" + claim.getId() + " owned by "
-                                           + claim.getOwnerName() + ", last seen " + date);
-                    });
-            }
-            return true;
-        }
+        case "findold": return findOld(sender, Arrays.copyOfRange(args, 1, args.length));
+        case "tp": return tp(sender, Arrays.copyOfRange(args, 1, args.length));
         default:
             break;
         }
@@ -249,6 +246,110 @@ public final class HomeAdminCommand implements TabExecutor {
                                  ? home.publicName : "-");
             sender.sendMessage(Component.text(brief, NamedTextColor.YELLOW));
         }
+        return true;
+    }
+
+    @Value
+    protected final class OldClaim {
+        protected final Claim claim;
+        protected final Date lastSeen;
+    }
+
+    protected boolean findOld(CommandSender sender, String[] args) {
+        int days = args.length >= 1
+            ? Integer.parseInt(args[0])
+            : 90;
+        long now = System.currentTimeMillis();
+        long then = now - Duration.ofDays(days).toMillis();
+        Map<String, Integer> perWorldClaimCount = new HashMap<>();
+        Map<String, Integer> perWorldTotal = new HashMap<>();
+        List<OldClaim> oldClaims = new ArrayList<>();
+        int[] count = new int[1];
+        for (Claim claim : plugin.getClaimCache().getAllClaims()) {
+            perWorldClaimCount.compute(claim.getWorld(), (w, i) -> i != null ? i + 1 : 1);
+            if (claim.getOwner() == null || claim.isAdminClaim()) continue;
+            if (claim.getCreated() > then) continue;
+            int initialSize = plugin.getWorldSettings().get(claim.getWorld()).initialClaimSize;
+            if (claim.getArea().width() > initialSize) continue;
+            if (claim.getArea().height() > initialSize) continue;
+            count[0] += 1;
+            PlayerInfo.getInstance().lastLog(claim.getOwner(), date -> {
+                    if (date.getTime() <= then) {
+                        oldClaims.add(new OldClaim(claim, date));
+                        perWorldTotal.compute(claim.getWorld(), (w, i) -> i != null ? i + 1 : 1);
+                    }
+                    count[0] -= 1;
+                    if (count[0] == 0) {
+                        int total = 0;
+                        Collections.sort(oldClaims, (a, b) -> a.lastSeen.compareTo(b.lastSeen));
+                        for (OldClaim oldClaim : oldClaims) {
+                            sender.sendMessage("Claim " + oldClaim.claim.getId()
+                                               + " at " + oldClaim.claim.getWorld()
+                                               + "," + oldClaim.claim.getArea().centerX()
+                                               + "," + oldClaim.claim.getArea().centerY()
+                                               + " owner " + oldClaim.claim.getOwnerName()
+                                               + ", last seen " + oldClaim.lastSeen);
+                        }
+                        sender.sendMessage("Claims older than " + days + " days:");
+                        for (Map.Entry<String, Integer> entry : perWorldTotal.entrySet()) {
+                            String worldName = entry.getKey();
+                            int worldTotal = entry.getValue();
+                            int worldClaimCount = perWorldClaimCount.getOrDefault(worldName, 0);
+                            int percentage = worldClaimCount > 0
+                                ? (worldTotal * 100 - 1) / worldClaimCount + 1
+                                : 100;
+                            sender.sendMessage(worldName + ": "
+                                               + worldTotal + "/" + worldClaimCount
+                                               + " (" + percentage + "%)");
+                            total += worldTotal;
+                        }
+                        sender.sendMessage("Total: " + total);
+                    }
+                });
+        }
+        return true;
+    }
+
+    protected boolean tp(CommandSender sender, String[] args) {
+        if (!(sender instanceof Player)) {
+            sender.sendMessage("[homeadmin:tp] player expected");
+            return true;
+        }
+        Player player = (Player) sender;
+        if (args.length != 1) return false;
+        int claimId;
+        try {
+            claimId = Integer.parseInt(args[0]);
+        } catch (NumberFormatException nfe) {
+            return false;
+        }
+        Claim claim = plugin.findClaimWithId(claimId);
+        if (claim == null) {
+            player.sendMessage(Component.text("Claim not found: " + claimId, NamedTextColor.RED));
+            return true;
+        }
+        final World world = Bukkit.getWorld(claim.getWorld());
+        if (world == null) return true;
+        final int x = claim.centerX;
+        final int z = claim.centerY;
+        world.getChunkAtAsync(x >> 4, z >> 4, (Consumer<Chunk>) chunk -> {
+                if (!player.isValid()) return;
+                final Location target;
+                if (world.getEnvironment() == World.Environment.NETHER) {
+                    Block block = world.getBlockAt(x, 1, z);
+                    while (!block.isEmpty() || !block.getRelative(0, 1, 0).isEmpty() || !block.getRelative(0, -1, 0).getType().isSolid()) {
+                        block = block.getRelative(0, 1, 0);
+                    }
+                    target = block.getLocation().add(0.5, 0.0, 0.5);
+                } else {
+                    target = world.getHighestBlockAt(x, z).getLocation().add(0.5, 1.0, 0.5);
+                }
+                Location ploc = player.getLocation();
+                target.setYaw(ploc.getYaw());
+                target.setPitch(ploc.getPitch());
+                player.teleport(target, TeleportCause.COMMAND);
+                player.sendMessage(Component.text("Teleporting to claim " + claim.getId(), NamedTextColor.YELLOW));
+            });
         return true;
     }
 }

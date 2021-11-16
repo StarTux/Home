@@ -3,10 +3,12 @@ package com.cavetale.home.claimcache;
 import com.cavetale.home.Area;
 import com.cavetale.home.Claim;
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import lombok.Getter;
+import org.bukkit.command.CommandSender;
 
 /**
  * Store all claims in one world for fast spatial lookup.  This
@@ -54,5 +56,24 @@ public final class ClaimCache {
         SpatialClaimCache spatial = worlds.get(world);
         if (spatial == null) return List.of();
         return spatial.allClaims;
+    }
+
+    public void debug(CommandSender sender, String worldName) {
+        SpatialClaimCache spatial = worlds.get(worldName);
+        if (spatial == null) {
+            sender.sendMessage("No cache: " + worldName);
+            return;
+        }
+        List<SpatialClaimCache.XYSlot> slots = spatial.getAllSlots();
+        Collections.sort(slots, (a, b) -> Integer.compare(a.claims.size(), b.claims.size()));
+        int len = SpatialClaimCache.CHUNK_SIZE;
+        int claimCount = 0;
+        for (SpatialClaimCache.XYSlot slot : slots) {
+            claimCount += slot.claims.size();
+            sender.sendMessage("Slot " + slot.x + "," + slot.y
+                               + " (" + (slot.x * len) + "," + (slot.y * len) + ")"
+                               + ": " + slot.claims.size() + " claims");
+        }
+        sender.sendMessage("Total " + slots.size() + " slots, " + claimCount + " claims");
     }
 }

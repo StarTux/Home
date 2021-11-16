@@ -5,15 +5,16 @@ import com.cavetale.home.Claim;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.function.Consumer;
+import lombok.Value;
 
 /**
  * For fast claim location lookup.
  * One cache per world.
  */
 final class SpatialClaimCache {
-    private static final int CHUNK_BITS = 8;
-    private static final int CHUNK_SIZE = 1 << CHUNK_BITS;
-    private final YList ylist = new YList();
+    protected static final int CHUNK_BITS = 8;
+    protected static final int CHUNK_SIZE = 1 << CHUNK_BITS;
+    protected final YList ylist = new YList();
     /** All claims in this world. */
     protected final List<Claim> allClaims = new ArrayList<>();
 
@@ -93,6 +94,14 @@ final class SpatialClaimCache {
         protected final List<T> positive = new ArrayList<>();
         protected final List<T> negative = new ArrayList<>();
 
+        public int min() {
+            return -negative.size();
+        }
+
+        public int max() {
+            return positive.size();
+        }
+
         public final T get(final int index, final boolean create) {
             return index < 0
                 ? getHelper(negative, -index - 1, create)
@@ -128,19 +137,44 @@ final class SpatialClaimCache {
         protected abstract T create();
     }
 
-    private static final class YList extends TwinList<XList> {
+    protected static final class YList extends TwinList<XList> {
         @Override protected XList create() {
             return new XList();
         }
     }
 
-    private static final class XList extends TwinList<Slot> {
+    protected static final class XList extends TwinList<Slot> {
         @Override protected Slot create() {
             return new Slot();
         }
     }
 
-    private static final class Slot {
+    protected static final class Slot {
         protected final List<Claim> claims = new ArrayList<>();
+    }
+
+    /**
+     * Object returned by getAllSlots(), which exists for
+     * ClaimCache#debug.
+     */
+    @Value
+    protected static final class XYSlot {
+        protected final int x;
+        protected final int y;
+        protected final List<Claim> claims;
+    }
+
+    protected List<XYSlot> getAllSlots() {
+        List<XYSlot> result = new ArrayList<>();
+        for (int y = ylist.min(); y <= ylist.max(); y += 1) {
+            XList xlist = ylist.get(y, false);
+            if (xlist == null) continue;
+            for (int x = xlist.min(); x <= xlist.max(); x += 1) {
+                Slot slot = xlist.get(x, false);
+                if (slot == null) continue;
+                result.add(new XYSlot(x, y, slot.claims));
+            }
+        }
+        return result;
     }
 }

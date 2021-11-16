@@ -53,7 +53,12 @@ public final class HomeAdminCommand implements TabExecutor {
             }
             break;
         case "debug": {
-            sender.sendMessage("Nothing to show!");
+            if (args.length >= 2) {
+                String worldName = args[1];
+                plugin.getClaimCache().debug(sender, worldName);
+            } else {
+                sender.sendMessage("Nothing to show!");
+            }
             return true;
         }
         case "giveclaimblocks":

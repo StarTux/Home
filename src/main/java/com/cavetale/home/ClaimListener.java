@@ -27,6 +27,7 @@ import org.bukkit.entity.AnimalTamer;
 import org.bukkit.entity.Animals;
 import org.bukkit.entity.Entity;
 import org.bukkit.entity.EntityType;
+import org.bukkit.entity.IronGolem;
 import org.bukkit.entity.LivingEntity;
 import org.bukkit.entity.Mob;
 import org.bukkit.entity.Monster;
@@ -163,6 +164,8 @@ final class ClaimListener implements Listener {
         case SHULKER_BULLET:
         case HOGLIN:
             return true;
+        case IRON_GOLEM:
+            return !((IronGolem) entity).isPlayerCreated();
         default:
             return entity instanceof Monster;
         }

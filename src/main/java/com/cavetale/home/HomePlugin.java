@@ -21,6 +21,7 @@ import net.kyori.adventure.text.format.NamedTextColor;
 import org.bukkit.Chunk;
 import org.bukkit.GameMode;
 import org.bukkit.Location;
+import org.bukkit.Material;
 import org.bukkit.Particle;
 import org.bukkit.World;
 import org.bukkit.block.Block;
@@ -341,7 +342,8 @@ public final class HomePlugin extends JavaPlugin {
 
     public void highlightClaim(Claim claim, Player player) {
         highlightClaimHelper(claim.getArea(), player.getWorld(), player.getLocation().getBlockY(), (block, bf) -> {
-                player.spawnParticle(Particle.BARRIER, block.getLocation().add(0.5, 0.5, 0.5), 1, 0.0, 0.0, 0.0, 0.0);
+                player.spawnParticle(Particle.BLOCK_MARKER, block.getLocation().add(0.5, 0.5, 0.5),
+                                     1, 0.0, 0.0, 0.0, 0.0, Material.BARRIER.createBlockData());
             });
     }
 

@@ -28,6 +28,8 @@ import org.bukkit.block.Block;
 import org.bukkit.entity.Player;
 import org.bukkit.event.player.PlayerInteractEvent;
 import org.bukkit.inventory.EquipmentSlot;
+import static net.kyori.adventure.text.Component.text;
+import static net.kyori.adventure.text.format.NamedTextColor.*;
 
 public final class SubclaimCommand extends AbstractCommand<HomePlugin> {
     protected SubclaimCommand(final HomePlugin plugin) {
@@ -290,6 +292,8 @@ public final class SubclaimCommand extends AbstractCommand<HomePlugin> {
         if (oldTrust == null) {
             throw new CommandWarn(playerName + " was not trusted");
         }
+        subclaim.saveToDatabase();
+        player.sendMessage(text("Player trust removed: " + playerName + " (" + oldTrust.displayName + ")", AQUA));
         PluginPlayerEvent.Name.SUBCLAIM_UNTRUST.ultimate(plugin, player)
             .detail(Detail.TARGET, uuid)
             .call();

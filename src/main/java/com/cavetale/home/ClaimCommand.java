@@ -120,7 +120,7 @@ public final class ClaimCommand extends AbstractCommand<HomePlugin> {
             .completers(CommandArgCompleter.NULL)
             .playerCaller(this::ban);
         rootNode.addChild("unban").arguments("<player>")
-            .description("List a ban")
+            .description("Lift a ban")
             .completers(this::completeBannedPlayerNames)
             .playerCaller(this::unban);
         rootNode.addChild("kick").arguments("<player>")

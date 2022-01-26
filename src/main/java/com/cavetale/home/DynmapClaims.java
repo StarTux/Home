@@ -65,14 +65,14 @@ final class DynmapClaims {
             if (claim.isAdminClaim()) {
                 marker.setLineStyle(2, 0.75, 0x0000FF);
                 marker.setFillStyle(0.01, 0x0000FF);
-                String label = "<strong>Admin Claim</strong>";
+                String label = "Admin Claim";
                 marker.setLabel(label, true);
             } else {
                 String label = ""
-                    + "<strong>Owner</strong>: " + claim.getOwnerName()
-                    + "<br/><strong>Size</strong>: "
+                    + "Owner: " + claim.getOwnerName()
+                    + "\nSize: "
                     + claim.getArea().width() + "x" + claim.getArea().height()
-                    + "<br/><strong>Trusted</strong>: " + claim.listPlayers(TrustType::canBuild).stream()
+                    + "\nTrusted: " + claim.listPlayers(TrustType::canBuild).stream()
                     .map(PlayerCache::getName)
                     .collect(Collectors.joining(", "));
                 marker.setLabel(label, true);
@@ -85,13 +85,13 @@ final class DynmapClaims {
                 marker = createOrUpdateAreaMarker(markerSet, "subclaim-" + claim.getId() + "-" + subclaim.getId(), subclaim.getWorld(), subclaim.getArea());
                 Map<Subclaim.Trust, Set<UUID>> trusted = subclaim.getTrustedMap();
                 String label = ""
-                    + "<strong>Subclaim</strong>"
-                    + "<br/>"
-                    + "<strong>Owner</strong>: " + trusted.get(Subclaim.Trust.OWNER).stream()
+                    + "Subclaim"
+                    + "\n"
+                    + "Owner: " + trusted.get(Subclaim.Trust.OWNER).stream()
                     .map(PlayerCache::nameForUuid)
                     .collect(Collectors.joining(", "))
-                    + "<br/>"
-                    + "<strong>Co-Owner</strong>: " + trusted.get(Subclaim.Trust.CO_OWNER).stream()
+                    + "\n"
+                    + "Co-Owner: " + trusted.get(Subclaim.Trust.CO_OWNER).stream()
                     .map(PlayerCache::nameForUuid)
                     .collect(Collectors.joining(", "));
                 marker.setLabel(label, true);

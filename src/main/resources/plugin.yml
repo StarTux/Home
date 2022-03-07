@@ -8,20 +8,19 @@ main: com.cavetale.home.HomePlugin
 depend: [Core, SQL, Exploits, PlayerCache, Money, Perm, Connect, Sidebar]
 softdepend: [dynmap, MagicMap, PlayerInfo]
 commands:
+
   homeadmin:
-    aliases: [claimadmin, ha, ca]
-    description: Admin command
+    aliases: [homeadm, ha]
+    description: Home Admin Commands
     permission: home.admin
-    usage: |-
-      /homeadmin claims <player> - list claims
-      /homeadmin ignore - ignore claims
-      /homeadmin reload - db and config
-      /homeadmin debug - debug spam
-      /homeadmin giveclaimblocks - Give blocks to claim
-      /homeadmin deleteclaim - Delete claim
-      /homeadmin adminclaim - Make admin claim
-      /homeadmin transferclaim <player|-admin> - Transfer claim
-      /homeadmin claiminfo - Claim info
+    usage: /homeadmin
+
+  claimadmin:
+    aliases: [claimadmin, ca]
+    description: Claim Admin Commands
+    permission: home.admin
+    usage: /claimadmin
+
   home:
     aliases: []
     description: Go to your primary home
@@ -29,6 +28,7 @@ commands:
     usage: |-
       /home - Visit your primary home
       /home NAME - Visit a named home
+
   homes:
     aliases: []
     description: Homes menu.
@@ -39,11 +39,13 @@ commands:
       /homes invite <player> [name] - Allow someone to use your home
       /homes public <name> [alias] - Make a home public
       /homes delete [name] - delete a home
+
   listhomes:
     aliases: []
     description: List your homes
     permission: home.home
     usage: /listhomes
+
   sethome:
     aliases: []
     description: Set or reset a home
@@ -51,16 +53,19 @@ commands:
     usage: |-
       /sethome - Set your primary home
       /sethome NAME - Set a named home
+
   invitehome:
     aliases: []
     description: Invite someone to your home
     permission: home.home
     usage: /invitehome <player> [home]
+
   uninvitehome:
     aliases: []
     description: Invite someone to your home
     permission: home.home
     usage: /invitehome <player> [home]
+
   visit:
     aliases: []
     description: Visit a public home
@@ -68,6 +73,7 @@ commands:
     usage: |-
       /visit - Public home menu.
       /visit [name] - Visit public home.
+
   claim:
     aliases: [c, cl, claims]
     description: Manage your claims.
@@ -85,16 +91,19 @@ commands:
       /claim grow - Grow claim to your location
       /claim shrink - Grow claim to your location
       /claim abandon - Abandon your claim
+
   subclaim:
     aliases: []
     description: Subclaim management
     permission: home.claim
     usage: /subclaim
+
   wild:
     aliases: [build]
     description: Find a place to build.
     permission: home.build
     usage: /wild - Find a place to build.
+
 permissions:
   home.home:
     description: Use homes

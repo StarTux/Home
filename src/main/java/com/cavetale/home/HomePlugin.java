@@ -66,6 +66,7 @@ public final class HomePlugin extends JavaPlugin {
     private DynmapClaims dynmapClaims;
     // Commands
     protected final HomeAdminCommand homeAdminCommand = new HomeAdminCommand(this);
+    protected final ClaimAdminCommand claimAdminCommand = new ClaimAdminCommand(this);
     protected final ClaimCommand claimCommand = new ClaimCommand(this);
     protected final HomesCommand homesCommand = new HomesCommand(this);
     protected final HomeCommand homeCommand = new HomeCommand(this);
@@ -91,7 +92,8 @@ public final class HomePlugin extends JavaPlugin {
         db.createAllTables();
         claimListener = new ClaimListener(this).enable();
         eventListener.enable();
-        getCommand("homeadmin").setExecutor(homeAdminCommand);
+        homeAdminCommand.enable();
+        claimAdminCommand.enable();
         claimCommand.enable();
         buildCommand.enable();
         homesCommand.enable();

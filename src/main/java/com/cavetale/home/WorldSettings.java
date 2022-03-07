@@ -15,7 +15,6 @@ final class WorldSettings {
     protected double secondaryClaimCost = 0.0;
     protected double claimBlockCost = 0.1;
     protected long claimAbandonCooldown = 0;
-    protected String displayName;
 
     void load(ConfigurationSection config) {
         claimMargin = config.getInt("ClaimMargin", claimMargin);
@@ -28,6 +27,5 @@ final class WorldSettings {
         initialClaimCost = config.getDouble("InitialClaimCost", initialClaimCost);
         secondaryClaimCost = config.getDouble("SecondaryClaimCost", secondaryClaimCost);
         claimAbandonCooldown = config.getLong("ClaimAbandonCooldown", claimAbandonCooldown);
-        displayName = config.getString("DisplayName", displayName);
     }
 }

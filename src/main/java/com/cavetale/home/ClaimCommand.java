@@ -163,7 +163,7 @@ public final class ClaimCommand extends AbstractCommand<HomePlugin> {
             } catch (NumberFormatException nfe) {
                 return true;
             }
-            claim = plugin.findClaimWithId(claimId);
+            claim = plugin.getClaimById(claimId);
             if (claim == null) return true;
         }
         player.sendMessage("");
@@ -278,7 +278,7 @@ public final class ClaimCommand extends AbstractCommand<HomePlugin> {
             } catch (NumberFormatException nfe) {
                 return true;
             }
-            claim = plugin.findClaimWithId(claimId);
+            claim = plugin.getClaimById(claimId);
             if (claim == null) return true;
             if (!claim.isOwner(player) && claim.isHidden()) return true;
             if (!claim.getTrustType(player).canBuild()) return true;
@@ -328,7 +328,7 @@ public final class ClaimCommand extends AbstractCommand<HomePlugin> {
         Claim claim;
         Session.ClaimGrowSnippet snippet = plugin.sessions.of(player).getClaimGrowSnippet();
         if (snippet != null && snippet.isNear(player.getLocation())) {
-            claim = plugin.findClaimWithId(snippet.claimId);
+            claim = plugin.getClaimById(snippet.claimId);
         } else {
             claim = plugin.findNearestOwnedClaim(player, 512);
         }
@@ -414,7 +414,7 @@ public final class ClaimCommand extends AbstractCommand<HomePlugin> {
         int claimId = plugin.getMetadata(player, plugin.META_ABANDON, Integer.class).orElse(-1);
         if (claimId >= 0) {
             plugin.removeMetadata(player, plugin.META_ABANDON);
-            Claim claim = plugin.findClaimWithId(claimId);
+            Claim claim = plugin.getClaimById(claimId);
             if (claim == null || !claim.isOwner(player) || !args[0].equals("" + claimId)) {
                 throw new CommandWarn("Claim removal expired");
             }

@@ -200,7 +200,7 @@ public final class Session {
             if (claim.getBoolSetting(Claim.Setting.ELYTRA)) continue;
             Title title = Title.title(Component.text("WARNING", NamedTextColor.RED, TextDecoration.BOLD),
                                       Component.text("Approaching No-Fly Zone!", NamedTextColor.RED, TextDecoration.BOLD),
-                                      Title.Times.of(Duration.ZERO, Duration.ofMillis(550), Duration.ZERO));
+                                      Title.Times.times(Duration.ZERO, Duration.ofMillis(550), Duration.ZERO));
             player.showTitle(title);
             player.playSound(player.getEyeLocation(),
                              Sound.ENTITY_ARROW_HIT_PLAYER, SoundCategory.MASTER,

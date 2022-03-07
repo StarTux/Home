@@ -109,7 +109,7 @@ final class DynmapClaims {
                 } catch (NumberFormatException nfe) {
                     continue;
                 }
-                Claim claim = plugin.findClaimWithId(id);
+                Claim claim = plugin.getClaimById(id);
                 if (claim == null || claim.isHidden()) marker.deleteMarker();
             } else if (markerId.startsWith("subclaim-")) {
                 String[] toks = markerId.split("-", 3);
@@ -122,7 +122,7 @@ final class DynmapClaims {
                 } catch (NumberFormatException nfe) {
                     continue;
                 }
-                Claim claim = plugin.findClaimWithId(claimId);
+                Claim claim = plugin.getClaimById(claimId);
                 if (claim == null || claim.isHidden()) continue;
                 Subclaim subclaim = claim.getSubclaim(subclaimId);
                 if (subclaim == null) {

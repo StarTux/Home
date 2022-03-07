@@ -18,21 +18,28 @@ public final class ClaimCache {
     @Getter protected final List<Claim> allClaims = new ArrayList<>();
     protected final Map<String, SpatialClaimCache> worlds = new HashMap<>();
 
+    public void initialize(Iterable<String> localWorlds) {
+        for (String world : localWorlds) {
+            worlds.put(world, new SpatialClaimCache());
+        }
+    }
+
     public void add(Claim claim) {
         allClaims.add(claim);
-        worlds.computeIfAbsent(claim.getWorld(), w -> new SpatialClaimCache())
-            .insert(claim);
+        SpatialClaimCache cache = worlds.get(claim.getWorld());
+        if (cache != null) cache.insert(claim);
     }
 
     public void remove(Claim claim) {
         allClaims.remove(claim);
-        worlds.computeIfAbsent(claim.getWorld(), w -> new SpatialClaimCache())
-            .remove(claim);
+        SpatialClaimCache cache = worlds.get(claim.getWorld());
+        if (cache != null) cache.remove(claim);
     }
 
     public void resize(Claim claim, Area oldArea, Area newArea) {
-        worlds.computeIfAbsent(claim.getWorld(), w -> new SpatialClaimCache())
-            .update(claim, oldArea, newArea);
+        SpatialClaimCache cache = worlds.get(claim.getWorld());
+        if (cache == null) return;
+        cache.update(claim, oldArea, newArea);
     }
 
     public void clear() {

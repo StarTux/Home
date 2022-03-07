@@ -87,6 +87,7 @@ import org.bukkit.event.vehicle.VehicleEntityCollisionEvent;
 import org.bukkit.inventory.InventoryHolder;
 import org.bukkit.inventory.ItemStack;
 import org.spigotmc.event.entity.EntityMountEvent;
+import static net.kyori.adventure.text.Component.empty;
 
 @RequiredArgsConstructor
 final class ClaimListener implements Listener {
@@ -247,7 +248,8 @@ final class ClaimListener implements Listener {
                 // claims.
                 trustType = TrustType.BUILD;
             } else if (isHostileMob(damaged)) {
-                if (damaged.getCustomName() == null) return;
+                Component customName = damaged.customName();
+                if (customName == null || empty().equals(customName)) return;
                 trustType = TrustType.BUILD;
             } else {
                 // Must be an animal
@@ -324,7 +326,8 @@ final class ClaimListener implements Listener {
             return;
         }
         if (isHostileMob(damaged)) {
-            if (damaged.getCustomName() == null) return;
+            Component customName = damaged.customName();
+            if (customName == null || empty().equals(customName)) return;
         }
         if (isOwner(damager, damaged)) {
             // tamed animals
@@ -511,7 +514,7 @@ final class ClaimListener implements Listener {
     /**
      * @return true if this is the valid use of a slimeball, false otherwise.
      */
-    boolean slimeballUse(Player player, PlayerInteractEvent event, Block block, Claim claim) {
+    protected boolean slimeballUse(Player player, PlayerInteractEvent event, Block block, Claim claim) {
         if (claim == null) return false;
         ItemStack item = event.getItem();
         if (item == null || item.getType() != Material.SLIME_BALL) return false;
@@ -720,16 +723,16 @@ final class ClaimListener implements Listener {
     }
 
     @EventHandler(ignoreCancelled = true, priority = EventPriority.LOW)
-    void onCreatureSpawn(CreatureSpawnEvent event) {
+    protected void onCreatureSpawn(CreatureSpawnEvent event) {
         onCreatureSpawn(event, event.getSpawnReason(), event.getEntityType(), event.getLocation());
     }
 
     @EventHandler(ignoreCancelled = true, priority = EventPriority.LOW)
-    void onPreCreatureSpawn(PreCreatureSpawnEvent event) {
+    protected void onPreCreatureSpawn(PreCreatureSpawnEvent event) {
         onCreatureSpawn(event, event.getReason(), event.getType(), event.getSpawnLocation());
     }
 
-    void onCreatureSpawn(Cancellable event, SpawnReason reason, EntityType entityType, Location location) {
+    protected void onCreatureSpawn(Cancellable event, SpawnReason reason, EntityType entityType, Location location) {
         if (!plugin.isHomeWorld(location.getWorld())) return;
         switch (reason) {
         case CUSTOM:
@@ -815,7 +818,7 @@ final class ClaimListener implements Listener {
     }
 
     @EventHandler(ignoreCancelled = true)
-    void onPlayerTeleport(PlayerTeleportEvent event) {
+    protected void onPlayerTeleport(PlayerTeleportEvent event) {
         switch (event.getCause()) {
         case ENDER_PEARL:
         case CHORUS_FRUIT: {
@@ -834,7 +837,7 @@ final class ClaimListener implements Listener {
     }
 
     @EventHandler(ignoreCancelled = true)
-    void onProjectileLaunch(ProjectileLaunchEvent event) {
+    protected void onProjectileLaunch(ProjectileLaunchEvent event) {
         Projectile projectile = event.getEntity();
         if (!(projectile.getShooter() instanceof Player)) return;
         Player player = (Player) projectile.getShooter();
@@ -852,7 +855,7 @@ final class ClaimListener implements Listener {
     }
 
     @EventHandler(ignoreCancelled = true)
-    void onEntityToggleGlide(EntityToggleGlideEvent event) {
+    protected void onEntityToggleGlide(EntityToggleGlideEvent event) {
         if (!(event.getEntity() instanceof Player)) return;
         Player player = (Player) event.getEntity();
         Claim claim = plugin.getClaimAt(player.getLocation());
@@ -866,7 +869,7 @@ final class ClaimListener implements Listener {
     }
 
     @EventHandler(ignoreCancelled = true)
-    void onPlayerBlockAbility(PlayerBlockAbilityQuery query) {
+    protected void onPlayerBlockAbility(PlayerBlockAbilityQuery query) {
         switch (query.getAction()) {
         case USE: // Buttons: Doors
         case READ: // Lectern
@@ -893,7 +896,7 @@ final class ClaimListener implements Listener {
     }
 
     @EventHandler(ignoreCancelled = true)
-    void onPlayerEntityAbility(PlayerEntityAbilityQuery query) {
+    protected void onPlayerEntityAbility(PlayerEntityAbilityQuery query) {
         Player player = query.getPlayer();
         Entity entity = query.getEntity();
         if (isOwner(player, entity)) return;
@@ -921,7 +924,10 @@ final class ClaimListener implements Listener {
         case PLACE:
         case GIMMICK:
         default:
-            if (isHostileMob(entity) && entity.getCustomName() == null && entity.getType() != EntityType.SHULKER) {
+            Component customName = entity.customName();
+            if (isHostileMob(entity)
+                && (customName == null || empty().equals(customName))
+                && entity.getType() != EntityType.SHULKER) {
                 return;
             }
             checkPlayerAction(player, block, TrustType.BUILD, query, false);

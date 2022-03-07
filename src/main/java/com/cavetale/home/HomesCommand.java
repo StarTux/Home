@@ -156,9 +156,9 @@ public final class HomesCommand extends AbstractCommand<HomePlugin> {
                         player.sendMessage(Component.text("Welcome home :)", NamedTextColor.GREEN));
                         player.showTitle(Title.title(Component.empty(),
                                                      Component.text("Welcome home :)", NamedTextColor.GREEN),
-                                                     Title.Times.of(Duration.ofMillis(500),
-                                                                    Duration.ofSeconds(1),
-                                                                    Duration.ofMillis(500))));
+                                                     Title.Times.times(Duration.ofMillis(500),
+                                                                       Duration.ofSeconds(1),
+                                                                       Duration.ofMillis(500))));
                     });
                 return true;
             }
@@ -172,11 +172,8 @@ public final class HomesCommand extends AbstractCommand<HomePlugin> {
                 plugin.findPlaceToBuild(player);
                 return true;
             }
-            // Try the primary claim in the home world.
-            List<Claim> playerClaims = plugin
-                .findClaimsInWorld(playerId, plugin.getPrimaryHomeWorld());
             // or any claim
-            if (playerClaims.isEmpty()) playerClaims = plugin.findClaims(playerId);
+            List<Claim> playerClaims = plugin.findClaims(playerId);
             if (!playerClaims.isEmpty()) {
                 Claim claim = playerClaims.get(0);
                 World bworld = plugin.getServer().getWorld(claim.getWorld());
@@ -253,9 +250,9 @@ public final class HomesCommand extends AbstractCommand<HomePlugin> {
                     player.sendMessage(Component.text("Welcome home", NamedTextColor.GREEN));
                     player.showTitle(Title.title(Component.empty(),
                                                  Component.text("Welcome home", NamedTextColor.GREEN),
-                                                 Title.Times.of(Duration.ofMillis(500),
-                                                                Duration.ofSeconds(1),
-                                                                Duration.ofMillis(500))));
+                                                 Title.Times.times(Duration.ofMillis(500),
+                                                                   Duration.ofSeconds(1),
+                                                                   Duration.ofMillis(500))));
                 });
             return true;
         }

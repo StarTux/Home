@@ -1,6 +1,8 @@
 package com.cavetale.home;
 
+import com.cavetale.core.connect.Connect;
 import com.cavetale.home.claimcache.ClaimCache;
+import com.cavetale.home.sql.SQLHomeWorld;
 import com.cavetale.home.struct.BlockVector;
 import com.winthier.sql.SQLDatabase;
 import java.util.ArrayList;
@@ -17,7 +19,6 @@ import java.util.function.Consumer;
 import java.util.logging.Level;
 import lombok.Getter;
 import net.kyori.adventure.text.Component;
-import net.kyori.adventure.text.format.NamedTextColor;
 import org.bukkit.Chunk;
 import org.bukkit.GameMode;
 import org.bukkit.Location;
@@ -33,6 +34,7 @@ import org.bukkit.metadata.FixedMetadataValue;
 import org.bukkit.metadata.MetadataValue;
 import org.bukkit.metadata.Metadatable;
 import org.bukkit.plugin.java.JavaPlugin;
+import static net.kyori.adventure.text.format.NamedTextColor.*;
 
 @Getter
 public final class HomePlugin extends JavaPlugin {
@@ -43,12 +45,13 @@ public final class HomePlugin extends JavaPlugin {
     protected static final String META_NEWCLAIM = "home.newclaim";
     private final boolean deleteOverlappingClaims = false;
     // Database
-    SQLDatabase db;
+    protected SQLDatabase db;
     // Worlds
-    String primaryHomeWorld;
     protected final Map<String, WorldSettings> worldSettings = new HashMap<>();
     protected final Map<String, String> mirrorWorlds = new HashMap<>();
     // Homes
+    protected List<SQLHomeWorld> worldList = List.of();
+    protected List<String> localHomeWorlds = List.of();
     protected final List<Home> homes = new ArrayList<>();
     protected final List<String> homeWorlds = new ArrayList<>();
     protected final ClaimCache claimCache = new ClaimCache();
@@ -58,7 +61,7 @@ public final class HomePlugin extends JavaPlugin {
     private ClaimListener claimListener;
     // Utilty
     protected long ticks;
-    Random random = ThreadLocalRandom.current();
+    protected Random random = ThreadLocalRandom.current();
     // Interface
     private DynmapClaims dynmapClaims;
     // Commands
@@ -79,8 +82,12 @@ public final class HomePlugin extends JavaPlugin {
         instance = this;
         saveDefaultConfig();
         db = new SQLDatabase(this);
-        db.registerTables(Claim.SQLRow.class, Subclaim.SQLRow.class, ClaimTrust.class,
-                          Home.class, HomeInvite.class);
+        db.registerTables(Claim.SQLRow.class,
+                          Subclaim.SQLRow.class,
+                          ClaimTrust.class,
+                          Home.class,
+                          HomeInvite.class,
+                          SQLHomeWorld.class);
         db.createAllTables();
         claimListener = new ClaimListener(this).enable();
         eventListener.enable();
@@ -148,13 +155,24 @@ public final class HomePlugin extends JavaPlugin {
     }
 
     protected void findPlaceToBuild(Player player) {
-        // Determine center and border
-        String worldName = primaryHomeWorld; // Set up for future expansion
+        List<SQLHomeWorld> rows = new ArrayList<>(worldList);
+        if (rows.isEmpty()) {
+            getLogger().severe("No home worlds configred!");
+            player.sendMessage(Component.text("Something went wrong. Please contact an administrator.", RED));
+            return;
+        }
+        rows.sort((a, b) -> Integer.compare(b.getWildPriority(), a.getWildPriority()));
+        // Eventually: Make preference!
+        int max = rows.get(0).getWildPriority();
+        rows.removeIf(it -> it.getWildPriority() < max);
+        if (rows.size() > 1) {
+            Collections.shuffle(rows);
+        }
+        String worldName = rows.get(0).getWorld();
         World bworld = getServer().getWorld(worldName);
         if (bworld == null) {
             getLogger().warning("Home world not found: " + worldName);
-            player.sendMessage(Component.text("Something went wrong. Please contact an administrator.",
-                                              NamedTextColor.RED));
+            player.sendMessage(Component.text("Something went wrong. Please contact an administrator.", RED));
             return;
         }
         WildTask wildTask = new WildTask(this, bworld, player);
@@ -174,8 +192,6 @@ public final class HomePlugin extends JavaPlugin {
         return ClaimOperationResult.SUCCESS;
     }
 
-    // --- Configuration utility
-
     protected void loadFromConfig() {
         reloadConfig();
         ConfigurationSection section = getConfig().getConfigurationSection("Worlds");
@@ -192,17 +208,19 @@ public final class HomePlugin extends JavaPlugin {
                     mirrorWorlds.put(key, worldSection.getString("mirror"));
                 }
             }
-            homeWorlds.add(key);
-        }
-        if (!homeWorlds.isEmpty()) {
-            primaryHomeWorld = homeWorlds.get(0);
-        } else {
-            primaryHomeWorld = getServer().getWorlds().get(0).getName();
         }
     }
 
     protected void loadFromDatabase() {
+        worldList = db.find(SQLHomeWorld.class).findList();
+        localHomeWorlds = new ArrayList<>();
+        for (SQLHomeWorld it : worldList) {
+            if (it.getServer().equals(Connect.get().getServerName())) {
+                localHomeWorlds.add(it.getWorld());
+            }
+        }
         claimCache.clear();
+        claimCache.initialize(localHomeWorlds);
         homes.clear();
         for (Claim.SQLRow row : db.find(Claim.SQLRow.class).findList()) {
             Claim claim = new Claim(this);
@@ -239,7 +257,7 @@ public final class HomePlugin extends JavaPlugin {
             }
         }
         for (ClaimTrust trust : db.find(ClaimTrust.class).findList()) {
-            Claim claim = findClaimWithId(trust.claimId);
+            Claim claim = getClaimById(trust.claimId);
             if (claim == null) {
                 getLogger().warning("Trust without claim: " + trust);
                 db.deleteAsync(trust, null);
@@ -276,28 +294,19 @@ public final class HomePlugin extends JavaPlugin {
     }
 
     public String worldDisplayName(String worldName) {
-        WorldSettings settings = worldSettings.get(worldName);
-        if (settings != null && settings.getDisplayName() != null) {
-            return settings.getDisplayName();
-        }
-        World world = getServer().getWorld(worldName);
-        if (world == null) return worldName;
-        switch (world.getEnvironment()) {
-        case NORMAL: return "overworld";
-        case NETHER: return "nether";
-        case THE_END: return "end";
-        default: return worldName;
-        }
+        SQLHomeWorld row = findHomeWorld(worldName);
+        if (row != null && row.getDisplayName() != null) return row.getDisplayName();
+        if (worldName.endsWith("_nether")) return "nether";
+        if (worldName.endsWith("_the_end")) return "end";
+        return "overworld";
     }
 
-    // --- Claim Utility
-
     public boolean isHomeWorld(World world) {
-        return homeWorlds.contains(world.getName());
+        return localHomeWorlds.contains(world.getName());
     }
 
     public Claim getClaimById(int claimId) {
-        for (Claim claim : getClaimCache().getAllClaims()) {
+        for (Claim claim : claimCache.getAllClaims()) {
             if (claim.getId() == claimId) return claim;
         }
         return null;
@@ -316,7 +325,7 @@ public final class HomePlugin extends JavaPlugin {
     }
 
     public Claim getClaimAt(String w, int x, int y) {
-        if (!homeWorlds.contains(w)) return null;
+        if (!localHomeWorlds.contains(w)) return null;
         w = mirrorWorlds.getOrDefault(w, w);
         return claimCache.at(w, x, y);
     }
@@ -401,8 +410,6 @@ public final class HomePlugin extends JavaPlugin {
         }
     }
 
-    // --- Public home and claim finders
-
     public List<Home> findHomes(UUID owner) {
         List<Home> list = new ArrayList<>();
         for (Home home : homes) {
@@ -464,13 +471,6 @@ public final class HomePlugin extends JavaPlugin {
         return claimCache.inWorld(mirrorWorlds.getOrDefault(w, w));
     }
 
-    public Claim findClaimWithId(int id) {
-        for (Claim claim : claimCache.getAllClaims()) {
-            if (claim.getId() == id) return claim;
-        }
-        return null;
-    }
-
     public void deleteClaim(Claim claim) {
         int claimId = claim.getId();
         int claimCount = db.find(Claim.SQLRow.class).eq("id", claimId).delete();
@@ -484,20 +484,18 @@ public final class HomePlugin extends JavaPlugin {
                          + " subclaims=" + subclaimCount);
     }
 
-    // --- Metadata
-
-    <T> Optional<T> getMetadata(Metadatable entity, String key, Class<T> clazz) {
+    protected <T> Optional<T> getMetadata(Metadatable entity, String key, Class<T> clazz) {
         for (MetadataValue meta : entity.getMetadata(key)) {
             if (meta.getOwningPlugin() == this) return Optional.of(clazz.cast(meta.value()));
         }
         return Optional.empty();
     }
 
-    void setMetadata(Metadatable entity, String key, Object value) {
+    protected void setMetadata(Metadatable entity, String key, Object value) {
         entity.setMetadata(key, new FixedMetadataValue(this, value));
     }
 
-    void removeMetadata(Metadatable entity, String key) {
+    protected void removeMetadata(Metadatable entity, String key) {
         entity.removeMetadata(key, this);
     }
 
@@ -509,7 +507,7 @@ public final class HomePlugin extends JavaPlugin {
         return sessions.of(player).isIgnoreClaims();
     }
 
-    void warpTo(Player player, final Location loc, Runnable task) {
+    protected void warpTo(Player player, final Location loc, Runnable task) {
         final World world = loc.getWorld();
         int cx = loc.getBlockX() >> 4;
         int cz = loc.getBlockZ() >> 4;
@@ -521,7 +519,7 @@ public final class HomePlugin extends JavaPlugin {
     }
 
     public boolean isPvPAllowed(BlockVector blockVector) {
-        if (!homeWorlds.contains(blockVector.world)) return true;
+        if (!localHomeWorlds.contains(blockVector.world)) return true;
         Claim claim = getClaimAt(blockVector);
         return claim != null
             ? claim.isPvPAllowed(blockVector)
@@ -542,5 +540,12 @@ public final class HomePlugin extends JavaPlugin {
         if (dynmapClaims == null) return;
         dynmapClaims.disable();
         dynmapClaims = null;
+    }
+
+    public SQLHomeWorld findHomeWorld(String worldName) {
+        for (SQLHomeWorld it : worldList) {
+            if (worldName.equals(it.getWorld())) return it;
+        }
+        return null;
     }
 }

@@ -69,7 +69,7 @@ public final class HomeAdminCommand implements TabExecutor {
                 String worldName = args[1];
                 plugin.getClaimCache().debug(sender, worldName);
             } else {
-                sender.sendMessage("Nothing to show!");
+                sender.sendMessage("Local home worlds: " + plugin.localHomeWorlds);
             }
             return true;
         }
@@ -323,7 +323,7 @@ public final class HomeAdminCommand implements TabExecutor {
         } catch (NumberFormatException nfe) {
             return false;
         }
-        Claim claim = plugin.findClaimWithId(claimId);
+        Claim claim = plugin.getClaimById(claimId);
         if (claim == null) {
             player.sendMessage(Component.text("Claim not found: " + claimId, NamedTextColor.RED));
             return true;

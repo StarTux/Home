@@ -24,19 +24,32 @@ import org.bukkit.World;
        uniqueConstraints = {@UniqueConstraint(columnNames = {"owner", "name"}),
                             @UniqueConstraint(columnNames = {"public_name"})})
 public final class Home {
-    @Id Integer id;
-    @Column(nullable = false) UUID owner;
-    @Column(nullable = true, length = 32) String name;
-    @Column(nullable = false) Date created;
-    @Column(nullable = false, length = 32) String world;
-    @Column(nullable = false) double x;
-    @Column(nullable = false) double y;
-    @Column(nullable = false) double z;
-    @Column(nullable = false) double pitch;
-    @Column(nullable = false) double yaw;
-    @Column(nullable = true, length = 32) String publicName;
-    @Column(nullable = false) int score;
-    @Column(nullable = true, length = 4096) String json;
+    @Id
+    protected Integer id;
+    @Column(nullable = false)
+    protected UUID owner;
+    @Column(nullable = true, length = 32)
+    protected String name;
+    @Column(nullable = false)
+    protected Date created;
+    @Column(nullable = false, length = 32)
+    protected String world;
+    @Column(nullable = false)
+    protected double x;
+    @Column(nullable = false)
+    protected double y;
+    @Column(nullable = false)
+    protected double z;
+    @Column(nullable = false)
+    protected double pitch;
+    @Column(nullable = false)
+    protected double yaw;
+    @Column(nullable = true, length = 32)
+    protected String publicName;
+    @Column(nullable = false)
+    protected int score;
+    @Column(nullable = true, length = 4096)
+    protected String json;
     protected final transient List<UUID> invites = new ArrayList<>();
     protected transient Tag tag = new Tag();
     protected transient BlockVector blockVector;

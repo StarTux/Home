@@ -60,6 +60,11 @@ public final class ClaimAdminCommand extends AbstractCommand<HomePlugin> {
         rootNode.addChild("findold").denyTabCompletion()
             .description("Find Old Claims")
             .senderCaller(this::findOld);
+        rootNode.addChild("transferall").arguments("<from> <to>")
+            .description("Transfer all of a Player's Claims")
+            .completers(PlayerCache.NAME_COMPLETER,
+                        PlayerCache.NAME_COMPLETER)
+            .senderCaller(this::transferAll);
     }
 
     private boolean list(CommandSender sender, String[] args) {
@@ -245,6 +250,61 @@ public final class ClaimAdminCommand extends AbstractCommand<HomePlugin> {
                     }
                 });
         }
+        return true;
+    }
+
+    private boolean transferAll(CommandSender sender, String[] args) {
+        if (args.length != 2) return false;
+        PlayerCache from = PlayerCache.forArg(args[0]);
+        if (from == null) throw new CommandWarn("Player not found: " + args[0]);
+        PlayerCache to = PlayerCache.forArg(args[1]);
+        if (to == null) throw new CommandWarn("Player not found: " + args[1]);
+        if (from.equals(to)) throw new CommandWarn("Players are identical: " + from.getName());
+        int total = 0;
+        int claimCount = 0;
+        int trustCount = 0;
+        int subclaimCount = 0;
+        for (Claim claim : plugin.claimCache.getAllClaims()) {
+            if (from.uuid.equals(claim.getOwner())) {
+                claim.setOwner(to.uuid);
+                claim.saveToDatabase();
+                claimCount += 1;
+                total += 1;
+            }
+            ClaimTrust trust;
+            // Remove `to` to avoid duplicates
+            trust = claim.getTrusted().remove(to.uuid);
+            if (trust != null) {
+                plugin.db.delete(trust);
+                total += 1;
+            }
+            // Convert from->to
+            trust = claim.getTrusted().remove(from.uuid);
+            if (trust != null) {
+                trust.setTrustee(to.uuid);
+                claim.getTrusted().put(to.uuid, trust);
+                plugin.db.update(trust);
+                total += 1;
+                trustCount += 1;
+            }
+            for (Subclaim subclaim : claim.getSubclaims()) {
+                Subclaim.Trust otrust = subclaim.getTag().getTrusted().remove(to.uuid);
+                Subclaim.Trust strust = subclaim.getTag().getTrusted().remove(from.uuid);
+                if (strust != null) {
+                    subclaim.getTag().getTrusted().put(to.uuid, strust);
+                }
+                if (otrust != null || strust != null) {
+                    subclaim.saveToDatabase();
+                    total += 1;
+                    subclaimCount += 1;
+                }
+            }
+        }
+        if (total == 0) throw new CommandWarn(from.name + " does not have any claims!");
+        sender.sendMessage(text("Transferred " + claimCount + " claims from "
+                                + from.name + " to " + to.name
+                                + " trust=" + trustCount
+                                + " subclaim=" + subclaimCount, AQUA));
         return true;
     }
 }

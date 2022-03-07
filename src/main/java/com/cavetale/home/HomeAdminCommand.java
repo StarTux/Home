@@ -26,6 +26,11 @@ public final class HomeAdminCommand extends AbstractCommand<HomePlugin> {
         rootNode.addChild("ignore").denyTabCompletion()
             .description("Toggle Home/Claim Ignore")
             .playerCaller(this::ignore);
+        rootNode.addChild("transfer").arguments("<from> <to>")
+            .description("Transfer all of a Player's Homes")
+            .completers(PlayerCache.NAME_COMPLETER,
+                        PlayerCache.NAME_COMPLETER)
+            .senderCaller(this::transfer);
         rootNode.addChild("debug").denyTabCompletion()
             .description("Debug Spam")
             .senderCaller(this::debug);
@@ -85,6 +90,26 @@ public final class HomeAdminCommand extends AbstractCommand<HomePlugin> {
         } else {
             sender.sendMessage("Local home worlds: " + plugin.localHomeWorlds);
         }
+        return true;
+    }
+
+    private boolean transfer(CommandSender sender, String[] args) {
+        if (args.length != 2) return false;
+        PlayerCache from = PlayerCache.forArg(args[0]);
+        if (from == null) throw new CommandWarn("Player not found: " + args[0]);
+        PlayerCache to = PlayerCache.forArg(args[1]);
+        if (to == null) throw new CommandWarn("Player not found: " + args[1]);
+        if (from.equals(to)) throw new CommandWarn("Players are identical: " + from.getName());
+        int count = 0;
+        for (Home home : plugin.homes) {
+            if (!from.uuid.equals(home.getOwner())) continue;
+            home.setOwner(to.uuid);
+            plugin.db.update(home);
+            count += 1;
+        }
+        if (count == 0) throw new CommandWarn(from.name + " does not have any homes!");
+        sender.sendMessage(text("Transferred " + count + " homes from "
+                                + from.name + " to " + to.name, AQUA));
         return true;
     }
 }

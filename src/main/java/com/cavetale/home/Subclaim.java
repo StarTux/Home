@@ -26,7 +26,7 @@ public final class Subclaim {
     @Getter private final Claim parent;
     @Getter private String world;
     @Getter private Area area;
-    private Tag tag;
+    @Getter private Tag tag;
     public static final UUID PUBLIC_UUID = new UUID(0, 0);
 
     /**
@@ -88,6 +88,7 @@ public final class Subclaim {
         }
     }
 
+    @Getter
     public static final class Tag {
         Map<UUID, Trust> trusted = new HashMap<>();
     }

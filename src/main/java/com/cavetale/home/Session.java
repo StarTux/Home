@@ -212,7 +212,7 @@ public final class Session {
     protected void tick(Player player) {
         if (player.getGameMode() == GameMode.SPECTATOR) return;
         final World world = player.getWorld();
-        if (!plugin.isHomeWorld(world)) {
+        if (!plugin.isLocalHomeWorld(world)) {
             currentClaim = null;
             ticks = 0;
             sidebarTicks = 0;

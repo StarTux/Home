@@ -53,7 +53,6 @@ public final class HomePlugin extends JavaPlugin {
     protected List<SQLHomeWorld> worldList = List.of();
     protected List<String> localHomeWorlds = List.of();
     protected final List<Home> homes = new ArrayList<>();
-    protected final List<String> homeWorlds = new ArrayList<>();
     protected final ClaimCache claimCache = new ClaimCache();
     protected final Sessions sessions = new Sessions(this);
     protected final EventListener eventListener = new EventListener(this);
@@ -127,7 +126,7 @@ public final class HomePlugin extends JavaPlugin {
             sessions.of(player).tick(player);
         }
         for (World world : getServer().getWorlds()) {
-            if (!(isHomeWorld(world))) continue;
+            if (!(isLocalHomeWorld(world))) continue;
             tickHomeWorld(world);
         }
         ticks += 1;
@@ -197,7 +196,6 @@ public final class HomePlugin extends JavaPlugin {
     protected void loadFromConfig() {
         reloadConfig();
         ConfigurationSection section = getConfig().getConfigurationSection("Worlds");
-        homeWorlds.clear();
         worldSettings.clear();
         for (String key : section.getKeys(false)) {
             ConfigurationSection worldSection = section.getConfigurationSection(key);
@@ -303,8 +301,12 @@ public final class HomePlugin extends JavaPlugin {
         return "overworld";
     }
 
-    public boolean isHomeWorld(World world) {
+    public boolean isLocalHomeWorld(World world) {
         return localHomeWorlds.contains(world.getName());
+    }
+
+    public boolean isLocalHomeWorld(String worldName) {
+        return localHomeWorlds.contains(worldName);
     }
 
     public Claim getClaimById(int claimId) {

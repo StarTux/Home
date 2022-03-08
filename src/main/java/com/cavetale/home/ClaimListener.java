@@ -107,7 +107,7 @@ final class ClaimListener implements Listener {
      */
     public boolean checkPlayerAction(Player player, BlockVector at, TrustType requiredTrust, Cancellable cancellable, boolean notify) {
         if (plugin.doesIgnoreClaims(player)) return true;
-        if (!plugin.getHomeWorlds().contains(at.world)) return true;
+        if (!plugin.isLocalHomeWorld(at.world)) return true;
         Claim claim = plugin.getClaimAt(at);
         if (claim == null) return true;
         TrustType trustType = claim.getTrustType(player, at);
@@ -229,7 +229,7 @@ final class ClaimListener implements Listener {
     @EventHandler(ignoreCancelled = true, priority = EventPriority.LOW)
     public void onEntityDamageByEntity(EntityDamageByEntityEvent event) {
         final Entity damaged = event.getEntity();
-        if (!plugin.isHomeWorld(damaged.getWorld())) return;
+        if (!plugin.isLocalHomeWorld(damaged.getWorld())) return;
         final Player player = getPlayerDamager(event.getDamager());
         if (player != null && damaged instanceof Player) {
             // PVP
@@ -291,7 +291,7 @@ final class ClaimListener implements Listener {
     public void onEntityDamageByBlock(EntityDamageByBlockEvent event) {
         final Entity damaged = event.getEntity();
         final Block block = event.getDamager();
-        if (!plugin.isHomeWorld(damaged.getWorld())) return;
+        if (!plugin.isLocalHomeWorld(damaged.getWorld())) return;
         switch (event.getCause()) {
         case BLOCK_EXPLOSION:
         case ENTITY_EXPLOSION:
@@ -311,7 +311,7 @@ final class ClaimListener implements Listener {
 
     @EventHandler(ignoreCancelled = true, priority = EventPriority.LOW)
     public void onEntityCombustByEntity(EntityCombustByEntityEvent event) {
-        if (!plugin.isHomeWorld(event.getEntity().getWorld())) return;
+        if (!plugin.isLocalHomeWorld(event.getEntity().getWorld())) return;
         Player damager = getPlayerDamager(event.getCombuster());
         if (damager == null) return;
         boolean melee = event.getCombuster().equals(damager);
@@ -340,7 +340,7 @@ final class ClaimListener implements Listener {
     @EventHandler(ignoreCancelled = true, priority = EventPriority.LOW)
     public void onVehicleDamage(VehicleDamageEvent event) {
         Vehicle vehicle = event.getVehicle();
-        if (!plugin.isHomeWorld(vehicle.getWorld())) return;
+        if (!plugin.isLocalHomeWorld(vehicle.getWorld())) return;
         Player player = getPlayerDamager(event.getAttacker());
         if (player == null) return;
         boolean melee = player.equals(event.getAttacker());
@@ -352,7 +352,7 @@ final class ClaimListener implements Listener {
     @EventHandler(ignoreCancelled = true, priority = EventPriority.LOW)
     public void onVehicleDestroy(VehicleDestroyEvent event) {
         Vehicle vehicle = event.getVehicle();
-        if (!plugin.isHomeWorld(vehicle.getWorld())) return;
+        if (!plugin.isLocalHomeWorld(vehicle.getWorld())) return;
         Player player = getPlayerDamager(event.getAttacker());
         if (player == null) return;
         boolean melee = player.equals(event.getAttacker());
@@ -364,7 +364,7 @@ final class ClaimListener implements Listener {
     @EventHandler(ignoreCancelled = true, priority = EventPriority.LOW)
     public void onVehicleCreate(VehicleCreateEvent event) {
         Vehicle vehicle = event.getVehicle();
-        if (!plugin.isHomeWorld(vehicle.getWorld())) return;
+        if (!plugin.isLocalHomeWorld(vehicle.getWorld())) return;
         if (!(vehicle instanceof LivingEntity)
             && plugin.getClaimAt(vehicle.getLocation()) == null) {
             vehicle.setPersistent(false);
@@ -554,7 +554,7 @@ final class ClaimListener implements Listener {
 
     @EventHandler(ignoreCancelled = true, priority = EventPriority.LOW)
     public void onHangingBreak(HangingBreakEvent event) {
-        if (!plugin.isHomeWorld(event.getEntity().getWorld())) return;
+        if (!plugin.isLocalHomeWorld(event.getEntity().getWorld())) return;
         if (event.getCause() == HangingBreakEvent.RemoveCause.EXPLOSION) {
             Claim claim = plugin.getClaimAt(event.getEntity().getLocation().getBlock());
             if (claim == null || !claim.getBoolSetting(Claim.Setting.EXPLOSIONS)) {
@@ -597,7 +597,7 @@ final class ClaimListener implements Listener {
 
     @EventHandler(ignoreCancelled = true, priority = EventPriority.LOW)
     public void onEntityExplode(EntityExplodeEvent event) {
-        if (!plugin.isHomeWorld(event.getEntity().getWorld())) return;
+        if (!plugin.isLocalHomeWorld(event.getEntity().getWorld())) return;
         for (Iterator<Block> iter = event.blockList().iterator(); iter.hasNext();) {
             Claim claim = plugin.getClaimAt(iter.next());
             if (claim == null || !claim.getBoolSetting(Claim.Setting.EXPLOSIONS)) {
@@ -608,7 +608,7 @@ final class ClaimListener implements Listener {
 
     @EventHandler(ignoreCancelled = true, priority = EventPriority.LOW)
     public void onBlockExplode(BlockExplodeEvent event) {
-        if (!plugin.isHomeWorld(event.getBlock().getWorld())) return;
+        if (!plugin.isLocalHomeWorld(event.getBlock().getWorld())) return;
         Claim claim = plugin.getClaimAt(event.getBlock());
         if (claim != null && !claim.getBoolSetting(Claim.Setting.EXPLOSIONS)) {
             event.setCancelled(true);
@@ -624,7 +624,7 @@ final class ClaimListener implements Listener {
 
     @EventHandler(ignoreCancelled = true, priority = EventPriority.LOW)
     public void onBlockBurn(BlockBurnEvent event) {
-        if (!plugin.isHomeWorld(event.getBlock().getWorld())) return;
+        if (!plugin.isLocalHomeWorld(event.getBlock().getWorld())) return;
         Claim claim = plugin.getClaimAt(event.getBlock());
         if (claim == null || !claim.getBoolSetting(Claim.Setting.FIRE)) {
             event.setCancelled(true);
@@ -634,7 +634,7 @@ final class ClaimListener implements Listener {
 
     @EventHandler(ignoreCancelled = true, priority = EventPriority.LOW)
     public void onBlockIgnite(BlockIgniteEvent event) {
-        if (!plugin.isHomeWorld(event.getBlock().getWorld())) return;
+        if (!plugin.isLocalHomeWorld(event.getBlock().getWorld())) return;
         switch (event.getCause()) {
         case FLINT_AND_STEEL:
             return;
@@ -656,7 +656,7 @@ final class ClaimListener implements Listener {
 
     @EventHandler(ignoreCancelled = true, priority = EventPriority.LOW)
     public void onCauldronLevelChange(CauldronLevelChangeEvent event) {
-        if (!plugin.isHomeWorld(event.getBlock().getWorld())) return;
+        if (!plugin.isLocalHomeWorld(event.getBlock().getWorld())) return;
         Entity entity = event.getEntity();
         if (entity != null) {
             Player player = getPlayerDamager(entity);
@@ -668,7 +668,7 @@ final class ClaimListener implements Listener {
 
     @EventHandler(ignoreCancelled = true, priority = EventPriority.LOW)
     public void onEntityChangeBlock(EntityChangeBlockEvent event) {
-        if (!plugin.isHomeWorld(event.getEntity().getWorld())) return;
+        if (!plugin.isLocalHomeWorld(event.getEntity().getWorld())) return;
         Player player = getPlayerDamager(event.getEntity());
         if (player != null) {
             if (event.getBlock().getType() == Material.BIG_DRIPLEAF
@@ -684,7 +684,7 @@ final class ClaimListener implements Listener {
 
     @EventHandler(ignoreCancelled = true, priority = EventPriority.LOW)
     public void onBlockPistonExtend(BlockPistonExtendEvent event) {
-        if (!plugin.isHomeWorld(event.getBlock().getWorld())) return;
+        if (!plugin.isLocalHomeWorld(event.getBlock().getWorld())) return;
         // Piston movement is not allowed:
         // - Outside claims
         // - Crossing claim borders
@@ -704,7 +704,7 @@ final class ClaimListener implements Listener {
 
     @EventHandler(ignoreCancelled = true, priority = EventPriority.LOW)
     public void onBlockPistonRetract(BlockPistonRetractEvent event) {
-        if (!plugin.isHomeWorld(event.getBlock().getWorld())) return;
+        if (!plugin.isLocalHomeWorld(event.getBlock().getWorld())) return;
         // Piston movement is not allowed:
         // - Outside claims
         // - Crossing claim borders
@@ -733,7 +733,7 @@ final class ClaimListener implements Listener {
     }
 
     protected void onCreatureSpawn(Cancellable event, SpawnReason reason, EntityType entityType, Location location) {
-        if (!plugin.isHomeWorld(location.getWorld())) return;
+        if (!plugin.isLocalHomeWorld(location.getWorld())) return;
         switch (reason) {
         case CUSTOM:
         case DEFAULT:
@@ -944,7 +944,7 @@ final class ClaimListener implements Listener {
         EntityType entityType = event.getEntityType();
         Location loc = event.getLocation();
         World world = loc.getWorld();
-        if (!plugin.isHomeWorld(world)) return;
+        if (!plugin.isLocalHomeWorld(world)) return;
         switch (event.getEntityType()) {
         case ZOMBIE:
         case SKELETON:
@@ -989,7 +989,7 @@ final class ClaimListener implements Listener {
 
     @EventHandler(ignoreCancelled = true, priority = EventPriority.LOW)
     public void onBlockFromTo(BlockFromToEvent event) {
-        if (!plugin.isHomeWorld(event.getBlock().getWorld())) return;
+        if (!plugin.isLocalHomeWorld(event.getBlock().getWorld())) return;
         Claim from = plugin.getClaimAt(event.getBlock());
         Claim to = plugin.getClaimAt(event.getToBlock());
         if (!Objects.equals(from, to)) {

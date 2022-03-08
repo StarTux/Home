@@ -263,7 +263,7 @@ public final class HomesCommand extends AbstractCommand<HomePlugin> {
         if (args.length > 1) return false;
         if (args.length == 1 && args[0].equals("help")) return false;
         UUID playerId = player.getUniqueId();
-        if (!plugin.isHomeWorld(player.getWorld())) {
+        if (!plugin.isLocalHomeWorld(player.getWorld())) {
             throw new CommandWarn("You cannot set homes in this world");
         }
         BlockVector blockVector = BlockVector.of(player.getLocation());

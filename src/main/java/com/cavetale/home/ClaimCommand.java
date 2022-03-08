@@ -186,11 +186,9 @@ public final class ClaimCommand extends AbstractCommand<HomePlugin> {
 
     private boolean newClaim(Player player, String[] args) {
         if (args.length != 0) return false;
-        boolean isHomeWorld = false;
-        boolean isHomeEndWorld = false;
         World playerWorld = player.getWorld();
         String playerWorldName = playerWorld.getName();
-        if (!plugin.getHomeWorlds().contains(playerWorldName)) {
+        if (!plugin.isLocalHomeWorld(playerWorldName)) {
             throw new CommandWarn("You cannot make claims in this world");
         }
         if (plugin.getMirrorWorlds().containsKey(playerWorldName)) {
@@ -428,7 +426,7 @@ public final class ClaimCommand extends AbstractCommand<HomePlugin> {
         if (ncmeta != null) {
             plugin.removeMetadata(player, plugin.META_NEWCLAIM);
             if (!args[0].equals(ncmeta.token)) return true;
-            if (!plugin.getHomeWorlds().contains(ncmeta.world)) return true;
+            if (!plugin.isLocalHomeWorld(ncmeta.world)) return true;
             WorldSettings settings = plugin.getWorldSettings().get(ncmeta.world);
             for (Claim claimInWorld : plugin.findClaimsInWorld(ncmeta.world)) {
                 // This whole check is a repeat from the new claim command.

@@ -59,7 +59,7 @@ final class WildTask {
             return;
         }
         // Determine center and border
-        if (!plugin.isHomeWorld(world)) {
+        if (!plugin.isLocalHomeWorld(world)) {
             plugin.getLogger().warning("WildTask: World not found: " + world.getName());
             player.sendMessage(Component.text("Something went wrong. Please contact an administrator",
                                               NamedTextColor.RED));

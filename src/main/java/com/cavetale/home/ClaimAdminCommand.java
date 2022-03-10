@@ -272,28 +272,25 @@ public final class ClaimAdminCommand extends AbstractCommand<HomePlugin> {
                 total += 1;
             }
             ClaimTrust trust;
-            // Remove `to` to avoid duplicates
-            trust = claim.getTrusted().remove(to.uuid);
-            if (trust != null) {
-                plugin.db.delete(trust);
-                total += 1;
-            }
             // Convert from->to
-            trust = claim.getTrusted().remove(from.uuid);
-            if (trust != null) {
-                trust.setTrustee(to.uuid);
-                claim.getTrusted().put(to.uuid, trust);
-                plugin.db.update(trust);
+            ClaimTrust fromTrust = claim.getTrusted().remove(from.uuid);
+            if (fromTrust != null) {
+                // Remove `to` to avoid duplicates
+                ClaimTrust toTrust = claim.getTrusted().remove(to.uuid);
+                if (toTrust != null) {
+                    plugin.db.delete(toTrust);
+                    total += 1;
+                }
+                fromTrust.setTrustee(to.uuid);
+                claim.getTrusted().put(to.uuid, fromTrust);
+                plugin.db.update(fromTrust);
                 total += 1;
                 trustCount += 1;
             }
             for (Subclaim subclaim : claim.getSubclaims()) {
-                Subclaim.Trust otrust = subclaim.getTag().getTrusted().remove(to.uuid);
-                Subclaim.Trust strust = subclaim.getTag().getTrusted().remove(from.uuid);
-                if (strust != null) {
-                    subclaim.getTag().getTrusted().put(to.uuid, strust);
-                }
-                if (otrust != null || strust != null) {
+                Subclaim.Trust fromSubTrust = subclaim.getTag().getTrusted().remove(from.uuid);
+                if (fromSubTrust != null) {
+                    subclaim.getTag().getTrusted().put(to.uuid, fromSubTrust);
                     subclaim.saveToDatabase();
                     total += 1;
                     subclaimCount += 1;
@@ -301,8 +298,8 @@ public final class ClaimAdminCommand extends AbstractCommand<HomePlugin> {
             }
         }
         if (total == 0) throw new CommandWarn(from.name + " does not have any claims!");
-        sender.sendMessage(text("Transferred " + claimCount + " claims from "
-                                + from.name + " to " + to.name
+        sender.sendMessage(text("Transferred claims from " + from.name + " to " + to.name + ":"
+                                + " claims=" + claimCount
                                 + " trust=" + trustCount
                                 + " subclaim=" + subclaimCount, AQUA));
         return true;

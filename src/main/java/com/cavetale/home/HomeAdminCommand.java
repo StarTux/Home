@@ -108,8 +108,9 @@ public final class HomeAdminCommand extends AbstractCommand<HomePlugin> {
             count += 1;
         }
         if (count == 0) throw new CommandWarn(from.name + " does not have any homes!");
-        sender.sendMessage(text("Transferred " + count + " homes from "
-                                + from.name + " to " + to.name, AQUA));
+        sender.sendMessage(text("Transferred homes from " + from.name + " to " + to.name + ":"
+                                + " count=" + count,
+                                AQUA));
         return true;
     }
 }

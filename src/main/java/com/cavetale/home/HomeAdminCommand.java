@@ -118,7 +118,7 @@ public final class HomeAdminCommand extends AbstractCommand<HomePlugin> {
         int inviteCount  = 0;
         if (!inviteRows.isEmpty()) {
             for (HomeInvite inviteRow : inviteRows) {
-                inviteCount += plugin.db.insertIgnore(new HomeInvite(inviteRow.getHomeId(), inviteRow.getInvitee()));
+                inviteCount += plugin.db.insertIgnore(new HomeInvite(inviteRow.getHomeId(), to.uuid));
             }
             plugin.db.delete(inviteRows);
         }

@@ -100,16 +100,32 @@ public final class HomeAdminCommand extends AbstractCommand<HomePlugin> {
         PlayerCache to = PlayerCache.forArg(args[1]);
         if (to == null) throw new CommandWarn("Player not found: " + args[1]);
         if (from.equals(to)) throw new CommandWarn("Players are identical: " + from.getName());
-        int count = 0;
+        int homeCount = 0;
         for (Home home : plugin.homes) {
-            if (!from.uuid.equals(home.getOwner())) continue;
-            home.setOwner(to.uuid);
-            plugin.db.update(home);
-            count += 1;
+            if (from.uuid.equals(home.getOwner())) {
+                home.setOwner(to.uuid);
+                plugin.db.update(home);
+                homeCount += 1;
+            }
+            if (home.invites.remove(from.uuid)) {
+                // This will not persist!
+                home.invites.add(to.uuid);
+            }
         }
-        if (count == 0) throw new CommandWarn(from.name + " does not have any homes!");
+        List<HomeInvite> inviteRows = plugin.db.find(HomeInvite.class)
+            .eq("invitee", from.uuid)
+            .findList();
+        int inviteCount  = 0;
+        if (!inviteRows.isEmpty()) {
+            for (HomeInvite inviteRow : inviteRows) {
+                inviteCount += plugin.db.insertIgnore(new HomeInvite(inviteRow.getHomeId(), inviteRow.getInvitee()));
+            }
+            plugin.db.delete(inviteRows);
+        }
+        if (homeCount == 0 && inviteRows.isEmpty()) throw new CommandWarn(from.name + " does not have any homes or invites!");
         sender.sendMessage(text("Transferred homes from " + from.name + " to " + to.name + ":"
-                                + " count=" + count,
+                                + " homes=" + homeCount
+                                + " invites=" + inviteCount + "/" + inviteRows.size(),
                                 AQUA));
         return true;
     }

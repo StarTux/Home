@@ -103,8 +103,10 @@ public final class HomeAdminCommand extends AbstractCommand<HomePlugin> {
         int homeCount = 0;
         for (Home home : plugin.homes) {
             if (from.uuid.equals(home.getOwner())) {
+                plugin.db.delete(home);
+                home.setId(null);
                 home.setOwner(to.uuid);
-                plugin.db.update(home);
+                plugin.db.save(home);
                 homeCount += 1;
             }
             if (home.invites.remove(from.uuid)) {
@@ -123,6 +125,7 @@ public final class HomeAdminCommand extends AbstractCommand<HomePlugin> {
             plugin.db.delete(inviteRows);
         }
         if (homeCount == 0 && inviteRows.isEmpty()) throw new CommandWarn(from.name + " does not have any homes or invites!");
+        plugin.loadFromDatabase();
         sender.sendMessage(text("Transferred homes from " + from.name + " to " + to.name + ":"
                                 + " homes=" + homeCount
                                 + " invites=" + inviteCount + "/" + inviteRows.size(),

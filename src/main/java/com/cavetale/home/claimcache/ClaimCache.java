@@ -24,6 +24,14 @@ public final class ClaimCache {
         }
     }
 
+    public List<Claim> getAllLocalClaims() {
+        List<Claim> result = new ArrayList<>();
+        for (Claim claim : allClaims) {
+            if (worlds.containsKey(claim.getWorld())) result.add(claim);
+        }
+        return result;
+    }
+
     public void add(Claim claim) {
         allClaims.add(claim);
         SpatialClaimCache cache = worlds.get(claim.getWorld());

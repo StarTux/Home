@@ -4,17 +4,9 @@ import com.cavetale.core.command.AbstractCommand;
 import com.cavetale.core.command.CommandArgCompleter;
 import com.cavetale.core.command.CommandWarn;
 import com.winthier.playercache.PlayerCache;
-import com.winthier.playerinfo.PlayerInfo;
-import java.time.Duration;
-import java.util.ArrayList;
-import java.util.Collections;
-import java.util.Date;
-import java.util.HashMap;
 import java.util.List;
-import java.util.Map;
 import java.util.UUID;
 import java.util.function.Consumer;
-import lombok.Value;
 import org.bukkit.Bukkit;
 import org.bukkit.Chunk;
 import org.bukkit.Location;
@@ -27,6 +19,8 @@ import static net.kyori.adventure.text.Component.text;
 import static net.kyori.adventure.text.format.NamedTextColor.*;
 
 public final class ClaimAdminCommand extends AbstractCommand<HomePlugin> {
+    protected OldClaimFinder oldClaimFinder;
+
     protected ClaimAdminCommand(final HomePlugin plugin) {
         super(plugin, "claimadmin");
     }
@@ -192,64 +186,14 @@ public final class ClaimAdminCommand extends AbstractCommand<HomePlugin> {
         return true;
     }
 
-    @Value
-    protected final class OldClaim {
-        protected final Claim claim;
-        protected final Date lastSeen;
-    }
-
     private boolean findOld(CommandSender sender, String[] args) {
-        int days = args.length >= 1
-            ? Integer.parseInt(args[0])
-            : 90;
-        long now = System.currentTimeMillis();
-        long then = now - Duration.ofDays(days).toMillis();
-        Map<String, Integer> perWorldClaimCount = new HashMap<>();
-        Map<String, Integer> perWorldTotal = new HashMap<>();
-        List<OldClaim> oldClaims = new ArrayList<>();
-        int[] count = new int[1];
-        for (Claim claim : plugin.getClaimCache().getAllClaims()) {
-            perWorldClaimCount.compute(claim.getWorld(), (w, i) -> i != null ? i + 1 : 1);
-            if (claim.getOwner() == null || claim.isAdminClaim()) continue;
-            if (claim.getCreated() > then) continue;
-            int initialSize = plugin.getWorldSettings().get(claim.getWorld()).initialClaimSize;
-            if (claim.getArea().width() > initialSize) continue;
-            if (claim.getArea().height() > initialSize) continue;
-            count[0] += 1;
-            PlayerInfo.getInstance().lastLog(claim.getOwner(), date -> {
-                    if (date.getTime() <= then) {
-                        oldClaims.add(new OldClaim(claim, date));
-                        perWorldTotal.compute(claim.getWorld(), (w, i) -> i != null ? i + 1 : 1);
-                    }
-                    count[0] -= 1;
-                    if (count[0] == 0) {
-                        int total = 0;
-                        Collections.sort(oldClaims, (a, b) -> a.lastSeen.compareTo(b.lastSeen));
-                        for (OldClaim oldClaim : oldClaims) {
-                            sender.sendMessage("Claim " + oldClaim.claim.getId()
-                                               + " at " + oldClaim.claim.getWorld()
-                                               + "," + oldClaim.claim.getArea().centerX()
-                                               + "," + oldClaim.claim.getArea().centerY()
-                                               + " owner " + oldClaim.claim.getOwnerName()
-                                               + ", last seen " + oldClaim.lastSeen);
-                        }
-                        sender.sendMessage("Claims older than " + days + " days:");
-                        for (Map.Entry<String, Integer> entry : perWorldTotal.entrySet()) {
-                            String worldName = entry.getKey();
-                            int worldTotal = entry.getValue();
-                            int worldClaimCount = perWorldClaimCount.getOrDefault(worldName, 0);
-                            int percentage = worldClaimCount > 0
-                                ? (worldTotal * 100 - 1) / worldClaimCount + 1
-                                : 100;
-                            sender.sendMessage(worldName + ": "
-                                               + worldTotal + "/" + worldClaimCount
-                                               + " (" + percentage + "%)");
-                            total += worldTotal;
-                        }
-                        sender.sendMessage("Total: " + total);
-                    }
-                });
+        if (args.length != 0) return false;
+        if (oldClaimFinder != null) {
+            throw new CommandWarn("Task already active! Progress="
+                                  + oldClaimFinder.progress + "/" + oldClaimFinder.oldClaims.size());
         }
+        oldClaimFinder = new OldClaimFinder(plugin, sender);
+        oldClaimFinder.start();
         return true;
     }
 

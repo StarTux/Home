@@ -137,9 +137,9 @@ final class DynmapClaims {
         double[] x = new double[4];
         double[] z = new double[4];
         x[1] = (double) area.ax;
-        x[3] = (double) area.bx;
+        x[3] = (double) area.bx + 1.0;
         z[3] = (double) area.ay;
-        z[2] = (double) area.by;
+        z[2] = (double) area.by + 1.0;
         //
         x[0] = x[1];
         x[2] = x[3];

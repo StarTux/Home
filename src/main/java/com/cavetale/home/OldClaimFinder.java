@@ -30,6 +30,7 @@ public final class OldClaimFinder {
     private Map<String, Integer> perWorldClaimCount = new HashMap<>();
     private Map<String, Integer> perWorldTotal = new HashMap<>();
     protected int progress;
+    protected double tps = 20.0;
 
     @RequiredArgsConstructor
     protected final class OldClaim {
@@ -72,7 +73,7 @@ public final class OldClaimFinder {
     }
 
     private void checkBlocksAsync() {
-        final int max = 16;
+        final int max = 4;
         Semaphore semaphore = new Semaphore(max);
         long stop = 0L;
         for (OldClaim oldClaim : oldClaims) {
@@ -88,8 +89,15 @@ public final class OldClaimFinder {
                     if (System.currentTimeMillis() - stop > 3000L) {
                         stop = System.currentTimeMillis();
                         Bukkit.getScheduler().runTask(plugin, () -> {
-                                sender.sendMessage("[OldClaimFinder] Progress: " + progress + "/" + oldClaims.size());
+                                sender.sendMessage("[OldClaimFinder]"
+                                                   + " max=" + max
+                                                   + " progress=" + progress + "/" + oldClaims.size());
                             });
+                    }
+                    if (tps <= 19.0) {
+                        try {
+                            Thread.sleep(1000L);
+                        } catch (InterruptedException ie) { }
                     }
                     try {
                         semaphore.acquire();
@@ -100,6 +108,7 @@ public final class OldClaimFinder {
                     final int finalChunkX = chunkX;
                     final int finalChunkZ = chunkZ;
                     Bukkit.getScheduler().runTask(plugin, () -> {
+                            tps = Bukkit.getTPS()[0];
                             World world = Bukkit.getWorld(oldClaim.claim.getWorld());
                             if (world == null) {
                                 semaphore.release();

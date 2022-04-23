@@ -36,6 +36,7 @@ public final class OldClaimFinder {
         protected final Claim claim;
         protected Date lastSeen;
         protected int playerPlacedBlocks;
+        protected boolean delete;
     }
 
     public void start() {
@@ -87,7 +88,7 @@ public final class OldClaimFinder {
                     if (System.currentTimeMillis() - stop > 3000L) {
                         stop = System.currentTimeMillis();
                         Bukkit.getScheduler().runTask(plugin, () -> {
-                                sender.sendMessage("OldClaimFinder Progress: " + progress + "/" + oldClaims.size());
+                                sender.sendMessage("[OldClaimFinder] Progress: " + progress + "/" + oldClaims.size());
                             });
                     }
                     try {
@@ -133,15 +134,17 @@ public final class OldClaimFinder {
         int total = 0;
         Collections.sort(oldClaims, (b, a) -> Integer.compare(a.playerPlacedBlocks, b.playerPlacedBlocks));
         for (OldClaim oldClaim : oldClaims) {
-            sender.sendMessage("#" + oldClaim.claim.getId()
-                               + " ppc=" + oldClaim.playerPlacedBlocks
+            if (oldClaim.playerPlacedBlocks < 10) oldClaim.delete = true;
+            sender.sendMessage("[OldClaimFinder] Info #" + oldClaim.claim.getId()
+                               + " ppb=" + oldClaim.playerPlacedBlocks
                                + " " + oldClaim.claim.getWorld()
                                + " " + oldClaim.claim.getArea().centerX()
                                + " " + oldClaim.claim.getArea().centerY()
                                + " owner=" + oldClaim.claim.getOwnerName()
-                               + " last=" + oldClaim.lastSeen);
+                               + " last=" + oldClaim.lastSeen
+                               + " delete=" + oldClaim.delete);
         }
-        sender.sendMessage("Claims older than " + days + " days:");
+        sender.sendMessage("[OldClaimFinder] Claims older than " + days + " days:");
         for (Map.Entry<String, Integer> entry : perWorldTotal.entrySet()) {
             String worldName = entry.getKey();
             int worldTotal = entry.getValue();
@@ -149,12 +152,28 @@ public final class OldClaimFinder {
             int percentage = worldClaimCount > 0
                 ? (worldTotal * 100 - 1) / worldClaimCount + 1
                 : 100;
-            sender.sendMessage(worldName + ": "
+            sender.sendMessage("[OldClaimFinder] " +  worldName + ": "
                                + worldTotal + "/" + worldClaimCount
                                + " (" + percentage + "%)");
             total += worldTotal;
         }
-        sender.sendMessage("Total: " + total);
+        sender.sendMessage("[OldClaimFinder] Total: " + total);
+        int deleted = 0;
+        for (OldClaim oldClaim : oldClaims) {
+            if (!oldClaim.delete) continue;
+            sender.sendMessage("[OldClaimFinder] Deleting #" + oldClaim.claim.getId()
+                               + " ppb=" + oldClaim.playerPlacedBlocks
+                               + " " + oldClaim.claim.getWorld()
+                               + " " + oldClaim.claim.getArea().centerX()
+                               + " " + oldClaim.claim.getArea().centerY()
+                               + " owner=" + oldClaim.claim.getOwnerName()
+                               + " last=" + oldClaim.lastSeen);
+            //plugin.deleteClaim(oldClaim.claim);
+            deleted += 1;
+        }
+        if (deleted > 0) {
+            sender.sendMessage("[OldClaimFinder] Deleted " + deleted + " old claim(s)");
+        }
         plugin.claimAdminCommand.oldClaimFinder = null;
     }
 }

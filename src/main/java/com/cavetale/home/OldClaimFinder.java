@@ -71,7 +71,7 @@ public final class OldClaimFinder {
     }
 
     private void checkBlocksAsync() {
-        final int max = 64;
+        final int max = 16;
         Semaphore semaphore = new Semaphore(max);
         long stop = 0L;
         for (OldClaim oldClaim : oldClaims) {

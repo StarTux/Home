@@ -53,7 +53,7 @@ final class WildTask {
         // Attempts
         long now = System.nanoTime() / NANOS;
         plugin.setMetadata(player, META_COOLDOWN_WILD, now);
-        if (attempts++ > 10) {
+        if (attempts++ > 50) {
             player.sendMessage(Component.text("Could not find a place to build. Please try again",
                                               NamedTextColor.RED));
             return;

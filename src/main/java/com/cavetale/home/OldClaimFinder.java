@@ -31,6 +31,7 @@ public final class OldClaimFinder {
     private Map<String, Integer> perWorldTotal = new HashMap<>();
     protected int progress;
     protected double tps = 20.0;
+    protected boolean delete = false;
 
     @RequiredArgsConstructor
     protected final class OldClaim {
@@ -46,8 +47,8 @@ public final class OldClaimFinder {
             if (claim.getOwner() == null || claim.isAdminClaim()) continue;
             if (claim.getCreated() > then) continue;
             int initialSize = plugin.getWorldSettings().get(claim.getWorld()).initialClaimSize;
-            if (claim.getArea().width() > initialSize) continue;
-            if (claim.getArea().height() > initialSize) continue;
+            if (claim.getArea().width() != initialSize) continue;
+            if (claim.getArea().height() != initialSize) continue;
             OldClaim oldClaim = new OldClaim(claim);
             claimCount += 1;
             PlayerInfo.getInstance().lastLog(claim.getOwner(), date -> lastLogCallback(oldClaim, date));
@@ -168,16 +169,17 @@ public final class OldClaimFinder {
         }
         sender.sendMessage("[OldClaimFinder] Total: " + total);
         int deleted = 0;
+        String deleteStatement = delete ? "Delete" : "Simulate Delete";
         for (OldClaim oldClaim : oldClaims) {
             if (!oldClaim.delete) continue;
-            sender.sendMessage("[OldClaimFinder] Deleting #" + oldClaim.claim.getId()
+            sender.sendMessage("[OldClaimFinder] " + deleteStatement + " #" + oldClaim.claim.getId()
                                + " ppb=" + oldClaim.playerPlacedBlocks
                                + " " + oldClaim.claim.getWorld()
                                + " " + oldClaim.claim.getArea().centerX()
                                + " " + oldClaim.claim.getArea().centerY()
                                + " owner=" + oldClaim.claim.getOwnerName()
                                + " last=" + oldClaim.lastSeen);
-            //plugin.deleteClaim(oldClaim.claim);
+            if (delete) plugin.deleteClaim(oldClaim.claim);
             deleted += 1;
         }
         if (deleted > 0) {

@@ -51,7 +51,8 @@ public final class ClaimAdminCommand extends AbstractCommand<HomePlugin> {
         rootNode.addChild("transfer").arguments("<player>")
             .description("Transfer Claim")
             .playerCaller(this::transfer);
-        rootNode.addChild("findold").denyTabCompletion()
+        rootNode.addChild("findold").arguments("delete")
+            .completers(CommandArgCompleter.list("delete"))
             .description("Find Old Claims")
             .senderCaller(this::findOld);
         rootNode.addChild("transferall").arguments("<from> <to>")
@@ -187,13 +188,21 @@ public final class ClaimAdminCommand extends AbstractCommand<HomePlugin> {
     }
 
     private boolean findOld(CommandSender sender, String[] args) {
-        if (args.length != 0) return false;
+        boolean doDelete = false;
+        for (String arg : args) {
+            switch (arg) {
+            case "delete": doDelete = true; break;
+            default: throw new CommandWarn("Invalid flag: " + arg);
+            }
+        }
         if (oldClaimFinder != null) {
             throw new CommandWarn("Task already active! Progress="
                                   + oldClaimFinder.progress + "/" + oldClaimFinder.oldClaims.size());
         }
         oldClaimFinder = new OldClaimFinder(plugin, sender);
+        oldClaimFinder.delete = doDelete;
         oldClaimFinder.start();
+        sender.sendMessage("OldClaimFinder started: delete=" + oldClaimFinder.delete);
         return true;
     }
 

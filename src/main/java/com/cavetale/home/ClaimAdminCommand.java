@@ -52,7 +52,8 @@ public final class ClaimAdminCommand extends AbstractCommand<HomePlugin> {
             .description("Transfer Claim")
             .playerCaller(this::transfer);
         rootNode.addChild("findold").arguments("delete")
-            .completers(CommandArgCompleter.list("delete", "threshold="))
+            .completers(CommandArgCompleter.list("delete", "threshold="),
+                        CommandArgCompleter.REPEAT)
             .description("Find Old Claims")
             .senderCaller(this::findOld);
         rootNode.addChild("transferall").arguments("<from> <to>")

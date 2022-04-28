@@ -52,7 +52,7 @@ public final class ClaimAdminCommand extends AbstractCommand<HomePlugin> {
             .description("Transfer Claim")
             .playerCaller(this::transfer);
         rootNode.addChild("findold").arguments("delete")
-            .completers(CommandArgCompleter.list("delete"))
+            .completers(CommandArgCompleter.list("delete", "threshold="))
             .description("Find Old Claims")
             .senderCaller(this::findOld);
         rootNode.addChild("transferall").arguments("<from> <to>")
@@ -189,10 +189,15 @@ public final class ClaimAdminCommand extends AbstractCommand<HomePlugin> {
 
     private boolean findOld(CommandSender sender, String[] args) {
         boolean doDelete = false;
+        int threshold = 10;
         for (String arg : args) {
-            switch (arg) {
-            case "delete": doDelete = true; break;
-            default: throw new CommandWarn("Invalid flag: " + arg);
+            if (arg.startsWith("threshold=")) {
+                threshold = CommandArgCompleter.requireInt(arg.substring(10), i -> i >= 0);
+            } else {
+                switch (arg) {
+                case "delete": doDelete = true; break;
+                default: throw new CommandWarn("Invalid flag: " + arg);
+                }
             }
         }
         if (oldClaimFinder != null) {
@@ -201,8 +206,11 @@ public final class ClaimAdminCommand extends AbstractCommand<HomePlugin> {
         }
         oldClaimFinder = new OldClaimFinder(plugin, sender);
         oldClaimFinder.delete = doDelete;
+        oldClaimFinder.threshold = threshold;
         oldClaimFinder.start();
-        sender.sendMessage("OldClaimFinder started: delete=" + oldClaimFinder.delete);
+        sender.sendMessage("OldClaimFinder started:"
+                           + " delete=" + oldClaimFinder.delete
+                           + " threshold=" + oldClaimFinder.threshold);
         return true;
     }
 

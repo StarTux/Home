@@ -32,6 +32,7 @@ public final class OldClaimFinder {
     protected int progress;
     protected double tps = 20.0;
     protected boolean delete = false;
+    protected int threshold = 10;
 
     @RequiredArgsConstructor
     protected final class OldClaim {
@@ -144,7 +145,7 @@ public final class OldClaimFinder {
         int total = 0;
         Collections.sort(oldClaims, (b, a) -> Integer.compare(a.playerPlacedBlocks, b.playerPlacedBlocks));
         for (OldClaim oldClaim : oldClaims) {
-            if (oldClaim.playerPlacedBlocks < 10) oldClaim.delete = true;
+            if (oldClaim.playerPlacedBlocks < threshold) oldClaim.delete = true;
             sender.sendMessage("[OldClaimFinder] Info #" + oldClaim.claim.getId()
                                + " ppb=" + oldClaim.playerPlacedBlocks
                                + " " + oldClaim.claim.getWorld()

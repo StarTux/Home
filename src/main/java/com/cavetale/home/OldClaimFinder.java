@@ -48,8 +48,10 @@ public final class OldClaimFinder {
             if (claim.getOwner() == null || claim.isAdminClaim()) continue;
             if (claim.getCreated() > then) continue;
             int initialSize = plugin.getWorldSettings().get(claim.getWorld()).initialClaimSize;
-            if (claim.getArea().width() != initialSize) continue;
-            if (claim.getArea().height() != initialSize) continue;
+            int secondarySize = plugin.getWorldSettings().get(claim.getWorld()).secondaryClaimSize;
+            boolean isInitial = claim.getArea().width() == initialSize && claim.getArea().height() != initialSize;
+            boolean isSecondary = claim.getArea().width() == secondarySize && claim.getArea().height() != secondarySize;
+            if (!isInitial && !isSecondary) continue;
             OldClaim oldClaim = new OldClaim(claim);
             claimCount += 1;
             PlayerInfo.getInstance().lastLog(claim.getOwner(), date -> lastLogCallback(oldClaim, date));

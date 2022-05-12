@@ -49,8 +49,8 @@ public final class OldClaimFinder {
             if (claim.getCreated() > then) continue;
             int initialSize = plugin.getWorldSettings().get(claim.getWorld()).initialClaimSize;
             int secondarySize = plugin.getWorldSettings().get(claim.getWorld()).secondaryClaimSize;
-            boolean isInitial = claim.getArea().width() == initialSize && claim.getArea().height() != initialSize;
-            boolean isSecondary = claim.getArea().width() == secondarySize && claim.getArea().height() != secondarySize;
+            boolean isInitial = claim.getArea().width() == initialSize && claim.getArea().height() == initialSize;
+            boolean isSecondary = claim.getArea().width() == secondarySize && claim.getArea().height() == secondarySize;
             if (!isInitial && !isSecondary) continue;
             OldClaim oldClaim = new OldClaim(claim);
             claimCount += 1;

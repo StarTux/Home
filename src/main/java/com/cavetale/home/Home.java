@@ -3,6 +3,7 @@ package com.cavetale.home;
 import com.cavetale.core.util.Json;
 import com.cavetale.home.struct.BlockVector;
 import com.winthier.playercache.PlayerCache;
+import com.winthier.sql.SQLRow;
 import java.time.Instant;
 import java.util.ArrayList;
 import java.util.Date;
@@ -23,7 +24,7 @@ import org.bukkit.World;
 @Table(name = "homes",
        uniqueConstraints = {@UniqueConstraint(columnNames = {"owner", "name"}),
                             @UniqueConstraint(columnNames = {"public_name"})})
-public final class Home {
+public final class Home implements SQLRow {
     @Id
     protected Integer id;
     @Column(nullable = false)

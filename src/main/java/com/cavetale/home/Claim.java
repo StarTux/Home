@@ -121,7 +121,7 @@ public final class Claim {
     // SQL Interface
 
     @Data @Table(name = "claims")
-    public static final class SQLRow {
+    public static final class SQLRow implements com.winthier.sql.SQLRow {
         private @Id Integer id;
         @Column(nullable = false) private UUID owner;
         @Column(nullable = false, length = 16) private String world;

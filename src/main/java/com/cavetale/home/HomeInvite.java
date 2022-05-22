@@ -1,5 +1,6 @@
 package com.cavetale.home;
 
+import com.winthier.sql.SQLRow;
 import java.util.UUID;
 import javax.persistence.Column;
 import javax.persistence.Id;
@@ -9,7 +10,7 @@ import lombok.Data;
 
 @Data @Table(name = "home_invites",
              uniqueConstraints = @UniqueConstraint(columnNames = {"home_id", "invitee"}))
-public final class HomeInvite {
+public final class HomeInvite implements SQLRow {
     @Id Integer id;
     @Column(nullable = false) Integer homeId;
     @Column(nullable = false) UUID invitee;

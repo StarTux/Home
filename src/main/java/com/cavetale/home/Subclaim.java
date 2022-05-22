@@ -95,7 +95,7 @@ public final class Subclaim {
 
     @Getter @Setter @Table(name = "subclaims")
     @AllArgsConstructor @NoArgsConstructor
-    public static final class SQLRow {
+    public static final class SQLRow implements com.winthier.sql.SQLRow {
         private @Id Integer id;
         @Column(nullable = false) private int claimId;
         @Column(nullable = false) private String world;

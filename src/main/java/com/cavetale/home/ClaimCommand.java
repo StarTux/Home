@@ -402,10 +402,10 @@ public final class ClaimCommand extends AbstractCommand<HomePlugin> {
                                                   + " Grow it manually or enable \"autogrow\" in the settings."));
             }
             claim.saveToDatabase();
-            PluginPlayerEvent.Name.BUY_CLAIM_BLOCKS.ultimate(plugin, player)
+            PluginPlayerEvent.Name.BUY_CLAIM_BLOCKS.make(plugin, player)
                 .detail(Detail.COUNT, meta.amount)
                 .detail(Detail.MONEY, meta.price)
-                .call();
+                .callEvent();
             return true;
         }
         // AbandonClaim confirm
@@ -506,10 +506,10 @@ public final class ClaimCommand extends AbstractCommand<HomePlugin> {
         }
         player.sendMessage(Component.text(target.name + " now has " + trustType.displayName
                                           + " trust in this claim.", NamedTextColor.GREEN));
-        PluginPlayerEvent.Name.CLAIM_TRUST.ultimate(plugin, player)
+        PluginPlayerEvent.Name.CLAIM_TRUST.make(plugin, player)
             .detail(Detail.TARGET, target.uuid)
             .detail(Detail.NAME, trustType.key)
-            .call();
+            .callEvent();
         return true;
     }
 
@@ -528,9 +528,9 @@ public final class ClaimCommand extends AbstractCommand<HomePlugin> {
         plugin.db.delete(claimTrust);
         player.sendMessage(Component.text("Removed " + claimTrust.parseTrustType().displayName
                                           + " trust for " + playerCache.name, NamedTextColor.GREEN));
-        PluginPlayerEvent.Name.CLAIM_UNTRUST.ultimate(plugin, player)
+        PluginPlayerEvent.Name.CLAIM_UNTRUST.make(plugin, player)
             .detail(Detail.TARGET, playerCache.uuid)
-            .call();
+            .callEvent();
         return true;
     }
 
@@ -584,10 +584,10 @@ public final class ClaimCommand extends AbstractCommand<HomePlugin> {
         }
         claim.saveToDatabase();
         showClaimSettings(claim, player);
-        PluginPlayerEvent.Name.CHANGE_CLAIM_SETTING.ultimate(plugin, player)
+        PluginPlayerEvent.Name.CHANGE_CLAIM_SETTING.make(plugin, player)
             .detail(Detail.NAME, setting.key)
             .detail(Detail.TOGGLE, value)
-            .call();
+            .callEvent();
         return true;
     }
 

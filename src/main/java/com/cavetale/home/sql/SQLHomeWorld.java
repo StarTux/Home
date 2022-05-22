@@ -1,12 +1,13 @@
 package com.cavetale.home.sql;
 
+import com.winthier.sql.SQLRow;
 import javax.persistence.Column;
 import javax.persistence.Id;
 import javax.persistence.Table;
 import lombok.Data;
 
 @Data @Table(name = "worlds")
-public final class SQLHomeWorld {
+public final class SQLHomeWorld implements SQLRow {
     @Id
     private Integer id;
 

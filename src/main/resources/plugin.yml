@@ -1,12 +1,16 @@
+main: com.cavetale.home.HomePlugin
 name: Home
-description: Manage the Home world. Users need to find a place to build, make a claim, set a home, and live in it.
-author: StarTux
+
 version: 0.1
 api-version: 1.18
+
+description: Manage the Home world. Users need to find a place to build, make a claim, set a home, and live in it.
+author: StarTux
 website: https://cavetale.com
-main: com.cavetale.home.HomePlugin
+
 depend: [Core, SQL, Exploits, PlayerCache, Money, Perm, Connect, Sidebar]
 softdepend: [dynmap, MagicMap, PlayerInfo]
+
 commands:
 
   homeadmin:

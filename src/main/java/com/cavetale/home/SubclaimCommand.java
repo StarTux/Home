@@ -247,10 +247,10 @@ public final class SubclaimCommand extends AbstractCommand<HomePlugin> {
         subclaim.saveToDatabase();
         player.sendMessage(Component.text("Player trusted: " + playerName + " (" + trust.displayName + ")",
                                           NamedTextColor.AQUA));
-        PluginPlayerEvent.Name.SUBCLAIM_TRUST.ultimate(plugin, player)
+        PluginPlayerEvent.Name.SUBCLAIM_TRUST.make(plugin, player)
             .detail(Detail.TARGET, uuid)
             .detail(Detail.NAME, trust.key)
-            .call();
+            .callEvent();
         return true;
     }
 
@@ -294,9 +294,9 @@ public final class SubclaimCommand extends AbstractCommand<HomePlugin> {
         }
         subclaim.saveToDatabase();
         player.sendMessage(text("Player trust removed: " + playerName + " (" + oldTrust.displayName + ")", AQUA));
-        PluginPlayerEvent.Name.SUBCLAIM_UNTRUST.ultimate(plugin, player)
+        PluginPlayerEvent.Name.SUBCLAIM_UNTRUST.make(plugin, player)
             .detail(Detail.TARGET, uuid)
-            .call();
+            .callEvent();
         return true;
     }
 

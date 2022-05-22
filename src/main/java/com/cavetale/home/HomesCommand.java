@@ -123,9 +123,9 @@ public final class HomesCommand extends AbstractCommand<HomePlugin> {
             plugin.sessions.of(player).setPages(pages);
             plugin.sessions.of(player).showStoredPage(player, 0);
         }
-        PluginPlayerEvent.Name.LIST_HOMES.ultimate(plugin, player)
+        PluginPlayerEvent.Name.LIST_HOMES.make(plugin, player)
             .detail(Detail.COUNT, playerHomes.size())
-            .call();
+            .callEvent();
         return true;
     }
 
@@ -148,10 +148,9 @@ public final class HomesCommand extends AbstractCommand<HomePlugin> {
                 if (location == null) {
                     throw new CommandWarn("Primary home could not be found.");
                 }
-                boolean allowed = PluginPlayerEvent.Name.USE_PRIMARY_HOME.cancellable(plugin, player)
+                PluginPlayerEvent.Name.USE_PRIMARY_HOME.make(plugin, player)
                     .detail(Detail.LOCATION, location)
-                    .call();
-                if (!allowed) return true;
+                    .callEvent();
                 plugin.warpTo(player, location, () -> {
                         player.sendMessage(Component.text("Welcome home :)", NamedTextColor.GREEN));
                         player.showTitle(Title.title(Component.empty(),
@@ -231,20 +230,18 @@ public final class HomesCommand extends AbstractCommand<HomePlugin> {
                 throw new CommandWarn("This home location lacks build permission");
             }
             if (home.isOwner(player.getUniqueId())) {
-                boolean allowed = PluginPlayerEvent.Name.USE_NAMED_HOME
-                    .cancellable(plugin, player)
+                PluginPlayerEvent.Name.USE_NAMED_HOME
+                    .make(plugin, player)
                     .detail(Detail.NAME, home.getName())
                     .detail(Detail.LOCATION, location)
-                    .call();
-                if (!allowed) return true;
+                    .callEvent();
             } else {
-                boolean allowed = PluginPlayerEvent.Name.VISIT_HOME
-                    .cancellable(plugin, player)
+                PluginPlayerEvent.Name.VISIT_HOME
+                    .make(plugin, player)
                     .detail(Detail.OWNER, home.getOwner())
                     .detail(Detail.NAME, home.getName())
                     .detail(Detail.LOCATION, location)
-                    .call();
-                if (!allowed) return true;
+                    .callEvent();
             }
             plugin.warpTo(player, location, () -> {
                     player.sendMessage(Component.text("Welcome home", NamedTextColor.GREEN));
@@ -304,9 +301,9 @@ public final class HomesCommand extends AbstractCommand<HomePlugin> {
             PluginPlayerEvent.Name.SET_PRIMARY_HOME.call(plugin, player);
         } else {
             player.sendMessage(Component.text("Home \"" + homeName + "\" set", NamedTextColor.GREEN));
-            PluginPlayerEvent.Name.SET_NAMED_HOME.ultimate(plugin, player)
+            PluginPlayerEvent.Name.SET_NAMED_HOME.make(plugin, player)
                 .detail(Detail.NAME, homeName)
-                .call();
+                .callEvent();
         }
         return true;
     }
@@ -420,10 +417,10 @@ public final class HomesCommand extends AbstractCommand<HomePlugin> {
                                    .hoverEvent(HoverEvent.showText(tooltip)));
             }
         }
-        PluginPlayerEvent.Name.INVITE_HOME.ultimate(plugin, player)
+        PluginPlayerEvent.Name.INVITE_HOME.make(plugin, player)
             .detail(Detail.TARGET, targetId)
             .detail(Detail.NAME, home.getName())
-            .call();
+            .callEvent();
         return true;
     }
 
@@ -447,10 +444,10 @@ public final class HomesCommand extends AbstractCommand<HomePlugin> {
             .eq("invitee", target).deleteAsync(null);
         home.getInvites().remove(target);
         player.sendMessage(Component.text(targetName + " was uninvited", NamedTextColor.GREEN));
-        PluginPlayerEvent.Name.UNINVITE_HOME.ultimate(plugin, player)
+        PluginPlayerEvent.Name.UNINVITE_HOME.make(plugin, player)
             .detail(Detail.TARGET, target)
             .detail(Detail.NAME, home.getName())
-            .call();
+            .callEvent();
         return true;
     }
 
@@ -511,9 +508,9 @@ public final class HomesCommand extends AbstractCommand<HomePlugin> {
         } else {
             player.sendMessage(Component.text("Home \"" + homeName + "\" deleted", NamedTextColor.GREEN));
         }
-        PluginPlayerEvent.Name.DELETE_HOME.ultimate(plugin, player)
+        PluginPlayerEvent.Name.DELETE_HOME.make(plugin, player)
             .detail(Detail.NAME, homeName)
-            .call();
+            .callEvent();
         return true;
     }
 
@@ -554,13 +551,12 @@ public final class HomesCommand extends AbstractCommand<HomePlugin> {
         if (location == null) {
             throw new CommandWarn("Could not take you to this home.");
         }
-        boolean allowed = PluginPlayerEvent.Name.VISIT_PUBLIC_HOME
-            .cancellable(plugin, player)
+        PluginPlayerEvent.Name.VISIT_PUBLIC_HOME
+            .make(plugin, player)
             .detail(Detail.NAME, publicName)
             .detail(Detail.OWNER, home.getOwner())
             .detail(Detail.LOCATION, location)
-            .call();
-        if (!allowed) return true;
+            .callEvent();
         plugin.warpTo(player, location, () -> {
                 player.sendMessage(Component.text("Teleported to "
                                                   + ownerName + "'s public home \""

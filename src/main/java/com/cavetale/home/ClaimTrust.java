@@ -1,5 +1,6 @@
 package com.cavetale.home;
 
+import com.winthier.sql.SQLRow;
 import java.util.UUID;
 import javax.persistence.Column;
 import javax.persistence.Id;
@@ -9,7 +10,7 @@ import lombok.Data;
 
 @Data @Table(name = "claim_trust",
              uniqueConstraints = @UniqueConstraint(columnNames = {"claim_id", "trustee"}))
-public final class ClaimTrust {
+public final class ClaimTrust implements SQLRow {
     @Id Integer id;
     @Column(nullable = false) Integer claimId;
     @Column(nullable = false, length = 15) String type;

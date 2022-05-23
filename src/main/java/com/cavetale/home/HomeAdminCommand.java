@@ -38,9 +38,8 @@ public final class HomeAdminCommand extends AbstractCommand<HomePlugin> {
 
     private boolean reload(CommandSender sender, String[] args) {
         if (args.length != 0) return false;
-        plugin.loadFromConfig();
         plugin.loadFromDatabase();
-        sender.sendMessage(text("Configuration files and databases reloaded", AQUA));
+        sender.sendMessage(text("Database reloaded", AQUA));
         return true;
     }
 

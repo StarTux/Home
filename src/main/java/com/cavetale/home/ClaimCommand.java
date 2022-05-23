@@ -198,20 +198,19 @@ public final class ClaimCommand extends AbstractCommand<HomePlugin> {
         Location playerLocation = player.getLocation();
         int x = playerLocation.getBlockX();
         int y = playerLocation.getBlockZ();
-        UUID playerId = player.getUniqueId();
+        UUID uuid = player.getUniqueId();
         // Check for claim collisions
-        WorldSettings settings = plugin.getWorldSettings().get(playerWorldName);
-        int claimSize;
-        double claimCost;
-        List<Claim> playerClaims = plugin.findClaimsInWorld(playerId, playerWorldName);
-        if (playerClaims.isEmpty()) {
-            claimSize = settings.initialClaimSize;
-            claimCost = settings.initialClaimCost;
+        final int claimSize;
+        final double claimCost;
+        int playerClaimCount = plugin.findClaims(uuid).size();
+        if (playerClaimCount == 0) {
+            claimSize = Globals.INITIAL_CLAIM_SIZE;
+            claimCost = Globals.INITIAL_CLAIM_COST;
         } else {
-            claimSize = settings.secondaryClaimSize;
-            claimCost = settings.secondaryClaimCost;
+            claimSize = Globals.SECONDARY_CLAIM_SIZE;
+            claimCost = Globals.SECONDARY_CLAIM_COST;
         }
-        if (Money.get(playerId) < claimCost) {
+        if (Money.get(uuid) < claimCost) {
             throw new CommandWarn("You cannot afford " + Money.format(claimCost) + "!");
         }
         final int rad = claimSize / 2;
@@ -242,13 +241,13 @@ public final class ClaimCommand extends AbstractCommand<HomePlugin> {
         message.append(Component.text(" Your new claim will have "))
             .append(Component.text(area.size(), NamedTextColor.BLUE))
             .append(Component.text(" claim blocks."));
-        if (settings.claimBlockCost >= 0.01) {
+        if (Globals.CLAIM_BLOCK_COST >= 0.01) {
             message.append(Component.text(" You can buy additional claim blocks for "))
-                .append(Component.text(Money.format(settings.claimBlockCost), NamedTextColor.GOLD))
+                .append(Component.text(Money.format(Globals.CLAIM_BLOCK_COST), NamedTextColor.GOLD))
                 .append(Component.text(" per block."));
         }
         message.append(Component.text(" You can abandon the claim after a cooldown of "))
-            .append(Component.text(settings.claimAbandonCooldown + " minutes", NamedTextColor.BLUE))
+            .append(Component.text(Globals.CLAIM_ABANDON_COOLDOWN + " minutes", NamedTextColor.BLUE))
             .append(Component.text(". Claim blocks will "))
             .append(Component.text("not", NamedTextColor.BLUE))
             .append(Component.text(" be refunded."))
@@ -313,7 +312,7 @@ public final class ClaimCommand extends AbstractCommand<HomePlugin> {
 
     private boolean buy(Player player, String[] args) {
         if (args.length != 1) return false;
-        final UUID playerId = player.getUniqueId();
+        final UUID uuid = player.getUniqueId();
         int buyClaimBlocks;
         try {
             buyClaimBlocks = Integer.parseInt(args[0]);
@@ -336,10 +335,9 @@ public final class ClaimCommand extends AbstractCommand<HomePlugin> {
         if (!claim.isOwner(player)) {
             throw new CommandWarn("You do not own this claim!");
         }
-        WorldSettings settings = plugin.getWorldSettings().get(claim.getWorld());
-        double price = (double) buyClaimBlocks * settings.claimBlockCost;
+        double price = (double) buyClaimBlocks * Globals.CLAIM_BLOCK_COST;
         String priceFormat = Money.format(price);
-        if (Money.get(playerId) < price) {
+        if (Money.get(uuid) < price) {
             throw new CommandWarn("You do not have " + priceFormat + " to buy "
                                   + buyClaimBlocks + " claim blocks");
         }
@@ -371,7 +369,7 @@ public final class ClaimCommand extends AbstractCommand<HomePlugin> {
 
     private boolean confirm(Player player, String[] args) {
         if (args.length != 1) return true;
-        final UUID playerId = player.getUniqueId();
+        final UUID uuid = player.getUniqueId();
         // BuyClaimBlocks confirm
         BuyClaimBlocks meta = plugin.getMetadata(player, plugin.META_BUY, BuyClaimBlocks.class)
             .orElse(null);
@@ -382,7 +380,7 @@ public final class ClaimCommand extends AbstractCommand<HomePlugin> {
             if (!args[0].equals(meta.token)) {
                 throw new CommandWarn("Purchase expired");
             }
-            if (!Money.take(playerId, meta.price, plugin, "Buy " + meta.amount + " claim blocks")) {
+            if (!Money.take(uuid, meta.price, plugin, "Buy " + meta.amount + " claim blocks")) {
                 throw new CommandWarn("You cannot afford " + Money.format(meta.price));
             }
             claim.setBlocks(claim.getBlocks() + meta.amount);
@@ -427,7 +425,6 @@ public final class ClaimCommand extends AbstractCommand<HomePlugin> {
             plugin.removeMetadata(player, plugin.META_NEWCLAIM);
             if (!args[0].equals(ncmeta.token)) return true;
             if (!plugin.isLocalHomeWorld(ncmeta.world)) return true;
-            WorldSettings settings = plugin.getWorldSettings().get(ncmeta.world);
             for (Claim claimInWorld : plugin.findClaimsInWorld(ncmeta.world)) {
                 // This whole check is a repeat from the new claim command.
                 if (claimInWorld.getArea().overlaps(ncmeta.area)) {
@@ -435,12 +432,12 @@ public final class ClaimCommand extends AbstractCommand<HomePlugin> {
                 }
             }
             if (ncmeta.price >= 0.01) {
-                if (!Money.take(playerId, ncmeta.price, plugin,
+                if (!Money.take(uuid, ncmeta.price, plugin,
                                 "Make new claim in " + plugin.worldDisplayName(ncmeta.world))) {
                     throw new CommandWarn("You cannot afford " + Money.format(ncmeta.price) + "!");
                 }
             }
-            Claim claim = new Claim(plugin, playerId, ncmeta.world, ncmeta.area);
+            Claim claim = new Claim(plugin, uuid, ncmeta.world, ncmeta.area);
             claim.saveToDatabase();
             plugin.getClaimCache().add(claim);
             ComponentLike message = Component.text().color(NamedTextColor.WHITE)
@@ -635,10 +632,9 @@ public final class ClaimCommand extends AbstractCommand<HomePlugin> {
         int bx = Math.max(area.bx, x);
         int by = Math.max(area.by, z);
         Area newArea = new Area(ax, ay, bx, by);
-        WorldSettings settings = plugin.getWorldSettings().get(claim.getWorld());
         if (claim.getBlocks() < newArea.size()) {
             int needed = newArea.size() - claim.getBlocks();
-            String formatMoney = Money.format((double) needed * settings.claimBlockCost);
+            String formatMoney = Money.format((double) needed * Globals.CLAIM_BLOCK_COST);
             Component tooltip = Component.join(JoinConfiguration.separator(Component.newline()),
                                                Component.text("/claim buy " + needed, NamedTextColor.YELLOW),
                                                Component.text("Buy more " + needed + " claim blocks", NamedTextColor.GRAY),
@@ -715,8 +711,7 @@ public final class ClaimCommand extends AbstractCommand<HomePlugin> {
             throw new CommandWarn("This claim does not belong to you.");
         }
         long life = System.currentTimeMillis() - claim.getCreated();
-        WorldSettings settings = plugin.getWorldSettings().get(claim.getWorld());
-        long cooldown = settings.claimAbandonCooldown * 1000L * 60L;
+        long cooldown = Globals.CLAIM_ABANDON_COOLDOWN * 1000L * 60L;
         if (life < cooldown) {
             long wait = (cooldown - life) / (1000L * 60L);
             if (wait <= 1) {

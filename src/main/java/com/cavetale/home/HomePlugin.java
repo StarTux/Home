@@ -7,7 +7,6 @@ import com.cavetale.home.struct.BlockVector;
 import com.winthier.sql.SQLDatabase;
 import java.util.ArrayList;
 import java.util.Collections;
-import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
@@ -27,7 +26,6 @@ import org.bukkit.Particle;
 import org.bukkit.World;
 import org.bukkit.block.Block;
 import org.bukkit.block.BlockFace;
-import org.bukkit.configuration.ConfigurationSection;
 import org.bukkit.entity.Player;
 import org.bukkit.event.player.PlayerTeleportEvent.TeleportCause;
 import org.bukkit.metadata.FixedMetadataValue;
@@ -46,9 +44,8 @@ public final class HomePlugin extends JavaPlugin {
     private final boolean deleteOverlappingClaims = false;
     // Database
     protected SQLDatabase db;
-    // Worlds
-    protected final Map<String, WorldSettings> worldSettings = new HashMap<>();
-    protected final Map<String, String> mirrorWorlds = new HashMap<>();
+    // Mirror Worlds, Legacy!
+    protected final Map<String, String> mirrorWorlds = Map.of("home_nether", "home");
     // Homes
     protected List<SQLHomeWorld> worldList = List.of();
     protected List<String> localHomeWorlds = List.of();
@@ -80,7 +77,6 @@ public final class HomePlugin extends JavaPlugin {
     @Override
     public void onEnable() {
         instance = this;
-        saveDefaultConfig();
         db = new SQLDatabase(this);
         db.registerTables(Claim.SQLRow.class,
                           Subclaim.SQLRow.class,
@@ -103,7 +99,6 @@ public final class HomePlugin extends JavaPlugin {
         inviteHomeCommand.enable();
         unInviteHomeCommand.enable();
         subclaimCommand.enable();
-        loadFromConfig();
         loadFromDatabase();
         getServer().getScheduler().runTaskTimer(this, this::onTick, 1, 1);
         enableDynmap();
@@ -191,24 +186,6 @@ public final class HomePlugin extends JavaPlugin {
         claim.setArea(newArea);
         claim.saveToDatabase();
         return ClaimOperationResult.SUCCESS;
-    }
-
-    protected void loadFromConfig() {
-        reloadConfig();
-        ConfigurationSection section = getConfig().getConfigurationSection("Worlds");
-        worldSettings.clear();
-        for (String key : section.getKeys(false)) {
-            ConfigurationSection worldSection = section.getConfigurationSection(key);
-            WorldSettings settings = new WorldSettings();
-            worldSettings.put(key, settings);
-            settings.load(getConfig());
-            if (worldSection != null) {
-                settings.load(worldSection);
-                if (worldSection.isSet("mirror")) {
-                    mirrorWorlds.put(key, worldSection.getString("mirror"));
-                }
-            }
-        }
     }
 
     protected void loadFromDatabase() {

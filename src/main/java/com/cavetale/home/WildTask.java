@@ -29,12 +29,11 @@ final class WildTask {
     int blockZ;
 
     protected void withCooldown() {
-        WorldSettings settings = plugin.worldSettings.get(world.getName());
         long now = System.nanoTime() / NANOS;
         long last = plugin.getMetadata(player, META_COOLDOWN_WILD, Long.class).orElse(-1L);
         if (last >= 0) {
             long since = now - last;
-            long cooldown = (long) settings.wildCooldown;
+            long cooldown = (long) Globals.WILD_COOLDOWN;
             long remain = cooldown - since;
             if (remain > 0) {
                 player.sendMessage(Component.text("Please wait " + remain + " more seconds",
@@ -65,8 +64,7 @@ final class WildTask {
                                               NamedTextColor.RED));
         }
         // Borders
-        WorldSettings settings = plugin.worldSettings.get(world.getName());
-        int margin = settings.claimMargin;
+        int margin = Globals.CLAIM_MARGIN;
         WorldBorder border = world.getWorldBorder();
         Location center = border.getCenter();
         int cx = center.getBlockX();

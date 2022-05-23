@@ -48,7 +48,7 @@ public final class OldClaimFinder {
             if (claim.getOwner() == null || claim.isAdminClaim()) continue;
             if (claim.getCreated() > then) continue;
             if (!plugin.localHomeWorlds.contains(claim.getWorld())) continue;
-            int initialSize = plugin.getWorldSettings().get(claim.getWorld()).initialClaimSize;
+            final int initialSize = Globals.INITIAL_CLAIM_SIZE;
             if (claim.getArea().width() >= initialSize + 8 || claim.getArea().width() >= initialSize + 8) continue;
             OldClaim oldClaim = new OldClaim(claim);
             lastLogCount += 1;
@@ -67,7 +67,7 @@ public final class OldClaimFinder {
 
     private void lastLogCallback(OldClaim oldClaim, Date date) {
         lastLogCount -= 1;
-        if (oldClaim.lastSeen == null || oldClaim.lastSeen.getTime() > date.getTime()) {
+        if (oldClaim.lastSeen == null || oldClaim.lastSeen.getTime() < date.getTime()) {
             oldClaim.lastSeen = date;
         }
         if (lastLogCount == 0) checkBlocks();

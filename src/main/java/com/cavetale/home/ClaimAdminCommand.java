@@ -16,6 +16,8 @@ import org.bukkit.command.CommandSender;
 import org.bukkit.entity.Player;
 import org.bukkit.event.player.PlayerTeleportEvent.TeleportCause;
 import static net.kyori.adventure.text.Component.text;
+import static net.kyori.adventure.text.event.ClickEvent.runCommand;
+import static net.kyori.adventure.text.event.HoverEvent.showText;
 import static net.kyori.adventure.text.format.NamedTextColor.*;
 
 public final class ClaimAdminCommand extends AbstractCommand<HomePlugin> {
@@ -80,7 +82,10 @@ public final class ClaimAdminCommand extends AbstractCommand<HomePlugin> {
                 + (" loc=" + claim.world + ":"
                    + claim.area.centerX() + "," + claim.area.centerY())
                 + " blocks=" + claim.blocks;
-            sender.sendMessage(text(brief, YELLOW));
+            String cmd = "/claimadmin tp " + claim.id;
+            sender.sendMessage(text(brief, YELLOW)
+                               .hoverEvent(showText(text(cmd, YELLOW)))
+                               .clickEvent(runCommand(cmd)));
         }
         return true;
     }
@@ -205,7 +210,7 @@ public final class ClaimAdminCommand extends AbstractCommand<HomePlugin> {
             throw new CommandWarn("Task already active! Progress="
                                   + oldClaimFinder.progress + "/" + oldClaimFinder.oldClaims.size());
         }
-        oldClaimFinder = new OldClaimFinder(plugin, sender);
+        oldClaimFinder = new OldClaimFinder(plugin);
         oldClaimFinder.delete = doDelete;
         oldClaimFinder.threshold = threshold;
         oldClaimFinder.start();

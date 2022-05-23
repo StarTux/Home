@@ -1,5 +1,6 @@
 package com.cavetale.home.sql;
 
+import com.cavetale.core.connect.Connect;
 import com.winthier.sql.SQLRow;
 import javax.persistence.Column;
 import javax.persistence.Id;
@@ -32,5 +33,9 @@ public final class SQLHomeWorld implements SQLRow {
 
     public int getWildPriority() {
         return wildPriority != null ? wildPriority : 0;
+    }
+
+    public boolean isOnThisServer() {
+        return this.server.equals(Connect.get().getServerName());
     }
 }

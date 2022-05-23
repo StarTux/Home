@@ -5,8 +5,11 @@ import com.cavetale.core.command.CommandArgCompleter;
 import com.cavetale.core.command.CommandContext;
 import com.cavetale.core.command.CommandNode;
 import com.cavetale.core.command.CommandWarn;
+import com.cavetale.core.command.RemotePlayer;
+import com.cavetale.core.connect.Connect;
 import com.cavetale.core.event.player.PluginPlayerEvent.Detail;
 import com.cavetale.core.event.player.PluginPlayerEvent;
+import com.cavetale.home.sql.SQLHomeWorld;
 import com.cavetale.home.struct.BlockVector;
 import com.winthier.playercache.PlayerCache;
 import java.time.Duration;
@@ -36,7 +39,7 @@ public final class HomesCommand extends AbstractCommand<HomePlugin> {
     }
 
     @Override
-    public void onEnable() {
+    protected void onEnable() {
         rootNode.addChild("list").denyTabCompletion()
             .description("List homes")
             .denyTabCompletion()
@@ -48,7 +51,7 @@ public final class HomesCommand extends AbstractCommand<HomePlugin> {
         rootNode.addChild("home").arguments("[home]")
             .description("Visit your home")
             .completers(this::completeUsableHomes)
-            .playerCaller(this::home);
+            .remotePlayerCaller(this::home);
         rootNode.addChild("visit").arguments("[name]")
             .description("Visit a public home")
             .completers(this::completePublicHomes)
@@ -82,7 +85,7 @@ public final class HomesCommand extends AbstractCommand<HomePlugin> {
             .playerCaller(this::page);
     }
 
-    public boolean list(Player player, String[] args) {
+    protected boolean list(Player player, String[] args) {
         if (args.length != 0) return false;
         final UUID uuid = player.getUniqueId();
         List<Home> playerHomes = plugin.findHomes(uuid);
@@ -129,134 +132,144 @@ public final class HomesCommand extends AbstractCommand<HomePlugin> {
         return true;
     }
 
-    boolean home(Player player, String[] args) {
+    protected boolean home(RemotePlayer player, String[] args) {
         if (args.length > 1) return false;
-        UUID uuid = player.getUniqueId();
         if (args.length == 0) {
-            // Try to find a set home
-            Home home = plugin.findHome(player.getUniqueId(), null);
-            if (home != null) {
-                BlockVector blockVector = home.createBlockVector();
-                Claim claim = plugin.getClaimAt(blockVector);
-                if (claim != null && !claim.canBuild(home.getOwner(), blockVector)) {
-                    throw new CommandWarn("This home location lacks build permission");
-                }
-                if (claim != null && claim.getTrustType(player).isBan()) {
-                    throw new CommandWarn("You are banned from this claim");
-                }
-                Location location = home.createLocation();
-                if (location == null) {
-                    throw new CommandWarn("Primary home could not be found.");
-                }
-                PluginPlayerEvent.Name.USE_PRIMARY_HOME.make(plugin, player)
-                    .detail(Detail.LOCATION, location)
-                    .callEvent();
-                plugin.warpTo(player, location, () -> {
-                        player.sendMessage(Component.text("Welcome home :)", NamedTextColor.GREEN));
-                        player.showTitle(Title.title(Component.empty(),
-                                                     Component.text("Welcome home :)", NamedTextColor.GREEN),
-                                                     Title.Times.times(Duration.ofMillis(500),
-                                                                       Duration.ofSeconds(1),
-                                                                       Duration.ofMillis(500))));
-                    });
-                return true;
-            }
-            // No home was found, so if the player has no claim in the
-            // home world, find a place to build.  We do this here so
-            // that an existing bed spawn does not prevent someone
-            // from using /home as expected.  Either making a claim or
-            // setting a home will have caused this function to exit
-            // already.
-            if (!plugin.hasAClaim(uuid)) {
-                plugin.findPlaceToBuild(player);
-                return true;
-            }
-            // or any claim
-            List<Claim> playerClaims = plugin.findClaims(uuid);
-            if (!playerClaims.isEmpty()) {
-                Claim claim = playerClaims.get(0);
-                World bworld = plugin.getServer().getWorld(claim.getWorld());
-                Area area = claim.getArea();
-                final int x = area.centerX();
-                final int z = area.centerY();
-                bworld.getChunkAtAsync(x >> 4, z >> 4, (Consumer<Chunk>) c -> {
-                        Location location = bworld.getHighestBlockAt(x, z).getLocation().add(0.5, 0.0, 0.5);
-                        plugin.warpTo(player, location, () -> {
-                                player.sendMessage(Component.text("Welcome to your claim. :)",
-                                                                  NamedTextColor.GREEN));
-                            });
-                        plugin.highlightClaim(claim, player);
-                    });
-                return true;
-            }
-            // Give up and default to a random build location, again.
-            plugin.findPlaceToBuild(player);
-            return true;
+            home0(player);
+        } else {
+            home1(player, args[0]);
         }
-        if (args.length == 1) {
-            Home home;
-            String arg = args[0];
-            if (arg.contains(":")) {
-                String[] toks = arg.split(":", 2);
-                String ownerName = toks[0];
-                String homeName = !toks[1].isEmpty() ? toks[1] : null;
-                PlayerCache target = PlayerCache.forName(ownerName);
-                if (target == null) {
-                    throw new CommandWarn("Player not found: " + ownerName);
-                }
-                home = plugin.findHome(target.uuid, homeName);
-                if (home == null) {
-                    throw new CommandWarn(homeName != null
-                                          ? "Home not found: " + homeName + "!"
-                                          : "Home not found!");
-                }
-                if (!plugin.doesIgnoreClaims(player) && !home.isInvited(player.getUniqueId())) {
-                    throw new CommandWarn(homeName != null
-                                          ? "Home not found: " + homeName + "!"
-                                          : "Home not found!");
-                }
-            } else {
-                home = plugin.findHome(player.getUniqueId(), arg);
+        return true;
+    }
+
+    private void home0(RemotePlayer player) {
+        final UUID uuid = player.getUniqueId();
+        // Try to find a set home
+        Home home = plugin.findHome(player.getUniqueId(), null);
+        if (home != null) {
+            SQLHomeWorld homeWorld = plugin.findHomeWorld(home.getWorld());
+            if (homeWorld != null && !homeWorld.isOnThisServer() && player.isPlayer()) {
+                Connect.get().dispatchRemoteCommand(player.getPlayer(), "home", homeWorld.getServer());
+                return;
             }
-            if (home == null) {
-                throw new CommandWarn("Home not found: " + arg);
+            BlockVector blockVector = home.createBlockVector();
+            Claim claim = plugin.getClaimAt(blockVector);
+            if (claim != null && !claim.canBuild(home.getOwner(), blockVector)) {
+                throw new CommandWarn("This home location lacks build permission");
+            }
+            if (claim != null && claim.getTrustType(uuid).isBan()) {
+                throw new CommandWarn("You are banned from this claim");
             }
             Location location = home.createLocation();
             if (location == null) {
-                throw new CommandWarn("Home could not be found.");
+                throw new CommandWarn("Primary home could not be found.");
             }
-            Claim claim = plugin.getClaimAt(location);
-            if (claim != null && !claim.canBuild(home.getOwner(), home.createBlockVector())) {
-                throw new CommandWarn("This home location lacks build permission");
-            }
-            if (home.isOwner(player.getUniqueId())) {
-                PluginPlayerEvent.Name.USE_NAMED_HOME
-                    .make(plugin, player)
-                    .detail(Detail.NAME, home.getName())
-                    .detail(Detail.LOCATION, location)
-                    .callEvent();
-            } else {
-                PluginPlayerEvent.Name.VISIT_HOME
-                    .make(plugin, player)
-                    .detail(Detail.OWNER, home.getOwner())
-                    .detail(Detail.NAME, home.getName())
-                    .detail(Detail.LOCATION, location)
-                    .callEvent();
-            }
-            plugin.warpTo(player, location, () -> {
-                    player.sendMessage(Component.text("Welcome home", NamedTextColor.GREEN));
-                    player.showTitle(Title.title(Component.empty(),
-                                                 Component.text("Welcome home", NamedTextColor.GREEN),
-                                                 Title.Times.times(Duration.ofMillis(500),
-                                                                   Duration.ofSeconds(1),
-                                                                   Duration.ofMillis(500))));
+            player.bring(plugin, location, player2 -> {
+                    if (player2 == null) return;
+                    PluginPlayerEvent.Name.USE_PRIMARY_HOME.make(plugin, player2)
+                        .detail(Detail.LOCATION, location)
+                        .callEvent();
+                    player2.sendMessage(Component.text("Welcome home :)", NamedTextColor.GREEN));
+                    player2.showTitle(Title.title(Component.empty(),
+                                                  Component.text("Welcome home :)", NamedTextColor.GREEN),
+                                                  Title.Times.times(Duration.ofMillis(500),
+                                                                    Duration.ofSeconds(1),
+                                                                    Duration.ofMillis(500))));
                 });
-            return true;
+            return;
         }
-        return false;
+        // or any claim
+        List<Claim> playerClaims = plugin.findClaims(uuid);
+        if (!playerClaims.isEmpty()) {
+            Claim claim = playerClaims.get(0);
+            World bworld = plugin.getServer().getWorld(claim.getWorld());
+            Area area = claim.getArea();
+            final int x = area.centerX();
+            final int z = area.centerY();
+            bworld.getChunkAtAsync(x >> 4, z >> 4, (Consumer<Chunk>) c -> {
+                    Location location = bworld.getHighestBlockAt(x, z).getLocation().add(0.5, 0.0, 0.5);
+                    player.bring(plugin, location, player2 -> {
+                            if (player2 == null) return;
+                            player2.sendMessage(Component.text("Welcome to your claim. :)",
+                                                               NamedTextColor.GREEN));
+                        });
+                });
+            return;
+        }
+        // Give up and default to a random build location, again.
+        if (player.isPlayer()) {
+            // TODO
+            plugin.findPlaceToBuild(player.getPlayer());
+        }
     }
 
-    public boolean set(Player player, String[] args) {
+    private void home1(RemotePlayer player, String arg) {
+        final UUID uuid = player.getUniqueId();
+        Home home;
+        if (arg.contains(":")) {
+            String[] toks = arg.split(":", 2);
+            String ownerName = toks[0];
+            String homeName = !toks[1].isEmpty() ? toks[1] : null;
+            PlayerCache target = PlayerCache.forName(ownerName);
+            if (target == null) {
+                throw new CommandWarn("Player not found: " + ownerName);
+            }
+            home = plugin.findHome(target.uuid, homeName);
+            if (home == null) {
+                throw new CommandWarn(homeName != null
+                                      ? "Home not found: " + homeName + "!"
+                                      : "Home not found!");
+            }
+            if (!plugin.doesIgnoreClaims(uuid) && !home.isInvited(uuid)) {
+                throw new CommandWarn(homeName != null
+                                      ? "Home not found: " + homeName + "!"
+                                      : "Home not found!");
+            }
+        } else {
+            home = plugin.findHome(uuid, arg);
+        }
+        if (home == null) {
+            throw new CommandWarn("Home not found: " + arg);
+        }
+        SQLHomeWorld homeWorld = plugin.findHomeWorld(home.getWorld());
+        if (homeWorld != null && !homeWorld.isOnThisServer() && player.isPlayer()) {
+            Connect.get().dispatchRemoteCommand(player.getPlayer(), "home " + arg, homeWorld.getServer());
+            return;
+        }
+        Location location = home.createLocation();
+        if (location == null) {
+            throw new CommandWarn("Home could not be found.");
+        }
+        Claim claim = plugin.getClaimAt(location);
+        if (claim != null && !claim.canBuild(home.getOwner(), home.createBlockVector())) {
+            throw new CommandWarn("This home location lacks build permission");
+        }
+        player.bring(plugin, location, player2 -> {
+                if (player2 == null) return;
+                player2.sendMessage(Component.text("Welcome home", NamedTextColor.GREEN));
+                player2.showTitle(Title.title(Component.empty(),
+                                              Component.text("Welcome home", NamedTextColor.GREEN),
+                                              Title.Times.times(Duration.ofMillis(500),
+                                                                Duration.ofSeconds(1),
+                                                                Duration.ofMillis(500))));
+                if (home.isOwner(uuid)) {
+                    PluginPlayerEvent.Name.USE_NAMED_HOME
+                        .make(plugin, player2)
+                        .detail(Detail.NAME, home.getName())
+                        .detail(Detail.LOCATION, location)
+                        .callEvent();
+                } else {
+                    PluginPlayerEvent.Name.VISIT_HOME
+                        .make(plugin, player2)
+                        .detail(Detail.OWNER, home.getOwner())
+                        .detail(Detail.NAME, home.getName())
+                        .detail(Detail.LOCATION, location)
+                        .callEvent();
+                }
+            });
+    }
+
+    protected boolean set(Player player, String[] args) {
         if (args.length > 1) return false;
         if (args.length == 1 && args[0].equals("help")) return false;
         UUID uuid = player.getUniqueId();
@@ -307,7 +320,7 @@ public final class HomesCommand extends AbstractCommand<HomePlugin> {
         return true;
     }
 
-    public boolean info(Player player, String[] args) {
+    protected boolean info(Player player, String[] args) {
         if (args.length != 0 && args.length != 1) return false;
         final Home home;
         if (args.length == 0) {
@@ -344,7 +357,7 @@ public final class HomesCommand extends AbstractCommand<HomePlugin> {
         return true;
     }
 
-    public boolean invites(Player player, String[] args) {
+    protected boolean invites(Player player, String[] args) {
         if (args.length != 0) return false;
         TextComponent.Builder message = Component.text().color(NamedTextColor.WHITE)
             .append(Component.text("Your invites: ", NamedTextColor.GRAY));
@@ -367,7 +380,7 @@ public final class HomesCommand extends AbstractCommand<HomePlugin> {
         return true;
     }
 
-    public boolean invite(Player player, String[] args) {
+    protected boolean invite(Player player, String[] args) {
         if (args.length < 1 || args.length > 2) return false;
         if (args.length == 1 && args[0].equals("help")) return false;
         final UUID uuid = player.getUniqueId();
@@ -423,7 +436,7 @@ public final class HomesCommand extends AbstractCommand<HomePlugin> {
         return true;
     }
 
-    public boolean uninvite(Player player, String[] args) {
+    protected boolean uninvite(Player player, String[] args) {
         if (args.length != 1 && args.length != 2) return false;
         final String targetName = args[0];
         UUID target = PlayerCache.uuidForName(targetName);
@@ -450,7 +463,7 @@ public final class HomesCommand extends AbstractCommand<HomePlugin> {
         return true;
     }
 
-    public boolean makePublic(Player player, String[] args) {
+    protected boolean makePublic(Player player, String[] args) {
         if (args.length != 1 && args.length != 2) return false;
         String homeName = args[0];
         Home home = plugin.findHome(player.getUniqueId(), homeName);
@@ -486,7 +499,7 @@ public final class HomesCommand extends AbstractCommand<HomePlugin> {
         return true;
     }
 
-    public boolean delete(Player player, String[] args) {
+    protected boolean delete(Player player, String[] args) {
         if (args.length != 0 && args.length != 1) return false;
         String homeName = args.length >= 1
             ? args[0]
@@ -513,7 +526,7 @@ public final class HomesCommand extends AbstractCommand<HomePlugin> {
         return true;
     }
 
-    public boolean page(Player player, String[] args) {
+    protected boolean page(Player player, String[] args) {
         if (args.length != 1) return false;
         int page;
         try {
@@ -527,7 +540,7 @@ public final class HomesCommand extends AbstractCommand<HomePlugin> {
         return true;
     }
 
-    public boolean visit(Player player, String[] args) {
+    protected boolean visit(Player player, String[] args) {
         if (args.length == 0) {
             listPublicHomes(player);
             return true;
@@ -566,7 +579,7 @@ public final class HomesCommand extends AbstractCommand<HomePlugin> {
         return true;
     }
 
-    public void listPublicHomes(Player player) {
+    protected void listPublicHomes(Player player) {
         List<Home> publicHomes = plugin.getHomes().stream()
             .filter(h -> h.getPublicName() != null)
             .peek(Home::updateScore)
@@ -609,7 +622,7 @@ public final class HomesCommand extends AbstractCommand<HomePlugin> {
         PluginPlayerEvent.Name.VIEW_PUBLIC_HOMES.call(plugin, player);
     }
 
-    public List<String> completeOwnedHomes(CommandContext context, CommandNode node, String arg) {
+    protected List<String> completeOwnedHomes(CommandContext context, CommandNode node, String arg) {
         if (context.player == null) return null;
         return plugin.getHomes().stream()
             .filter(h -> h.isOwner(context.player.getUniqueId())
@@ -619,7 +632,7 @@ public final class HomesCommand extends AbstractCommand<HomePlugin> {
             .collect(Collectors.toList());
     }
 
-    public List<String> completePublicableHomes(CommandContext context, CommandNode node, String arg) {
+    protected List<String> completePublicableHomes(CommandContext context, CommandNode node, String arg) {
         if (context.player == null) return null;
         return plugin.getHomes().stream()
             .filter(h -> h.isOwner(context.player.getUniqueId())
@@ -630,7 +643,7 @@ public final class HomesCommand extends AbstractCommand<HomePlugin> {
             .collect(Collectors.toList());
     }
 
-    public List<String> completePublicHomes(CommandContext context, CommandNode node, String arg) {
+    protected List<String> completePublicHomes(CommandContext context, CommandNode node, String arg) {
         return plugin.getHomes().stream()
             .filter(h -> h.getPublicName() != null
                     && h.getPublicName().startsWith(arg))
@@ -638,7 +651,7 @@ public final class HomesCommand extends AbstractCommand<HomePlugin> {
             .collect(Collectors.toList());
     }
 
-    public List<String> completeUsableHomes(CommandContext context, CommandNode node, String arg) {
+    protected List<String> completeUsableHomes(CommandContext context, CommandNode node, String arg) {
         if (context.player == null) return null;
         UUID uuid = context.player.getUniqueId();
         List<String> result = new ArrayList<>();

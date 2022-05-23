@@ -202,6 +202,7 @@ public final class Claim {
     }
 
     public TrustType getTrustType(UUID uuid) {
+        if (plugin.doesIgnoreClaims(uuid)) return TrustType.OWNER;
         if (uuid.equals(owner)) return TrustType.OWNER;
         if (isAdminClaim() && Perm.has(uuid, "home.adminclaims")) return TrustType.OWNER;
         ClaimTrust entry = trusted.get(uuid);
@@ -211,7 +212,6 @@ public final class Claim {
     }
 
     public TrustType getTrustType(Player player) {
-        if (plugin.doesIgnoreClaims(player)) return TrustType.OWNER;
         return getTrustType(player.getUniqueId());
     }
 

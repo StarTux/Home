@@ -24,4 +24,8 @@ public final class Sessions {
         if (session != null) session.disable();
         return session;
     }
+
+    public Session get(UUID uuid) {
+        return sessions.get(uuid);
+    }
 }

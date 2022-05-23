@@ -488,6 +488,11 @@ public final class HomePlugin extends JavaPlugin {
         return sessions.of(player).isIgnoreClaims();
     }
 
+    public boolean doesIgnoreClaims(UUID uuid) {
+        Session session = sessions.get(uuid);
+        return session != null && session.isIgnoreClaims();
+    }
+
     protected void warpTo(Player player, final Location loc, Runnable task) {
         final World world = loc.getWorld();
         int cx = loc.getBlockX() >> 4;

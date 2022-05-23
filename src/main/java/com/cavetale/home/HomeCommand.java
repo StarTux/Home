@@ -12,6 +12,6 @@ public final class HomeCommand extends AbstractCommand<HomePlugin> {
         rootNode.arguments("[home]")
             .description("Visit your home")
             .completers(plugin.homesCommand::completeUsableHomes)
-            .playerCaller(plugin.homesCommand::home);
+            .remotePlayerCaller(plugin.homesCommand::home);
     }
 }

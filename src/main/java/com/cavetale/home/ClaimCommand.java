@@ -5,8 +5,11 @@ import com.cavetale.core.command.CommandArgCompleter;
 import com.cavetale.core.command.CommandContext;
 import com.cavetale.core.command.CommandNode;
 import com.cavetale.core.command.CommandWarn;
+import com.cavetale.core.command.RemotePlayer;
+import com.cavetale.core.connect.Connect;
 import com.cavetale.core.event.player.PluginPlayerEvent.Detail;
 import com.cavetale.core.event.player.PluginPlayerEvent;
+import com.cavetale.home.sql.SQLHomeWorld;
 import com.cavetale.home.struct.BlockVector;
 import com.cavetale.money.Money;
 import com.winthier.playercache.PlayerCache;
@@ -31,7 +34,6 @@ import org.bukkit.Location;
 import org.bukkit.World;
 import org.bukkit.block.Block;
 import org.bukkit.entity.Player;
-import org.bukkit.event.player.PlayerTeleportEvent.TeleportCause;
 
 public final class ClaimCommand extends AbstractCommand<HomePlugin> {
     private final int pageLen = 9;
@@ -58,7 +60,7 @@ public final class ClaimCommand extends AbstractCommand<HomePlugin> {
             .playerCaller(this::listInvites);
         rootNode.addChild("port").denyTabCompletion()
             .description("Port to your claim")
-            .playerCaller(this::port);
+            .remotePlayerCaller(this::port);
         rootNode.addChild("buy").arguments("<amount>")
             .completers(CommandArgCompleter.integer(i -> i > 0))
             .alias("buyclaimblocks")
@@ -265,47 +267,55 @@ public final class ClaimCommand extends AbstractCommand<HomePlugin> {
         return true;
     }
 
-    private boolean port(final Player player, String[] args) {
+    private boolean port(final RemotePlayer player, String[] args) {
         if (args.length > 1) return false;
+        UUID uuid = player.getUniqueId();
         final Claim claim;
         if (args.length == 1) {
-            int claimId;
-            try {
-                claimId = Integer.parseInt(args[0]);
-            } catch (NumberFormatException nfe) {
-                return true;
-            }
+            int claimId = CommandArgCompleter.requireInt(args[0], i -> i > 0);
             claim = plugin.getClaimById(claimId);
-            if (claim == null) return true;
-            if (!claim.isOwner(player) && claim.isHidden()) return true;
-            if (!claim.getTrustType(player).canBuild()) return true;
+            if (claim == null) {
+                throw new CommandWarn("Claim not found");
+            }
+            if (!claim.isOwner(uuid) && claim.isHidden()) {
+                throw new CommandWarn("Cannot visit claim");
+            }
+            if (!claim.getTrustType(uuid).canBuild()) {
+                throw new CommandWarn("Cannot build in claim");
+            }
         } else {
             claim = plugin.findPrimaryClaim(player.getUniqueId());
             if (claim == null) {
-                throw new CommandWarn("You don't have a claim yet.");
+                throw new CommandWarn("You don't have a claim yet");
             }
         }
+        SQLHomeWorld homeWorld = plugin.findHomeWorld(claim.getWorld());
+        if (homeWorld != null && !homeWorld.isOnThisServer() && player.isPlayer()) {
+            Connect.get().dispatchRemoteCommand(player.getPlayer(), "claim port " + String.join(" ", args), homeWorld.getServer());
+            return true;
+        }
         final World world = Bukkit.getWorld(claim.getWorld());
-        if (world == null) return true;
+        if (world == null) {
+            throw new CommandWarn("Claim not found");
+        }
         final int x = claim.centerX;
         final int z = claim.centerY;
         world.getChunkAtAsync(x >> 4, z >> 4, (Consumer<Chunk>) chunk -> {
-                if (!player.isValid()) return;
-                final Location target;
+                final Location location;
                 if (world.getEnvironment() == World.Environment.NETHER) {
                     Block block = world.getBlockAt(x, 1, z);
                     while (!block.isEmpty() || !block.getRelative(0, 1, 0).isEmpty() || !block.getRelative(0, -1, 0).getType().isSolid()) {
                         block = block.getRelative(0, 1, 0);
                     }
-                    target = block.getLocation().add(0.5, 0.0, 0.5);
+                    location = block.getLocation().add(0.5, 0.0, 0.5);
                 } else {
-                    target = world.getHighestBlockAt(x, z).getLocation().add(0.5, 1.0, 0.5);
+                    location = world.getHighestBlockAt(x, z).getLocation().add(0.5, 1.0, 0.5);
                 }
-                Location ploc = player.getLocation();
-                target.setYaw(ploc.getYaw());
-                target.setPitch(ploc.getPitch());
-                player.teleport(target, TeleportCause.COMMAND);
-                player.sendMessage(Component.text("Teleporting to claim", NamedTextColor.BLUE));
+                player.bring(plugin, location, player2 -> {
+                        if (player2 == null) return;
+                        player2.sendMessage(Component.text("Teleporting to claim", NamedTextColor.GREEN));
+                        player2.sendMessage("x=" + x + ", z=" + z);
+                    });
             });
         return true;
     }

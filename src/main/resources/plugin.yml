@@ -8,7 +8,7 @@ description: Manage the Home world. Users need to find a place to build, make a 
 author: StarTux
 website: https://cavetale.com
 
-depend: [Core, SQL, Exploits, PlayerCache, Money, Perm, Connect, Sidebar]
+depend: [Core, SQL, Exploits, PlayerCache, Money, Connect, Sidebar]
 softdepend: [dynmap, MagicMap, PlayerInfo]
 
 commands:
@@ -109,21 +109,31 @@ commands:
     usage: /wild - Find a place to build.
 
 permissions:
+
   home.home:
     description: Use homes
     default: op
+
   home.claim:
     description: Use claims
     default: op
+
   home.visit:
     description: Visit public homes
     default: op
+
   home.build:
     description: Use /build
     default: op
+
   home.admin:
     description: Use /homeadmin
     default: op
+
   home.adminclaims:
     description: Own all admin claims
+    default: false
+
+  home.ignore:
+    description: Ignore all claims
     default: false

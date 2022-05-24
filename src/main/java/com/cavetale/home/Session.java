@@ -37,7 +37,6 @@ public final class Session {
     private String confirmMessage;
     private List<Component> storedPages = new ArrayList<>();
     private long notifyCooldown = 0L;
-    @Getter @Setter private boolean ignoreClaims = false;
     @Getter @Setter private ClaimGrowSnippet claimGrowSnippet;
     private Claim currentClaim;
     private int ticks;

@@ -87,7 +87,12 @@ public final class HomeAdminCommand extends AbstractCommand<HomePlugin> {
             String worldName = args[0];
             plugin.getClaimCache().debug(sender, worldName);
         } else {
-            sender.sendMessage("Local home worlds: " + plugin.localHomeWorlds);
+            for (String it : plugin.localHomeWorlds) {
+                sender.sendMessage("Local home world: " + it);
+            }
+            for (var it : plugin.worldList) {
+                sender.sendMessage("HomeWorld: " + it);
+            }
         }
         return true;
     }

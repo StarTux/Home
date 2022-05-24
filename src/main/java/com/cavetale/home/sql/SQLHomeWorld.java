@@ -21,18 +21,20 @@ public final class SQLHomeWorld implements SQLRow {
     @Column(nullable = true, length = 255)
     private String displayName;
 
-    @Column(nullable = true)
-    private Integer wildPriority;
+    @Column(nullable = false)
+    private boolean wild;
+
+    @Column(nullable = false)
+    private int claims;
+
+    @Column(nullable = false)
+    private long free;
 
     public SQLHomeWorld() { }
 
     public SQLHomeWorld(final String world, final String server) {
         this.world = world;
         this.server = server;
-    }
-
-    public int getWildPriority() {
-        return wildPriority != null ? wildPriority : 0;
     }
 
     public boolean isOnThisServer() {

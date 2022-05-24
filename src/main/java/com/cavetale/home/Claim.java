@@ -1,9 +1,9 @@
 package com.cavetale.home;
 
+import com.cavetale.core.perm.Perm;
 import com.cavetale.core.util.Json;
 import com.cavetale.home.struct.BlockVector;
 import com.cavetale.home.struct.Vec2i;
-import com.winthier.perm.Perm;
 import com.winthier.playercache.PlayerCache;
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -204,7 +204,7 @@ public final class Claim {
     public TrustType getTrustType(UUID uuid) {
         if (plugin.doesIgnoreClaims(uuid)) return TrustType.OWNER;
         if (uuid.equals(owner)) return TrustType.OWNER;
-        if (isAdminClaim() && Perm.has(uuid, "home.adminclaims")) return TrustType.OWNER;
+        if (isAdminClaim() && Perm.get().has(uuid, "home.adminclaims")) return TrustType.OWNER;
         ClaimTrust entry = trusted.get(uuid);
         TrustType playerTrustType = entry != null ? entry.parseTrustType() : TrustType.NONE;
         if (playerTrustType.isBan()) return playerTrustType;

@@ -1,7 +1,11 @@
 package com.cavetale.home;
 
+import com.cavetale.core.command.RemotePlayer;
 import com.cavetale.core.event.player.PluginPlayerEvent;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
+import java.util.UUID;
 import java.util.function.Consumer;
 import lombok.RequiredArgsConstructor;
 import net.kyori.adventure.text.Component;
@@ -15,22 +19,21 @@ import org.bukkit.Location;
 import org.bukkit.World;
 import org.bukkit.WorldBorder;
 import org.bukkit.block.Block;
-import org.bukkit.entity.Player;
 
 @RequiredArgsConstructor
 final class WildTask {
-    final HomePlugin plugin;
-    final World world;
-    final Player player;
-    int attempts = 0;
-    static final long NANOS = 1000000000L;
-    static final String META_COOLDOWN_WILD = "home.cooldown.wild";
-    int blockX;
-    int blockZ;
+    protected final HomePlugin plugin;
+    protected final World world;
+    protected final RemotePlayer player;
+    protected int attempts = 0;
+    protected static final long NANOS = 1000000000L;
+    protected int blockX;
+    protected int blockZ;
+    private static final Map<UUID, Long> LAST_USES = new HashMap<>();
 
     protected void withCooldown() {
         long now = System.nanoTime() / NANOS;
-        long last = plugin.getMetadata(player, META_COOLDOWN_WILD, Long.class).orElse(-1L);
+        long last = LAST_USES.getOrDefault(player.getUniqueId(), -1L);
         if (last >= 0) {
             long since = now - last;
             long cooldown = (long) Globals.WILD_COOLDOWN;
@@ -41,17 +44,16 @@ final class WildTask {
                 return;
             }
         }
-        plugin.setMetadata(player, META_COOLDOWN_WILD, now);
+        LAST_USES.put(player.getUniqueId(), now);
         player.sendMessage(Component.text("Looking for an unclaimed place to build...",
                                           NamedTextColor.YELLOW));
         plugin.getServer().getScheduler().runTask(plugin, this::findPlaceToBuild);
     }
 
     private void findPlaceToBuild() {
-        if (!player.isValid()) return;
         // Attempts
         long now = System.nanoTime() / NANOS;
-        plugin.setMetadata(player, META_COOLDOWN_WILD, now);
+        LAST_USES.put(player.getUniqueId(), now);
         if (attempts++ > 50) {
             player.sendMessage(Component.text("Could not find a place to build. Please try again",
                                               NamedTextColor.RED));
@@ -104,7 +106,6 @@ final class WildTask {
     }
 
     private void onChunkLoaded(Chunk chunk) {
-        if (!player.isValid()) return;
         Block block = world.getHighestBlockAt(blockX, blockZ);
         for (int i = 0; i < 255; i += 1) {
             if (!block.isSolid() && !block.isLiquid()) break;
@@ -116,11 +117,9 @@ final class WildTask {
             return;
         }
         Location location = block.getLocation().add(0.5, 1.0, 0.5);
-        Location ploc = player.getLocation();
-        location.setPitch(ploc.getPitch());
-        location.setYaw(ploc.getYaw());
         // Teleport, notify, and set cooldown
-        plugin.warpTo(player, location, () -> {
+        player.bring(plugin, location, player2 -> {
+                if (player2 == null) return;
                 Component claimNewTooltip = Component
                     .join(JoinConfiguration.separator(Component.newline()),
                           Component.text("/claim new", NamedTextColor.GREEN),
@@ -144,8 +143,8 @@ final class WildTask {
                     .append(Component.text("[Try Again]", NamedTextColor.AQUA)
                             .clickEvent(ClickEvent.suggestCommand("/wild"))
                             .hoverEvent(HoverEvent.showText(wildTooltip)));
-                player.sendMessage(message);
-                PluginPlayerEvent.Name.USE_WILD.call(plugin, player);
+                player2.sendMessage(message);
+                PluginPlayerEvent.Name.USE_WILD.call(plugin, player2);
             });
     }
 }

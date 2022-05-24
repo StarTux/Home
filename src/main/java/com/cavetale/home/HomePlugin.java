@@ -1,12 +1,15 @@
 package com.cavetale.home;
 
+import com.cavetale.core.command.RemotePlayer;
 import com.cavetale.core.connect.Connect;
+import com.cavetale.core.perm.Perm;
 import com.cavetale.home.claimcache.ClaimCache;
 import com.cavetale.home.sql.SQLHomeWorld;
 import com.cavetale.home.struct.BlockVector;
 import com.winthier.sql.SQLDatabase;
 import java.util.ArrayList;
 import java.util.Collections;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
@@ -18,6 +21,7 @@ import java.util.function.Consumer;
 import java.util.logging.Level;
 import lombok.Getter;
 import net.kyori.adventure.text.Component;
+import org.bukkit.Bukkit;
 import org.bukkit.Chunk;
 import org.bukkit.GameMode;
 import org.bukkit.Location;
@@ -105,6 +109,7 @@ public final class HomePlugin extends JavaPlugin {
         if (getServer().getPluginManager().isPluginEnabled("MagicMap")) {
             magicMapListener = new MagicMapListener(this).enable();
         }
+        Bukkit.getScheduler().runTaskTimer(this, this::updateFreeSpace, 0L, 20L * 60L);
     }
 
     @Override
@@ -150,19 +155,46 @@ public final class HomePlugin extends JavaPlugin {
         }
     }
 
-    protected void findPlaceToBuild(Player player) {
-        List<SQLHomeWorld> rows = new ArrayList<>(worldList);
+    protected void findPlaceToBuild(RemotePlayer player) {
+        if (player.isPlayer()) {
+            // If the player is online, find the world and server with
+            // the most free space.
+            db.find(SQLHomeWorld.class)
+                .eq("wild", true)
+                .findListAsync(rows -> findPlaceToBuildCallback(player, rows));
+        } else {
+            // Otherwise, we assume they were sent from a different
+            // server so we only consider the local worlds.
+            List<SQLHomeWorld> rows = new ArrayList<>(localHomeWorlds.size());
+            for (SQLHomeWorld it : worldList) {
+                if (it.isWild() && it.isOnThisServer()) rows.add(it);
+            }
+            findPlaceToBuildCallback(player, rows);
+        }
+    }
+
+    /**
+     * This is called with a viable list of wild enabled home worlds.
+     *
+     * If the player is remote, they will all be local worlds because
+     * the sending server will already have done their due diligence,
+     * see below.
+     *
+     * If the player is online, this will be a fresh list from the
+     * database so we can redirect the command to other servers if
+     * needed.
+     */
+    private void findPlaceToBuildCallback(RemotePlayer player, List<SQLHomeWorld> rows) {
         if (rows.isEmpty()) {
             getLogger().severe("No home worlds configred!");
             player.sendMessage(Component.text("Something went wrong. Please contact an administrator.", RED));
             return;
         }
-        rows.sort((a, b) -> Integer.compare(b.getWildPriority(), a.getWildPriority()));
-        // Eventually: Make preference!
-        int max = rows.get(0).getWildPriority();
-        rows.removeIf(it -> it.getWildPriority() < max);
-        if (rows.size() > 1) {
-            Collections.shuffle(rows);
+        rows.sort((a, b) -> Long.compare(b.getFree(), a.getFree()));
+        SQLHomeWorld homeWorld = rows.get(0);
+        if (!homeWorld.isOnThisServer() && player.isPlayer()) {
+            Connect.get().dispatchRemoteCommand(player.getPlayer(), "wild", homeWorld.getServer());
+            return;
         }
         String worldName = rows.get(0).getWorld();
         World bworld = getServer().getWorld(worldName);
@@ -192,7 +224,7 @@ public final class HomePlugin extends JavaPlugin {
         worldList = db.find(SQLHomeWorld.class).findList();
         localHomeWorlds = new ArrayList<>();
         for (SQLHomeWorld it : worldList) {
-            if (it.getServer().equals(Connect.get().getServerName())) {
+            if (it.isOnThisServer()) {
                 localHomeWorlds.add(it.getWorld());
             }
         }
@@ -480,17 +512,22 @@ public final class HomePlugin extends JavaPlugin {
         entity.removeMetadata(key, this);
     }
 
+    private static final String HOME_IGNORE_PERM = "home.ignore";
+
     public void ignoreClaims(Player player, boolean value) {
-        sessions.of(player).setIgnoreClaims(value);
+        if (value) {
+            Perm.get().set(player.getUniqueId(), HOME_IGNORE_PERM, true);
+        } else {
+            Perm.get().unset(player.getUniqueId(), HOME_IGNORE_PERM);
+        }
     }
 
     public boolean doesIgnoreClaims(Player player) {
-        return sessions.of(player).isIgnoreClaims();
+        return player.hasPermission(HOME_IGNORE_PERM);
     }
 
     public boolean doesIgnoreClaims(UUID uuid) {
-        Session session = sessions.get(uuid);
-        return session != null && session.isIgnoreClaims();
+        return Perm.get().has(uuid, HOME_IGNORE_PERM);
     }
 
     protected void warpTo(Player player, final Location loc, Runnable task) {
@@ -533,5 +570,27 @@ public final class HomePlugin extends JavaPlugin {
             if (worldName.equals(it.getWorld())) return it;
         }
         return null;
+    }
+
+    private void updateFreeSpace() {
+        Map<String, SQLHomeWorld> map = new HashMap<>();
+        for (SQLHomeWorld it : worldList) {
+            if (!it.isOnThisServer()) continue;
+            World world = Bukkit.getWorld(it.getWorld());
+            if (world == null) continue;
+            double size = world.getWorldBorder().getSize();
+            it.setFree((long) (size * size));
+            it.setClaims(0);
+            map.put(it.getWorld(), it);
+        }
+        for (Claim claim : claimCache.getAllLocalClaims()) {
+            SQLHomeWorld row = map.get(claim.getWorld());
+            if (row == null) continue;
+            row.setFree(row.getFree() - (long) claim.getArea().size());
+            row.setClaims(row.getClaims() + 1);
+        }
+        for (SQLHomeWorld row : map.values()) {
+            db.updateAsync(row, null, "claims", "free");
+        }
     }
 }

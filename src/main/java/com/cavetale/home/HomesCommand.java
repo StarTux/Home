@@ -198,8 +198,7 @@ public final class HomesCommand extends AbstractCommand<HomePlugin> {
         }
         // Give up and default to a random build location, again.
         if (player.isPlayer()) {
-            // TODO
-            plugin.findPlaceToBuild(player.getPlayer());
+            plugin.findPlaceToBuild(player);
         }
     }
 

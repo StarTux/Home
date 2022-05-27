@@ -2,6 +2,7 @@ package com.cavetale.home;
 
 import com.cavetale.core.perm.Perm;
 import com.cavetale.core.util.Json;
+import com.cavetale.home.sql.SQLClaim;
 import com.cavetale.home.struct.BlockVector;
 import com.cavetale.home.struct.Vec2i;
 import com.winthier.playercache.PlayerCache;
@@ -16,9 +17,6 @@ import java.util.Map;
 import java.util.UUID;
 import java.util.function.Consumer;
 import java.util.function.Predicate;
-import javax.persistence.Column;
-import javax.persistence.Id;
-import javax.persistence.Table;
 import lombok.Data;
 import org.bukkit.Chunk;
 import org.bukkit.Location;
@@ -120,48 +118,33 @@ public final class Claim {
 
     // SQL Interface
 
-    @Data @Table(name = "claims")
-    public static final class SQLRow implements com.winthier.sql.SQLRow {
-        private @Id Integer id;
-        @Column(nullable = false) private UUID owner;
-        @Column(nullable = false, length = 16) private String world;
-        @Column(nullable = false) private Integer ax;
-        @Column(nullable = false) private Integer ay;
-        @Column(nullable = false) private Integer bx;
-        @Column(nullable = false) private Integer by;
-        @Column(nullable = false) private Integer blocks;
-        @Column(nullable = false, length = 255) private String settings;
-        @Column(nullable = true, length = 255) private String name;
-        @Column(nullable = false) private Date created;
-    }
-
-    public SQLRow toSQLRow() {
-        SQLRow row = new SQLRow();
-        if (this.id > 0) row.id = this.id;
-        row.owner = this.owner;
-        row.world = this.world;
-        row.ax = this.area.ax;
-        row.ay = this.area.ay;
-        row.bx = this.area.bx;
-        row.by = this.area.by;
-        row.blocks = this.blocks;
-        row.created = new Date(created);
+    public SQLClaim toSQLRow() {
+        SQLClaim row = new SQLClaim();
+        if (id > 0) row.setId(id);
+        row.setOwner(owner);
+        row.setWorld(world);
+        row.setAx(area.ax);
+        row.setAy(area.ay);
+        row.setBx(area.bx);
+        row.setBy(area.by);
+        row.setBlocks(blocks);
+        row.setCreated(new Date(created));
         Map<String, Object> settingsMap = new LinkedHashMap<>();
         for (Map.Entry<Setting, Object> setting : settings.entrySet()) {
             settingsMap.put(setting.getKey().name().toLowerCase(), setting.getValue());
         }
         settingsMap.put("center", Arrays.asList(centerX, centerY));
-        row.settings = Json.serialize(settingsMap);
-        row.name = name;
+        row.setSettings(Json.serialize(settingsMap));
+        row.setName(name);
         return row;
     }
 
-    public void loadSQLRow(SQLRow row) {
-        this.id = row.id;
-        this.owner = row.owner;
-        this.world = row.world;
-        this.area = new Area(row.ax, row.ay, row.bx, row.by);
-        this.blocks = row.blocks;
+    public void loadSQLRow(SQLClaim row) {
+        this.id = row.getId();
+        this.owner = row.getOwner();
+        this.world = row.getWorld();
+        this.area = new Area(row.getAx(), row.getAy(), row.getBx(), row.getBy());
+        this.blocks = row.getBlocks();
         this.created = row.getCreated().getTime();
         @SuppressWarnings("unchecked")
         Map<String, Object> settingsMap = (Map<String, Object>) Json.deserialize(row.getSettings(), Map.class);
@@ -183,9 +166,9 @@ public final class Claim {
     }
 
     public void saveToDatabase() {
-        SQLRow row = toSQLRow();
+        SQLClaim row = toSQLRow();
         plugin.getDb().save(row);
-        this.id = row.id;
+        id = row.getId();
     }
 
     // Utility

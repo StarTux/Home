@@ -68,7 +68,7 @@ public final class Home implements SQLRow {
     /**
      * Constructor for new homes.
      */
-    Home(final UUID owner, final Location location, final String name) {
+    protected Home(final UUID owner, final Location location, final String name) {
         this.owner = owner;
         this.name = name;
         this.created = new Date();
@@ -82,7 +82,7 @@ public final class Home implements SQLRow {
 
     // Bukkit
 
-    void setLocation(Location location) {
+    protected void setLocation(Location location) {
         this.world = location.getWorld().getName();
         this.x = location.getX();
         this.y = location.getY();
@@ -105,20 +105,20 @@ public final class Home implements SQLRow {
         return blockVector;
     }
 
-    boolean isOwner(UUID playerId) {
+    protected boolean isOwner(UUID playerId) {
         return this.owner.equals(playerId);
     }
 
-    boolean isInWorld(String worldName) {
+    protected boolean isInWorld(String worldName) {
         return this.world.equals(worldName);
     }
 
-    boolean isInvited(UUID playerId) {
+    protected boolean isInvited(UUID playerId) {
         return invites.contains(playerId);
     }
 
     // Supports null check for primary homes
-    boolean isNamed(String homeName) {
+    protected boolean isNamed(String homeName) {
         if ((name == null) != (homeName == null)) return false;
         if (name == null) return true;
         return name.equalsIgnoreCase(homeName);

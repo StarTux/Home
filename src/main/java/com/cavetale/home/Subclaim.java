@@ -1,6 +1,7 @@
 package com.cavetale.home;
 
 import com.cavetale.core.util.Json;
+import com.cavetale.home.sql.SQLSubclaim;
 import com.winthier.playercache.PlayerCache;
 import java.util.ArrayList;
 import java.util.EnumMap;
@@ -10,13 +11,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.UUID;
-import javax.persistence.Column;
-import javax.persistence.Id;
-import javax.persistence.Table;
-import lombok.AllArgsConstructor;
 import lombok.Getter;
-import lombok.NoArgsConstructor;
-import lombok.Setter;
 import org.bukkit.World;
 import org.bukkit.entity.Player;
 
@@ -44,11 +39,11 @@ public final class Subclaim {
      * Constructor to load from database. (Parent claim resolution is
      * external!)
      */
-    public Subclaim(final HomePlugin plugin, final Claim parent, final SQLRow row) {
-        this(plugin, parent, row.world,
-             new Area(row.ax, row.ay, row.bx, row.by),
+    public Subclaim(final HomePlugin plugin, final Claim parent, final SQLSubclaim row) {
+        this(plugin, parent, row.getWorld(),
+             new Area(row.getAx(), row.getAy(), row.getBx(), row.getBy()),
              Json.deserialize(row.getTag(), Tag.class, Tag::new));
-        this.id = row.id;
+        this.id = row.getId();
     }
 
     /**
@@ -93,19 +88,6 @@ public final class Subclaim {
         Map<UUID, Trust> trusted = new HashMap<>();
     }
 
-    @Getter @Setter @Table(name = "subclaims")
-    @AllArgsConstructor @NoArgsConstructor
-    public static final class SQLRow implements com.winthier.sql.SQLRow {
-        private @Id Integer id;
-        @Column(nullable = false) private int claimId;
-        @Column(nullable = false) private String world;
-        @Column(nullable = false) private int ax;
-        @Column(nullable = false) private int ay;
-        @Column(nullable = false) private int bx;
-        @Column(nullable = false) private int by;
-        @Column(nullable = false, length = 4096) private String tag;
-    }
-
     public int getId() {
         return id != null ? id : -1;
     }
@@ -118,16 +100,16 @@ public final class Subclaim {
         return inWorld.getName().equals(world);
     }
 
-    public SQLRow toSQLRow() {
-        return new SQLRow(id, parent.getId(), world,
-                          area.ax, area.ay, area.bx, area.by,
-                          Json.serialize(tag));
+    public SQLSubclaim toSQLRow() {
+        return new SQLSubclaim(id, parent.getId(), world,
+                               area.ax, area.ay, area.bx, area.by,
+                               Json.serialize(tag));
     }
 
     public void saveToDatabase() {
-        SQLRow row = toSQLRow();
+        SQLSubclaim row = toSQLRow();
         plugin.db.save(row);
-        this.id = row.id;
+        this.id = row.getId();
     }
 
     public List<UUID> getTrustedUuids() {

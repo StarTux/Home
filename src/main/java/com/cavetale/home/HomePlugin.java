@@ -6,6 +6,7 @@ import com.cavetale.core.perm.Perm;
 import com.cavetale.home.claimcache.ClaimCache;
 import com.cavetale.home.sql.SQLClaim;
 import com.cavetale.home.sql.SQLHomeWorld;
+import com.cavetale.home.sql.SQLSubclaim;
 import com.cavetale.home.struct.BlockVector;
 import com.winthier.sql.SQLDatabase;
 import java.util.ArrayList;
@@ -84,7 +85,7 @@ public final class HomePlugin extends JavaPlugin {
         instance = this;
         db = new SQLDatabase(this);
         db.registerTables(SQLClaim.class,
-                          Subclaim.SQLRow.class,
+                          SQLSubclaim.class,
                           ClaimTrust.class,
                           Home.class,
                           HomeInvite.class,
@@ -279,7 +280,7 @@ public final class HomePlugin extends JavaPlugin {
             }
             claim.trusted.put(trust.getTrustee(), trust);
         }
-        for (Subclaim.SQLRow row : db.find(Subclaim.SQLRow.class).findList()) {
+        for (SQLSubclaim row : db.find(SQLSubclaim.class).findList()) {
             Claim claim = getClaimById(row.getClaimId());
             if (claim == null) {
                 getLogger().warning("Subclaim without parent claim: id=" + row.getId() + " claim_id=" + row.getClaimId());
@@ -489,7 +490,7 @@ public final class HomePlugin extends JavaPlugin {
         int claimId = claim.getId();
         int claimCount = db.find(SQLClaim.class).eq("id", claimId).delete();
         int trustCount = db.find(ClaimTrust.class).eq("claimId", claimId).delete();
-        int subclaimCount = db.find(Subclaim.SQLRow.class).eq("claimId", claimId).delete();
+        int subclaimCount = db.find(SQLSubclaim.class).eq("claimId", claimId).delete();
         claimCache.remove(claim);
         claim.setDeleted(true);
         getLogger().info("Deleted claim #" + claimId

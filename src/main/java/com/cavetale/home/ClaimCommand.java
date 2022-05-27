@@ -23,17 +23,24 @@ import java.util.stream.Collectors;
 import lombok.Value;
 import net.kyori.adventure.text.Component;
 import net.kyori.adventure.text.ComponentLike;
-import net.kyori.adventure.text.JoinConfiguration;
 import net.kyori.adventure.text.TextComponent;
 import net.kyori.adventure.text.event.ClickEvent;
 import net.kyori.adventure.text.event.HoverEvent;
-import net.kyori.adventure.text.format.NamedTextColor;
+import net.kyori.adventure.text.format.TextColor;
 import org.bukkit.Bukkit;
 import org.bukkit.Chunk;
 import org.bukkit.Location;
 import org.bukkit.World;
 import org.bukkit.block.Block;
 import org.bukkit.entity.Player;
+import static net.kyori.adventure.text.Component.empty;
+import static net.kyori.adventure.text.Component.join;
+import static net.kyori.adventure.text.Component.newline;
+import static net.kyori.adventure.text.Component.space;
+import static net.kyori.adventure.text.Component.text;
+import static net.kyori.adventure.text.JoinConfiguration.noSeparators;
+import static net.kyori.adventure.text.JoinConfiguration.separator;
+import static net.kyori.adventure.text.format.NamedTextColor.*;
 
 public final class ClaimCommand extends AbstractCommand<HomePlugin> {
     private final int pageLen = 9;
@@ -172,9 +179,9 @@ public final class ClaimCommand extends AbstractCommand<HomePlugin> {
         player.sendMessage(Util.frame("Claim Info"));
         player.sendMessage(makeClaimInfo(player, claim));
         if (claim.getTrustType(player).canBuild()) {
-            player.sendMessage(Component.text().content("Teleport ").color(NamedTextColor.GRAY)
-                               .append(Component.text("[Port]", NamedTextColor.BLUE))
-                               .hoverEvent(HoverEvent.showText(Component.text("Port to this claim", NamedTextColor.BLUE)))
+            player.sendMessage(text("Teleport ", GRAY)
+                               .append(text("[Port]", BLUE))
+                               .hoverEvent(HoverEvent.showText(text("Port to this claim", BLUE)))
                                .clickEvent(ClickEvent.runCommand("/claim port " + claim.getId())));
         }
         player.sendMessage("");
@@ -228,41 +235,41 @@ public final class ClaimCommand extends AbstractCommand<HomePlugin> {
                                                + ThreadLocalRandom.current().nextInt(9999));
         plugin.setMetadata(player, plugin.META_NEWCLAIM, ncmeta);
         // Here we use Aqua as base color and White as highlight. Perhaps rethink this?
-        TextComponent.Builder message = Component.text().color(NamedTextColor.WHITE);
-        message.append(Component.newline())
+        TextComponent.Builder message = text().color(WHITE);
+        message.append(newline())
             .append(Util.frame("New Claim"))
-            .append(Component.newline())
-            .append(Component.text("You are about to create a claim of "))
-            .append(Component.text(area.width() + "x" + area.height() + " blocks", NamedTextColor.BLUE))
-            .append(Component.text(" around your current location."));
+            .append(newline())
+            .append(text("You are about to create a claim of "))
+            .append(text(area.width() + "x" + area.height() + " blocks", BLUE))
+            .append(text(" around your current location."));
         if (claimCost >= 0.01) {
-            message.append(Component.text(" This will cost you "))
-                .append(Component.text(Money.format(claimCost), NamedTextColor.GOLD))
-                .append(Component.text("."));
+            message.append(text(" This will cost you "))
+                .append(text(Money.format(claimCost), GOLD))
+                .append(text("."));
         }
-        message.append(Component.text(" Your new claim will have "))
-            .append(Component.text(area.size(), NamedTextColor.BLUE))
-            .append(Component.text(" claim blocks."));
+        message.append(text(" Your new claim will have "))
+            .append(text(area.size(), BLUE))
+            .append(text(" claim blocks."));
         if (Globals.CLAIM_BLOCK_COST >= 0.01) {
-            message.append(Component.text(" You can buy additional claim blocks for "))
-                .append(Component.text(Money.format(Globals.CLAIM_BLOCK_COST), NamedTextColor.GOLD))
-                .append(Component.text(" per block."));
+            message.append(text(" You can buy additional claim blocks for "))
+                .append(text(Money.format(Globals.CLAIM_BLOCK_COST), GOLD))
+                .append(text(" per block."));
         }
-        message.append(Component.text(" You can abandon the claim after a cooldown of "))
-            .append(Component.text(Globals.CLAIM_ABANDON_COOLDOWN + " minutes", NamedTextColor.BLUE))
-            .append(Component.text(". Claim blocks will "))
-            .append(Component.text("not", NamedTextColor.BLUE))
-            .append(Component.text(" be refunded."))
-            .append(Component.newline())
-            .append(Component.text("Proceed? ", NamedTextColor.GRAY))
-            .append(Component.text("[Confirm]", NamedTextColor.GREEN)
+        message.append(text(" You can abandon the claim after a cooldown of "))
+            .append(text(Globals.CLAIM_ABANDON_COOLDOWN + " minutes", BLUE))
+            .append(text(". Claim blocks will "))
+            .append(text("not", BLUE))
+            .append(text(" be refunded."))
+            .append(newline())
+            .append(text("Proceed? ", GRAY))
+            .append(text("[Confirm]", GREEN)
                     .clickEvent(ClickEvent.runCommand("/claim confirm " + ncmeta.token))
-                    .hoverEvent(HoverEvent.showText(Component.text("Confirm this purchase", NamedTextColor.GREEN))))
-            .append(Component.space())
-            .append(Component.text("[Cancel]", NamedTextColor.RED)
+                    .hoverEvent(HoverEvent.showText(text("Confirm this purchase", GREEN))))
+            .append(space())
+            .append(text("[Cancel]", RED)
                     .clickEvent(ClickEvent.runCommand("/claim cancel"))
-                    .hoverEvent(HoverEvent.showText(Component.text("Cancel this purchase", NamedTextColor.RED))))
-            .append(Component.newline());
+                    .hoverEvent(HoverEvent.showText(text("Cancel this purchase", RED))))
+            .append(newline());
         player.sendMessage(message);
         return true;
     }
@@ -313,7 +320,7 @@ public final class ClaimCommand extends AbstractCommand<HomePlugin> {
                 }
                 player.bring(plugin, location, player2 -> {
                         if (player2 == null) return;
-                        player2.sendMessage(Component.text("Teleporting to claim", NamedTextColor.GREEN));
+                        player2.sendMessage(text("Teleporting to claim", GREEN));
                         player2.sendMessage("x=" + x + ", z=" + z);
                     });
             });
@@ -354,25 +361,25 @@ public final class ClaimCommand extends AbstractCommand<HomePlugin> {
         BuyClaimBlocks meta = new BuyClaimBlocks(buyClaimBlocks, price, claim.getId(), ""
                                                  + ThreadLocalRandom.current().nextInt(9999));
         plugin.setMetadata(player, plugin.META_BUY, meta);
-        ComponentLike message = Component.text().color(NamedTextColor.WHITE)
+        ComponentLike message = text().color(WHITE)
             .content("Buying ")
-            .append(Component.text(buyClaimBlocks, NamedTextColor.GREEN))
-            .append(Component.text(" for "))
-            .append(Component.text(priceFormat, NamedTextColor.GOLD))
-            .append(Component.text("."))
-            .append(Component.newline())
-            .append(Component.text("Confirm this purchase ", NamedTextColor.GRAY))
-            .append(Component.text("[Confirm]", NamedTextColor.GREEN)
+            .append(text(buyClaimBlocks, GREEN))
+            .append(text(" for "))
+            .append(text(priceFormat, GOLD))
+            .append(text("."))
+            .append(newline())
+            .append(text("Confirm this purchase ", GRAY))
+            .append(text("[Confirm]", GREEN)
                     .clickEvent(ClickEvent.runCommand("/claim confirm " + meta.token))
-                    .hoverEvent(HoverEvent.showText(Component.join(JoinConfiguration.separator(Component.newline()),
-                                                                   Component.text("Confirm", NamedTextColor.GREEN),
-                                                                   Component.text("Buy " + buyClaimBlocks
-                                                                                  + " for " + priceFormat,
-                                                                                  NamedTextColor.GRAY)))))
-            .append(Component.space())
-            .append(Component.text("[Cancel]", NamedTextColor.RED)
+                    .hoverEvent(HoverEvent.showText(join(separator(newline()),
+                                                         text("Confirm", GREEN),
+                                                         text("Buy " + buyClaimBlocks
+                                                              + " for " + priceFormat,
+                                                              GRAY)))))
+            .append(space())
+            .append(text("[Cancel]", RED)
                     .clickEvent(ClickEvent.runCommand("/claim cancel"))
-                    .hoverEvent(HoverEvent.showText(Component.text("Cancel purchase", NamedTextColor.RED))));
+                    .hoverEvent(HoverEvent.showText(text("Cancel purchase", RED))));
         player.sendMessage(message);
         return true;
     }
@@ -398,16 +405,16 @@ public final class ClaimCommand extends AbstractCommand<HomePlugin> {
             plugin.sessions.of(player).setClaimGrowSnippet(null);
             Location location = player.getLocation();
             if (snippet != null && snippet.isNear(location) && claim.growTo(location.getBlockX(), location.getBlockZ()).isSuccessful()) {
-                player.sendMessage(Component.text("Added " + meta.amount + " and grew to your location!"));
+                player.sendMessage(text("Added " + meta.amount + " and grew to your location!"));
                 plugin.highlightClaim(claim, player);
                 PluginPlayerEvent.Name.GROW_CLAIM.call(plugin, player);
             } else if (claim.getBoolSetting(Claim.Setting.AUTOGROW)) {
-                player.sendMessage(Component.text("Added " + meta.amount
-                                                  + " blocks to this claim. It will grow automatically."));
+                player.sendMessage(text("Added " + meta.amount
+                                        + " blocks to this claim. It will grow automatically."));
             } else {
-                player.sendMessage(Component.text("Added " + meta.amount
-                                                  + " blocks to this claim."
-                                                  + " Grow it manually or enable \"autogrow\" in the settings."));
+                player.sendMessage(text("Added " + meta.amount
+                                        + " blocks to this claim."
+                                        + " Grow it manually or enable \"autogrow\" in the settings."));
             }
             claim.saveToDatabase();
             PluginPlayerEvent.Name.BUY_CLAIM_BLOCKS.make(plugin, player)
@@ -425,7 +432,7 @@ public final class ClaimCommand extends AbstractCommand<HomePlugin> {
                 throw new CommandWarn("Claim removal expired");
             }
             plugin.deleteClaim(claim);
-            player.sendMessage(Component.text("Claim removed", NamedTextColor.YELLOW));
+            player.sendMessage(text("Claim removed", YELLOW));
             return true;
         }
         // NewClaim confirm
@@ -450,14 +457,14 @@ public final class ClaimCommand extends AbstractCommand<HomePlugin> {
             Claim claim = new Claim(plugin, uuid, ncmeta.world, ncmeta.area);
             claim.saveToDatabase();
             plugin.getClaimCache().add(claim);
-            ComponentLike message = Component.text().color(NamedTextColor.WHITE)
-                .append(Component.text("Claim created!  "))
-                .append(Component.text("[View]", NamedTextColor.GREEN))
+            ComponentLike message = text().color(WHITE)
+                .append(text("Claim created!  "))
+                .append(text("[View]", GREEN))
                 .clickEvent(ClickEvent.runCommand("/claim info"))
-                .hoverEvent(HoverEvent.showText(Component.join(JoinConfiguration.separator(Component.newline()),
-                                                               Component.text("/claim info"),
-                                                               Component.text("View claim info and highlight your claim",
-                                                                              NamedTextColor.GRAY))));
+                .hoverEvent(HoverEvent.showText(join(separator(newline()),
+                                                     text("/claim info"),
+                                                     text("View claim info and highlight your claim",
+                                                          GRAY))));
             player.sendMessage(message);
             plugin.highlightClaim(claim, player);
             PluginPlayerEvent.Name.CREATE_CLAIM.call(plugin, player);
@@ -474,7 +481,7 @@ public final class ClaimCommand extends AbstractCommand<HomePlugin> {
             plugin.removeMetadata(player, plugin.META_BUY);
             plugin.removeMetadata(player, plugin.META_ABANDON);
             plugin.removeMetadata(player, plugin.META_NEWCLAIM);
-            player.sendMessage(Component.text("Claim operation cancelled", NamedTextColor.RED));
+            player.sendMessage(text("Claim operation cancelled", RED));
         }
         return true;
     }
@@ -511,8 +518,8 @@ public final class ClaimCommand extends AbstractCommand<HomePlugin> {
             plugin.getDb().insertAsync(claimTrust, null);
             claim.getTrusted().put(target.uuid, claimTrust);
         }
-        player.sendMessage(Component.text(target.name + " now has " + trustType.displayName
-                                          + " trust in this claim.", NamedTextColor.GREEN));
+        player.sendMessage(text(target.name + " now has " + trustType.displayName
+                                + " trust in this claim.", GREEN));
         PluginPlayerEvent.Name.CLAIM_TRUST.make(plugin, player)
             .detail(Detail.TARGET, target.uuid)
             .detail(Detail.NAME, trustType.key)
@@ -533,8 +540,8 @@ public final class ClaimCommand extends AbstractCommand<HomePlugin> {
         }
         claim.getTrusted().remove(playerCache.uuid);
         plugin.db.delete(claimTrust);
-        player.sendMessage(Component.text("Removed " + claimTrust.parseTrustType().displayName
-                                          + " trust for " + playerCache.name, NamedTextColor.GREEN));
+        player.sendMessage(text("Removed " + claimTrust.parseTrustType().displayName
+                                + " trust for " + playerCache.name, GREEN));
         PluginPlayerEvent.Name.CLAIM_UNTRUST.make(plugin, player)
             .detail(Detail.TARGET, playerCache.uuid)
             .callEvent();
@@ -548,7 +555,7 @@ public final class ClaimCommand extends AbstractCommand<HomePlugin> {
         if (name.length() > 24) throw new CommandWarn("Name too long!");
         claim.setName(name);
         claim.saveToDatabase();
-        player.sendMessage(Component.text("Claim renamed to " + name, NamedTextColor.YELLOW));
+        player.sendMessage(text("Claim renamed to " + name, YELLOW));
         return true;
     }
 
@@ -600,27 +607,27 @@ public final class ClaimCommand extends AbstractCommand<HomePlugin> {
 
     private void showClaimSettings(Claim claim, Player player) {
         List<ComponentLike> lines = new ArrayList<>();
-        lines.add(Component.empty());
+        lines.add(empty());
         lines.add(Util.frame("Claim Settings"));
         for (Claim.Setting setting : Claim.Setting.values()) {
             if (setting.isAdminOnly() && !Claim.ownsAdminClaims(player)) continue;
-            TextComponent.Builder line = Component.text().color(NamedTextColor.WHITE);
+            TextComponent.Builder line = text().color(WHITE);
             Object value = claim.getSetting(setting);
             String key = setting.name().toLowerCase();
             boolean on = value == Boolean.TRUE;
-            line.append(Component.text("[ON]", (on ? NamedTextColor.GREEN : NamedTextColor.DARK_GRAY))
+            line.append(text("[ON]", (on ? GREEN : DARK_GRAY))
                         .clickEvent(ClickEvent.runCommand("/claim set " + key + " on"))
-                        .hoverEvent(HoverEvent.showText(Component.text("Enable " + setting.displayName, NamedTextColor.GREEN))));
-            line.append(Component.space());
-            line.append(Component.text("[OFF]", (on ? NamedTextColor.DARK_GRAY : NamedTextColor.RED))
+                        .hoverEvent(HoverEvent.showText(text("Enable " + setting.displayName, GREEN))));
+            line.append(space());
+            line.append(text("[OFF]", (on ? DARK_GRAY : RED))
                         .clickEvent(ClickEvent.runCommand("/claim set " + key + " off"))
-                        .hoverEvent(HoverEvent.showText(Component.text("Disable " + setting.displayName, NamedTextColor.RED))));
-            line.append(Component.space());
-            line.append(Component.text(setting.displayName, setting.isAdminOnly() ? NamedTextColor.RED : NamedTextColor.WHITE));
+                        .hoverEvent(HoverEvent.showText(text("Disable " + setting.displayName, RED))));
+            line.append(space());
+            line.append(text(setting.displayName, setting.isAdminOnly() ? RED : WHITE));
             lines.add(line);
         }
-        lines.add(Component.empty());
-        player.sendMessage(Component.join(JoinConfiguration.separator(Component.newline()), lines));
+        lines.add(empty());
+        player.sendMessage(join(separator(newline()), lines));
     }
 
     private boolean grow(Player player, String[] args) {
@@ -645,14 +652,14 @@ public final class ClaimCommand extends AbstractCommand<HomePlugin> {
         if (claim.getBlocks() < newArea.size()) {
             int needed = newArea.size() - claim.getBlocks();
             String formatMoney = Money.format((double) needed * Globals.CLAIM_BLOCK_COST);
-            Component tooltip = Component.join(JoinConfiguration.separator(Component.newline()),
-                                               Component.text("/claim buy " + needed, NamedTextColor.YELLOW),
-                                               Component.text("Buy more " + needed + " claim blocks", NamedTextColor.GRAY),
-                                               Component.text("for ", NamedTextColor.GRAY)
-                                               .append(Component.text(formatMoney, NamedTextColor.GOLD)));
-            ComponentLike message = Component.text().color(NamedTextColor.YELLOW)
-                .append(Component.text(needed + " more claim blocks required. "))
-                .append(Component.text("[Buy More]", NamedTextColor.GRAY)
+            Component tooltip = join(separator(newline()),
+                                     text("/claim buy " + needed, YELLOW),
+                                     text("Buy more " + needed + " claim blocks", GRAY),
+                                     text("for ", GRAY)
+                                     .append(text(formatMoney, GOLD)));
+            ComponentLike message = text().color(YELLOW)
+                .append(text(needed + " more claim blocks required. "))
+                .append(text("[Buy More]", GRAY)
                         .clickEvent(ClickEvent.runCommand("/claim buy " + needed))
                         .hoverEvent(HoverEvent.showText(tooltip)));
             player.sendMessage(message);
@@ -665,7 +672,7 @@ public final class ClaimCommand extends AbstractCommand<HomePlugin> {
         }
         claim.setArea(newArea);
         claim.saveToDatabase();
-        player.sendMessage(Component.text("Grew your claim to where you are standing", NamedTextColor.GREEN));
+        player.sendMessage(text("Grew your claim to where you are standing", GREEN));
         plugin.highlightClaim(claim, player);
         PluginPlayerEvent.Name.GROW_CLAIM.call(plugin, player);
         return true;
@@ -706,7 +713,7 @@ public final class ClaimCommand extends AbstractCommand<HomePlugin> {
         }
         claim.setArea(newArea);
         claim.saveToDatabase();
-        player.sendMessage(Component.text("Shrunk your claim to where you are standing", NamedTextColor.GREEN));
+        player.sendMessage(text("Shrunk your claim to where you are standing", GREEN));
         plugin.highlightClaim(claim, player);
         return true;
     }
@@ -731,17 +738,17 @@ public final class ClaimCommand extends AbstractCommand<HomePlugin> {
             }
         }
         plugin.setMetadata(player, plugin.META_ABANDON, claim.getId());
-        ComponentLike message = Component.text().color(NamedTextColor.DARK_RED)
-            .append(Component.text("Really delete this claim? All claim blocks will be lost."))
-            .append(Component.newline())
-            .append(Component.text("This cannot be undone! "))
-            .append(Component.text("[Confirm]", NamedTextColor.RED)
+        ComponentLike message = text().color(DARK_RED)
+            .append(text("Really delete this claim? All claim blocks will be lost."))
+            .append(newline())
+            .append(text("This cannot be undone! "))
+            .append(text("[Confirm]", RED)
                     .clickEvent(ClickEvent.runCommand("/claim confirm " + claim.getId()))
-                    .hoverEvent(HoverEvent.showText(Component.text("Confirm Claim Abandonment", NamedTextColor.RED))))
-            .append(Component.space())
-            .append(Component.text("[Cancel]", NamedTextColor.GREEN)
+                    .hoverEvent(HoverEvent.showText(text("Confirm Claim Abandonment", RED))))
+            .append(space())
+            .append(text("[Cancel]", GREEN)
                     .clickEvent(ClickEvent.runCommand("/claim cancel"))
-                    .hoverEvent(HoverEvent.showText(Component.text("Cancel Claim Abandonment", NamedTextColor.GREEN))));
+                    .hoverEvent(HoverEvent.showText(text("Cancel Claim Abandonment", GREEN))));
         player.sendMessage(message);
         return true;
     }
@@ -749,54 +756,41 @@ public final class ClaimCommand extends AbstractCommand<HomePlugin> {
     public Component makeClaimInfo(Player player, Claim claim) {
         List<Component> lines = new ArrayList<>();
         if (claim.getName() != null) {
-            lines.add(Component.join(JoinConfiguration.noSeparators(), new Component[] {
-                        Component.text("Name ", NamedTextColor.GRAY),
-                        Component.text(claim.getName(), NamedTextColor.WHITE),
-                    }));
+            lines.add(join(noSeparators(), text("Name ", GRAY), text(claim.getName(), WHITE)));
         }
-        lines.add(Component.join(JoinConfiguration.noSeparators(), new Component[] {
-                    Component.text("Owner ", NamedTextColor.GRAY),
-                    Component.text(claim.getOwnerName(), NamedTextColor.WHITE),
-                }));
-        lines.add(Component.join(JoinConfiguration.noSeparators(), new Component[] {
-                    Component.text("Location ", NamedTextColor.GRAY),
-                    Component.text(plugin.worldDisplayName(claim.getWorld() + " " + claim.centerX + "," + claim.centerY)),
-                }));
-        lines.add(Component.join(JoinConfiguration.noSeparators(), new Component[] {
-                    Component.text("Size ", NamedTextColor.GRAY),
-                    Component.text("" + claim.getArea().width()),
-                    Component.text("x", NamedTextColor.GRAY),
-                    Component.text("" + claim.getArea().height()),
-                    Component.text(" \u2192 ", NamedTextColor.GRAY),
-                    Component.text("" + claim.getArea().size(), NamedTextColor.WHITE),
-                    Component.text(" / ", NamedTextColor.GRAY),
-                    Component.text("" + claim.getBlocks(), NamedTextColor.WHITE),
-                }));
+        lines.add(join(noSeparators(), text("Owner ", GRAY), text(claim.getOwnerName(), WHITE)));
+        lines.add(join(noSeparators(), text("Location ", GRAY),
+                       text(plugin.worldDisplayName(claim.getWorld() + " " + claim.centerX + "," + claim.centerY))));
+        lines.add(join(noSeparators(), text("Size ", GRAY),
+                       text("" + claim.getArea().width()),
+                       text("x", GRAY),
+                       text("" + claim.getArea().height()),
+                       text(" \u2192 ", GRAY),
+                       text("" + claim.getArea().size(), WHITE),
+                       text(" / ", GRAY),
+                       text("" + claim.getBlocks(), WHITE)));
         // Members and Visitors
         for (TrustType trustType : TrustType.values()) {
             if (trustType.isNone()) continue;
             List<PlayerCache> list = claim.listPlayers(trustType::is);
             if (list.isEmpty()) continue;
             Component header = trustType.isBan()
-                ? Component.text("Banned ", NamedTextColor.GRAY)
-                : Component.text(trustType.displayName + " Trust ", NamedTextColor.GRAY);
-            lines.add(Component.text().color(trustType.isBan() ? NamedTextColor.RED : NamedTextColor.WHITE)
+                ? text("Banned ", GRAY)
+                : text(trustType.displayName + " Trust ", GRAY);
+            lines.add(text().color(trustType.isBan() ? RED : WHITE)
                       .append(header)
-                      .append(Component.join(JoinConfiguration.separator(Component.text(", ", NamedTextColor.GRAY)),
-                                             list.stream()
-                                             .map(PlayerCache::getName)
-                                             .sorted()
-                                             .map(name -> Component.text(name))
-                                             .collect(Collectors.toList())))
+                      .append(join(separator(text(", ", GRAY)),
+                                   list.stream()
+                                   .map(PlayerCache::getName)
+                                   .sorted()
+                                   .map(name -> text(name))
+                                   .collect(Collectors.toList())))
                       .build());
         }
         // Subclaims
         List<Subclaim> subclaims = claim.getSubclaims(player.getWorld());
         if (!subclaims.isEmpty()) {
-            lines.add(Component.join(JoinConfiguration.noSeparators(), new Component[] {
-                        Component.text("Subclaims ", NamedTextColor.GRAY),
-                        Component.text("" + subclaims.size(), NamedTextColor.WHITE),
-                    }));
+            lines.add(join(noSeparators(), text("Subclaims ", GRAY), text("" + subclaims.size(), WHITE)));
         }
         // Settings
         List<Component> settingsList = new ArrayList<>();
@@ -805,27 +799,24 @@ public final class ClaimCommand extends AbstractCommand<HomePlugin> {
             Object value = claim.getSetting(setting);
             if (value == null || value == setting.defaultValue) continue;
             final String valueString;
-            final NamedTextColor valueColor;
+            final TextColor valueColor;
             if (value == Boolean.TRUE) {
                 valueString = "on";
-                valueColor = NamedTextColor.GREEN;
+                valueColor = GREEN;
             } else if (value == Boolean.FALSE) {
                 valueString = "off";
-                valueColor = NamedTextColor.YELLOW;
+                valueColor = YELLOW;
             } else {
                 valueString = value.toString();
-                valueColor = NamedTextColor.GRAY;
+                valueColor = GRAY;
             }
-            settingsList.add(Component.text(setting.key + "=" + valueString,
-                                            (setting.isAdminOnly() ? NamedTextColor.DARK_RED : valueColor)));
+            settingsList.add(text(setting.key + "=" + valueString,
+                                  (setting.isAdminOnly() ? DARK_RED : valueColor)));
         }
         if (settingsList.isEmpty()) {
-            lines.add(Component.join(JoinConfiguration.noSeparators(), new Component[] {
-                        Component.text("Settings ", NamedTextColor.GRAY),
-                        Component.join(JoinConfiguration.separator(Component.text(" ")), settingsList),
-                    }));
+            lines.add(join(noSeparators(), text("Settings ", GRAY), join(separator(text(" ")), settingsList)));
         }
-        return Component.join(JoinConfiguration.separator(Component.newline()), lines);
+        return join(separator(newline()), lines);
     }
 
     private boolean list(Player player, String[] args) {
@@ -849,14 +840,14 @@ public final class ClaimCommand extends AbstractCommand<HomePlugin> {
                 String displayName = claim.getName() != null
                     ? claim.getName()
                     : plugin.worldDisplayName(claim.getWorld());
-                lines.add(Component.text().color(NamedTextColor.WHITE)
-                          .append(Component.text(" + ", NamedTextColor.GREEN))
-                          .append(Component.text(displayName))
+                lines.add(text().color(WHITE)
+                          .append(text(" + ", GREEN))
+                          .append(text(displayName))
                           .clickEvent(ClickEvent.runCommand("/claim info " + claim.getId()))
                           .hoverEvent(HoverEvent.showText(makeClaimInfo(player, claim)))
                           .build());
             }
-            pages.add(Component.join(JoinConfiguration.separator(Component.newline()), lines));
+            pages.add(join(separator(newline()), lines));
         }
         if (pages.size() == 1) {
             player.sendMessage(pages.get(0));
@@ -878,16 +869,16 @@ public final class ClaimCommand extends AbstractCommand<HomePlugin> {
         if (playerClaims.isEmpty()) {
             throw new CommandWarn("No claims to show");
         }
-        TextComponent.Builder message = Component.text();
-        message.append(Component.text("Invited", NamedTextColor.GRAY));
+        TextComponent.Builder message = text();
+        message.append(text("Invited", GRAY));
         for (Claim claim : playerClaims) {
             String claimName = claim.getName() != null ? claim.getName() : claim.getOwnerName();
-            message.append(Component.space());
-            message.append(Component.text("[" + claimName + "]", NamedTextColor.GREEN)
+            message.append(space());
+            message.append(text("[" + claimName + "]", GREEN)
                            .clickEvent(ClickEvent.runCommand("/claim info " + claim.getId()))
-                           .hoverEvent(HoverEvent.showText(Component.text(claim.getOwnerName()
-                                                                          + " invited you to this claim",
-                                                                          NamedTextColor.GREEN))));
+                           .hoverEvent(HoverEvent.showText(text(claim.getOwnerName()
+                                                                + " invited you to this claim",
+                                                                GREEN))));
         }
         player.sendMessage(message);
         return true;
@@ -915,7 +906,7 @@ public final class ClaimCommand extends AbstractCommand<HomePlugin> {
             claim.getTrusted().put(target.uuid, row);
             plugin.db.insertAsync(row, null);
         }
-        player.sendMessage(Component.text(target.name + " banned from this claim", NamedTextColor.DARK_RED));
+        player.sendMessage(text(target.name + " banned from this claim", DARK_RED));
         return true;
     }
 
@@ -929,7 +920,7 @@ public final class ClaimCommand extends AbstractCommand<HomePlugin> {
         }
         claim.getTrusted().remove(target.uuid);
         plugin.db.deleteAsync(row, null);
-        player.sendMessage(Component.text(target.name + " no longer banned in this claim", NamedTextColor.GREEN));
+        player.sendMessage(text(target.name + " no longer banned in this claim", GREEN));
         return true;
     }
 
@@ -950,7 +941,7 @@ public final class ClaimCommand extends AbstractCommand<HomePlugin> {
             throw new CommandWarn(target.getName() + " outranks you in this claim!");
         }
         claim.kick(target);
-        player.sendMessage(Component.text(target.getName() + " kicked from this claim", NamedTextColor.DARK_RED));
+        player.sendMessage(text(target.getName() + " kicked from this claim", DARK_RED));
         return true;
     }
 

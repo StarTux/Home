@@ -83,15 +83,15 @@ final class DynmapClaims {
             if (claim.isAdminClaim()) continue; // No subclaims in admin claims
             for (Subclaim subclaim : claim.getSubclaims()) {
                 marker = createOrUpdateAreaMarker(markerSet, "subclaim-" + claim.getId() + "-" + subclaim.getId(), subclaim.getWorld(), subclaim.getArea());
-                Map<Subclaim.Trust, Set<UUID>> trusted = subclaim.getTrustedMap();
+                Map<SubclaimTrust, Set<UUID>> trusted = subclaim.getTrustedMap();
                 String label = ""
                     + "Subclaim"
                     + "\n"
-                    + "Owner: " + trusted.get(Subclaim.Trust.OWNER).stream()
+                    + "Owner: " + trusted.get(SubclaimTrust.OWNER).stream()
                     .map(PlayerCache::nameForUuid)
                     .collect(Collectors.joining(", "))
                     + "\n"
-                    + "Co-Owner: " + trusted.get(Subclaim.Trust.CO_OWNER).stream()
+                    + "Co-Owner: " + trusted.get(SubclaimTrust.CO_OWNER).stream()
                     .map(PlayerCache::nameForUuid)
                     .collect(Collectors.joining(", "));
                 marker.setLabel(label, true);

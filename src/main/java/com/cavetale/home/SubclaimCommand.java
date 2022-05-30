@@ -182,8 +182,8 @@ public final class SubclaimCommand extends AbstractCommand<HomePlugin> {
             }
         }
         Subclaim subclaim = new Subclaim(plugin, claim, world, area);
-        claim.addSubclaim(subclaim);
-        subclaim.saveToDatabase();
+        claim.getSubclaims().add(subclaim);
+        subclaim.insertIntoDatabase();
         plugin.sessions.of(player).setPlayerInteractCallback(null);
         plugin.highlightSubclaim(subclaim, player);
         player.sendMessage(Component.text("Subclaim created!", NamedTextColor.AQUA));
@@ -205,10 +205,10 @@ public final class SubclaimCommand extends AbstractCommand<HomePlugin> {
                   .append(Component.text("" + subclaim.getArea(), NamedTextColor.WHITE)));
         lines.add(Component.text(" Parent claim ", NamedTextColor.AQUA)
                   .append(Component.text(subclaim.getParent().getOwnerName(), NamedTextColor.WHITE)));
-        for (Map.Entry<Subclaim.Trust, Set<UUID>> entry : subclaim.getTrustedMap().entrySet()) {
+        for (Map.Entry<SubclaimTrust, Set<UUID>> entry : subclaim.getTrustedMap().entrySet()) {
             Set<UUID> set = entry.getValue();
             if (set == null || set.isEmpty()) continue;
-            Subclaim.Trust trust = entry.getKey();
+            SubclaimTrust trust = entry.getKey();
             lines.add(Component.text(" " + trust.displayName + " Trust ", NamedTextColor.AQUA)
                       .append(Component.text(set.stream()
                                              .map(Subclaim::cachedPlayerName)
@@ -223,8 +223,8 @@ public final class SubclaimCommand extends AbstractCommand<HomePlugin> {
     boolean trust(Player player, String[] args) {
         if (args.length != 2) return false;
         Subclaim subclaim = requireSubclaim(player);
-        Subclaim.Trust playerTrust = subclaim.getTrust(player);
-        if (!playerTrust.entails(Subclaim.Trust.CO_OWNER)) {
+        SubclaimTrust playerTrust = subclaim.getTrust(player);
+        if (!playerTrust.entails(SubclaimTrust.CO_OWNER)) {
             throw new CommandWarn("You cannot edit this subclaim!");
         }
         String playerName = args[0];
@@ -237,14 +237,13 @@ public final class SubclaimCommand extends AbstractCommand<HomePlugin> {
         if (subclaim.getTrust(uuid).exceeds(subclaim.getTrust(player))) {
             throw new CommandWarn("You cannot modify this player's trust level!");
         }
-        Subclaim.Trust trust;
+        SubclaimTrust trust;
         try {
-            trust = Subclaim.Trust.valueOf(trustName.toUpperCase());
+            trust = SubclaimTrust.valueOf(trustName.toUpperCase());
         } catch (IllegalArgumentException iae) {
             throw new CommandWarn("Invalid trust: " + trustName);
         }
         subclaim.setTrust(uuid, trust);
-        subclaim.saveToDatabase();
         player.sendMessage(Component.text("Player trusted: " + playerName + " (" + trust.displayName + ")",
                                           NamedTextColor.AQUA));
         PluginPlayerEvent.Name.SUBCLAIM_TRUST.make(plugin, player)
@@ -264,7 +263,7 @@ public final class SubclaimCommand extends AbstractCommand<HomePlugin> {
                 .collect(Collectors.toList());
         }
         if (args.length == 2) {
-            return Stream.of(Subclaim.Trust.values())
+            return Stream.of(SubclaimTrust.values())
                 .map(t -> t.name().toLowerCase())
                 .filter(s -> s.startsWith(arg))
                 .collect(Collectors.toList());
@@ -275,8 +274,8 @@ public final class SubclaimCommand extends AbstractCommand<HomePlugin> {
     boolean untrust(Player player, String[] args) {
         if (args.length != 1) return false;
         Subclaim subclaim = requireSubclaim(player);
-        Subclaim.Trust playerTrust = subclaim.getTrust(player);
-        if (!playerTrust.entails(Subclaim.Trust.OWNER)) {
+        SubclaimTrust playerTrust = subclaim.getTrust(player);
+        if (!playerTrust.entails(SubclaimTrust.OWNER)) {
             throw new CommandWarn("You cannot edit this subclaim!");
         }
         String playerName = args[0];
@@ -288,11 +287,10 @@ public final class SubclaimCommand extends AbstractCommand<HomePlugin> {
         if (subclaim.getTrust(uuid).exceeds(subclaim.getTrust(player))) {
             throw new CommandWarn("You cannot modify this player's trust level!");
         }
-        Subclaim.Trust oldTrust = subclaim.removeTrust(uuid);
+        SubclaimTrust oldTrust = subclaim.removeTrust(uuid);
         if (oldTrust == null) {
             throw new CommandWarn(playerName + " was not trusted");
         }
-        subclaim.saveToDatabase();
         player.sendMessage(text("Player trust removed: " + playerName + " (" + oldTrust.displayName + ")", AQUA));
         PluginPlayerEvent.Name.SUBCLAIM_UNTRUST.make(plugin, player)
             .detail(Detail.TARGET, uuid)
@@ -332,7 +330,7 @@ public final class SubclaimCommand extends AbstractCommand<HomePlugin> {
                 }
                 if (!subclaim.getParent().getTrustType(player).isCoOwner()) return; // Safety first
                 if (!subclaim.getParent().removeSubclaim(subclaim)) return; // ???
-                plugin.db.delete(subclaim.toSQLRow());
+                subclaim.deleteFromDatabase();
                 player.sendMessage(Component.text("Subclaim deleted: " + subclaim.getListInfo(),
                                                   NamedTextColor.AQUA));
             });

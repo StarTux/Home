@@ -11,6 +11,6 @@ public final class VisitCommand extends AbstractCommand<HomePlugin> {
     protected void onEnable() {
         rootNode.description("Visit public homes")
             .completers(plugin.homesCommand::completePublicHomes)
-            .playerCaller(plugin.homesCommand::visit);
+            .remotePlayerCaller(plugin.homesCommand::visit);
     }
 }

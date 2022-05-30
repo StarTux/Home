@@ -305,8 +305,8 @@ public final class ClaimCommand extends AbstractCommand<HomePlugin> {
         if (world == null) {
             throw new CommandWarn("Claim not found");
         }
-        final int x = claim.centerX;
-        final int z = claim.centerY;
+        final int x = claim.getCenterX();
+        final int z = claim.getCenterY();
         world.getChunkAtAsync(x >> 4, z >> 4, (Consumer<Chunk>) chunk -> {
                 final Location location;
                 if (world.getEnvironment() == World.Environment.NETHER) {
@@ -408,15 +408,13 @@ public final class ClaimCommand extends AbstractCommand<HomePlugin> {
                 player.sendMessage(text("Added " + meta.amount + " and grew to your location!"));
                 plugin.highlightClaim(claim, player);
                 PluginPlayerEvent.Name.GROW_CLAIM.call(plugin, player);
-            } else if (claim.getBoolSetting(Claim.Setting.AUTOGROW)) {
-                player.sendMessage(text("Added " + meta.amount
-                                        + " blocks to this claim. It will grow automatically."));
+            } else if (claim.getSetting(ClaimSetting.AUTOGROW)) {
+                player.sendMessage(text("Added " + meta.amount + " blocks to this claim. It will grow automatically.", GREEN));
             } else {
                 player.sendMessage(text("Added " + meta.amount
                                         + " blocks to this claim."
-                                        + " Grow it manually or enable \"autogrow\" in the settings."));
+                                        + " Grow it manually or enable \"autogrow\" in the settings.", GREEN));
             }
-            claim.saveToDatabase();
             PluginPlayerEvent.Name.BUY_CLAIM_BLOCKS.make(plugin, player)
                 .detail(Detail.COUNT, meta.amount)
                 .detail(Detail.MONEY, meta.price)
@@ -455,19 +453,25 @@ public final class ClaimCommand extends AbstractCommand<HomePlugin> {
                 }
             }
             Claim claim = new Claim(plugin, uuid, ncmeta.world, ncmeta.area);
-            claim.saveToDatabase();
             plugin.getClaimCache().add(claim);
-            ComponentLike message = text().color(WHITE)
-                .append(text("Claim created!  "))
-                .append(text("[View]", GREEN))
-                .clickEvent(ClickEvent.runCommand("/claim info"))
-                .hoverEvent(HoverEvent.showText(join(separator(newline()),
-                                                     text("/claim info"),
-                                                     text("View claim info and highlight your claim",
-                                                          GRAY))));
-            player.sendMessage(message);
-            plugin.highlightClaim(claim, player);
-            PluginPlayerEvent.Name.CREATE_CLAIM.call(plugin, player);
+            claim.insertIntoDatabase(success -> {
+                    if (!success) {
+                        player.sendMessage(text("Something went wrong! Please contact an administrator", RED));
+                        plugin.getClaimCache().remove(claim);
+                        return;
+                    }
+                    ComponentLike message = text().color(WHITE)
+                        .append(text("Claim created!  "))
+                        .append(text("[View]", GREEN))
+                        .clickEvent(ClickEvent.runCommand("/claim info"))
+                        .hoverEvent(HoverEvent.showText(join(separator(newline()),
+                                                             text("/claim info"),
+                                                             text("View claim info and highlight your claim",
+                                                                  GRAY))));
+                    player.sendMessage(message);
+                    plugin.highlightClaim(claim, player);
+                    PluginPlayerEvent.Name.CREATE_CLAIM.call(plugin, player);
+                });
             return true;
         }
         return true;
@@ -503,21 +507,13 @@ public final class ClaimCommand extends AbstractCommand<HomePlugin> {
         if (!claim.isOwner(player) && trustType.gte(claim.getTrustType(player))) {
             throw new CommandWarn("You cannot give " + trustType.displayName + " trust in this claim!");
         }
-        ClaimTrust claimTrust = claim.getTrusted().get(target.uuid);
-        if (claimTrust != null) {
-            if (claimTrust.parseTrustType().gte(trustType)) {
-                throw new CommandWarn(target.name + " already has " + claimTrust.parseTrustType().displayName
-                                      + " trust in this claim");
-            } else if (claimTrust.parseTrustType().isBan()) {
-                throw new CommandWarn(target.name + " is banned from this claim!");
-            }
-            claimTrust.setTrustType(trustType);
-            plugin.getDb().updateAsync(claimTrust, null);
-        } else {
-            claimTrust = new ClaimTrust(claim, trustType, target.uuid);
-            plugin.getDb().insertAsync(claimTrust, null);
-            claim.getTrusted().put(target.uuid, claimTrust);
+        TrustType oldTrust = claim.getTrustType(target.uuid);
+        if (oldTrust.gte(trustType)) {
+            throw new CommandWarn(target.name + " already has " + oldTrust.displayName + " trust in this claim");
+        } else if (oldTrust.isBan()) {
+            throw new CommandWarn(target.name + " is banned from this claim!");
         }
+        claim.setTrustType(target.uuid, trustType);
         player.sendMessage(text(target.name + " now has " + trustType.displayName
                                 + " trust in this claim.", GREEN));
         PluginPlayerEvent.Name.CLAIM_TRUST.make(plugin, player)
@@ -531,17 +527,15 @@ public final class ClaimCommand extends AbstractCommand<HomePlugin> {
         if (args.length != 1) return false;
         Claim claim = requireClaim(player, TrustType.CO_OWNER);
         PlayerCache playerCache = requirePlayerCache(args[0]);
-        ClaimTrust claimTrust = claim.getTrusted().get(playerCache.uuid);
-        if (claimTrust == null || !claimTrust.parseTrustType().isTrust()) {
+        TrustType oldTrust = claim.getTrustType(playerCache.uuid);
+        if (!oldTrust.isTrust()) {
             throw new CommandWarn(playerCache.name + " is not trusted here!");
         }
-        if (claimTrust.parseTrustType().gt(claim.getTrustType(player))) {
+        if (oldTrust.gt(claim.getTrustType(player))) {
             throw new CommandWarn(playerCache.name + " outranks you in this claim!");
         }
-        claim.getTrusted().remove(playerCache.uuid);
-        plugin.db.delete(claimTrust);
-        player.sendMessage(text("Removed " + claimTrust.parseTrustType().displayName
-                                + " trust for " + playerCache.name, GREEN));
+        claim.removeTrust(playerCache.uuid);
+        player.sendMessage(text("Removed " + oldTrust.displayName + " trust for " + playerCache.name, GREEN));
         PluginPlayerEvent.Name.CLAIM_UNTRUST.make(plugin, player)
             .detail(Detail.TARGET, playerCache.uuid)
             .callEvent();
@@ -554,7 +548,6 @@ public final class ClaimCommand extends AbstractCommand<HomePlugin> {
         String name = String.join(" ", args);
         if (name.length() > 24) throw new CommandWarn("Name too long!");
         claim.setName(name);
-        claim.saveToDatabase();
         player.sendMessage(text("Claim renamed to " + name, YELLOW));
         return true;
     }
@@ -573,30 +566,25 @@ public final class ClaimCommand extends AbstractCommand<HomePlugin> {
             PluginPlayerEvent.Name.VIEW_CLAIM_SETTINGS.call(plugin, player);
             return true;
         }
-        Claim.Setting setting;
+        ClaimSetting setting;
         try {
-            setting = Claim.Setting.valueOf(args[0].toUpperCase());
+            setting = ClaimSetting.valueOf(args[0].toUpperCase());
         } catch (IllegalArgumentException iae) {
             throw new CommandWarn("Unknown claim setting: " + args[0]);
         }
         if (setting.isAdminOnly() && !Claim.ownsAdminClaims(player)) {
             throw new CommandWarn("Unknown claim setting: " + args[0]);
         }
-        final Boolean value;
+        final boolean value;
         switch (args[1]) {
         case "on": case "true": case "enabled": value = true; break;
         case "off": case "false": case "disabled": value = false; break;
         default:
             throw new CommandWarn("Unknown settings value: " + args[1]);
         }
-        if (!value.equals(claim.getSetting(setting))) {
-            if (value.equals(setting.defaultValue)) {
-                claim.getSettings().remove(setting);
-            } else {
-                claim.getSettings().put(setting, value);
-            }
+        if (claim.getSetting(setting) != value) {
+            claim.setSetting(setting, value);
         }
-        claim.saveToDatabase();
         showClaimSettings(claim, player);
         PluginPlayerEvent.Name.CHANGE_CLAIM_SETTING.make(plugin, player)
             .detail(Detail.NAME, setting.key)
@@ -609,12 +597,11 @@ public final class ClaimCommand extends AbstractCommand<HomePlugin> {
         List<ComponentLike> lines = new ArrayList<>();
         lines.add(empty());
         lines.add(Util.frame("Claim Settings"));
-        for (Claim.Setting setting : Claim.Setting.values()) {
+        for (ClaimSetting setting : ClaimSetting.values()) {
             if (setting.isAdminOnly() && !Claim.ownsAdminClaims(player)) continue;
             TextComponent.Builder line = text().color(WHITE);
-            Object value = claim.getSetting(setting);
+            boolean on = claim.getSetting(setting);
             String key = setting.name().toLowerCase();
-            boolean on = value == Boolean.TRUE;
             line.append(text("[ON]", (on ? GREEN : DARK_GRAY))
                         .clickEvent(ClickEvent.runCommand("/claim set " + key + " on"))
                         .hoverEvent(HoverEvent.showText(text("Enable " + setting.displayName, GREEN))));
@@ -671,7 +658,6 @@ public final class ClaimCommand extends AbstractCommand<HomePlugin> {
             if (other != claim) throw new CommandWarn("Your claim would overlap with another claim");
         }
         claim.setArea(newArea);
-        claim.saveToDatabase();
         player.sendMessage(text("Grew your claim to where you are standing", GREEN));
         plugin.highlightClaim(claim, player);
         PluginPlayerEvent.Name.GROW_CLAIM.call(plugin, player);
@@ -712,7 +698,6 @@ public final class ClaimCommand extends AbstractCommand<HomePlugin> {
             }
         }
         claim.setArea(newArea);
-        claim.saveToDatabase();
         player.sendMessage(text("Shrunk your claim to where you are standing", GREEN));
         plugin.highlightClaim(claim, player);
         return true;
@@ -727,7 +712,7 @@ public final class ClaimCommand extends AbstractCommand<HomePlugin> {
         if (!claim.isOwner(player)) {
             throw new CommandWarn("This claim does not belong to you.");
         }
-        long life = System.currentTimeMillis() - claim.getCreated();
+        long life = System.currentTimeMillis() - claim.getCreated().getTime();
         long cooldown = Globals.CLAIM_ABANDON_COOLDOWN * 1000L * 60L;
         if (life < cooldown) {
             long wait = (cooldown - life) / (1000L * 60L);
@@ -760,7 +745,7 @@ public final class ClaimCommand extends AbstractCommand<HomePlugin> {
         }
         lines.add(join(noSeparators(), text("Owner ", GRAY), text(claim.getOwnerName(), WHITE)));
         lines.add(join(noSeparators(), text("Location ", GRAY),
-                       text(plugin.worldDisplayName(claim.getWorld() + " " + claim.centerX + "," + claim.centerY))));
+                       text(plugin.worldDisplayName(claim.getWorld() + " " + claim.getCenterX() + "," + claim.getCenterY()))));
         lines.add(join(noSeparators(), text("Size ", GRAY),
                        text("" + claim.getArea().width()),
                        text("x", GRAY),
@@ -794,26 +779,23 @@ public final class ClaimCommand extends AbstractCommand<HomePlugin> {
         }
         // Settings
         List<Component> settingsList = new ArrayList<>();
-        for (Claim.Setting setting : Claim.Setting.values()) {
+        for (ClaimSetting setting : ClaimSetting.values()) {
             if (setting.isAdminOnly() && !Claim.ownsAdminClaims(player)) continue;
-            Object value = claim.getSetting(setting);
-            if (value == null || value == setting.defaultValue) continue;
+            boolean value = claim.getSetting(setting);
+            if (value == setting.defaultValue) continue;
             final String valueString;
             final TextColor valueColor;
-            if (value == Boolean.TRUE) {
+            if (value) {
                 valueString = "on";
                 valueColor = GREEN;
-            } else if (value == Boolean.FALSE) {
-                valueString = "off";
-                valueColor = YELLOW;
             } else {
-                valueString = value.toString();
-                valueColor = GRAY;
+                valueString = "off";
+                valueColor = RED;
             }
-            settingsList.add(text(setting.key + "=" + valueString,
-                                  (setting.isAdminOnly() ? DARK_RED : valueColor)));
+            settingsList.add(join(noSeparators(), text(setting.key), text(":", DARK_GRAY), text(valueString))
+                             .color(setting.isAdminOnly() ? DARK_RED : valueColor));
         }
-        if (settingsList.isEmpty()) {
+        if (!settingsList.isEmpty()) {
             lines.add(join(noSeparators(), text("Settings ", GRAY), join(separator(text(" ")), settingsList)));
         }
         return join(separator(newline()), lines);
@@ -891,21 +873,14 @@ public final class ClaimCommand extends AbstractCommand<HomePlugin> {
         if (claim.isOwner(target.uuid)) {
             throw new CommandWarn("You cannot ban a claim owner!");
         }
-        ClaimTrust row = claim.getTrusted().get(target.uuid);
-        if (row != null) {
-            if (row.parseTrustType().gt(claim.getTrustType(player))) {
-                throw new CommandWarn(target.name + " outranks you in this claim!");
-            }
-            if (row.parseTrustType().isBan()) {
-                throw new CommandWarn(target.name + " is already banned!");
-            }
-            row.setTrustType(TrustType.BAN);
-            plugin.db.updateAsync(row, null);
-        } else {
-            row = new ClaimTrust(claim, TrustType.BAN, target.uuid);
-            claim.getTrusted().put(target.uuid, row);
-            plugin.db.insertAsync(row, null);
+        TrustType oldTrust = claim.getTrustType(target.uuid);
+        if (oldTrust.gt(claim.getTrustType(player))) {
+            throw new CommandWarn(target.name + " outranks you in this claim!");
         }
+        if (oldTrust.isBan()) {
+            throw new CommandWarn(target.name + " is already banned!");
+        }
+        claim.setTrustType(target.uuid, TrustType.BAN);
         player.sendMessage(text(target.name + " banned from this claim", DARK_RED));
         return true;
     }
@@ -914,12 +889,11 @@ public final class ClaimCommand extends AbstractCommand<HomePlugin> {
         if (args.length != 1) return false;
         Claim claim = requireClaim(player, TrustType.CO_OWNER);
         PlayerCache target = requirePlayerCache(args[0]);
-        ClaimTrust row = claim.getTrusted().get(target.uuid);
-        if (row == null || !row.parseTrustType().isBan()) {
+        TrustType oldTrust = claim.getTrustType(target.uuid);
+        if (!oldTrust.isBan()) {
             throw new CommandWarn(target.name + " was not bannend!");
         }
-        claim.getTrusted().remove(target.uuid);
-        plugin.db.deleteAsync(row, null);
+        claim.removeTrust(target.uuid);
         player.sendMessage(text(target.name + " no longer banned in this claim", GREEN));
         return true;
     }

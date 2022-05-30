@@ -3,11 +3,11 @@ package com.cavetale.home;
 import com.cavetale.core.perm.Perm;
 import com.cavetale.core.util.Json;
 import com.cavetale.home.sql.SQLClaim;
+import com.cavetale.home.sql.SQLClaimTrust;
 import com.cavetale.home.struct.BlockVector;
 import com.cavetale.home.struct.Vec2i;
 import com.winthier.playercache.PlayerCache;
 import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.Date;
 import java.util.EnumMap;
 import java.util.HashMap;
@@ -17,178 +17,186 @@ import java.util.Map;
 import java.util.UUID;
 import java.util.function.Consumer;
 import java.util.function.Predicate;
-import lombok.Data;
+import lombok.Getter;
+import lombok.Setter;
 import org.bukkit.Chunk;
 import org.bukkit.Location;
 import org.bukkit.World;
 import org.bukkit.block.Block;
 import org.bukkit.entity.Player;
 import org.bukkit.event.player.PlayerTeleportEvent.TeleportCause;
+import static com.cavetale.home.ConnectListener.broadcastClaimUpdate;
 
-@Data
 public final class Claim {
     public static final UUID ADMIN_ID = new UUID(0L, 0L);
-    protected final HomePlugin plugin;
-    protected int id;
-    protected UUID owner;
-    protected String world;
-    protected Area area;
-    protected final Map<UUID, ClaimTrust> trusted = new HashMap<>();
-    protected final List<Subclaim> subclaims = new ArrayList<>();
-    protected int blocks;
-    protected long created;
-    protected final Map<Setting, Object> settings = new EnumMap<>(Setting.class);
-    protected int centerX;
-    protected int centerY;
-    protected String name;
-    protected boolean deleted;
+    private final HomePlugin plugin;
 
-    public Claim(final HomePlugin plugin) {
+    private SQLClaim row;
+    @Getter private Area area;
+    private final Map<ClaimSetting, Boolean> settings = new EnumMap<>(ClaimSetting.class);
+    @Getter private int centerX;
+    @Getter private int centerY;
+
+    @Getter private final Map<UUID, SQLClaimTrust> trusted = new HashMap<>();
+    @Getter private final List<Subclaim> subclaims = new ArrayList<>();
+    @Setter private boolean deleted;
+
+    /**
+     * Existing claim constructor.
+     * Store the row and fill all caches.
+     */
+    public Claim(final HomePlugin plugin, final SQLClaim row) {
         this.plugin = plugin;
+        this.row = row;
+        loadSQLRow();
     }
 
+    /**
+     * New claim constructor.
+     * Create a row and enter the values.
+     */
     public Claim(final HomePlugin plugin, final UUID owner, final String world, final Area area) {
         this.plugin = plugin;
-        this.owner = owner;
-        this.world = world;
+        this.row = new SQLClaim(owner, world, area);
         this.area = area;
-        this.blocks = area.size();
-        this.created = System.currentTimeMillis();
-        this.centerX = (area.ax + area.bx) / 2;
-        this.centerY = (area.ay + area.by) / 2;
-    }
-
-    public enum Setting {
-        PVP("PvP Combat", false),
-        EXPLOSIONS("Explosion damage", false),
-        FIRE("Fire burns blocks", false),
-        AUTOGROW("Claim grows automatically", true),
-        PUBLIC("Anyone can build", false),
-        PUBLIC_CONTAINER("Anyone can open containers", false),
-        PUBLIC_INVITE("Anyone can interact", false),
-        SHOW_BORDERS("Show claim borders", true),
-        ELYTRA("Allow flight", true),
-        ENDER_PEARL("Allow ender teleport", true),
-        INHERITANCE("Subclaims inherit claim trust", true),
-        // Admin only
-        HIDDEN("Hide this claim", false),
-        MOB_SPAWNING("Allow mob spawning", true);
-
-        public final String key;
-        public final String displayName;
-        public final Object defaultValue;
-
-        Setting(final String displayName, final Object defaultValue) {
-            this.key = name().toLowerCase();
-            this.displayName = displayName;
-            this.defaultValue = defaultValue;
+        this.centerX = area.centerX();
+        this.centerY = area.centerY();
+        for (ClaimSetting setting : ClaimSetting.values()) {
+            settings.put(setting, setting.defaultValue);
         }
-
-        public boolean isAdminOnly() {
-            switch (this) {
-            case HIDDEN:
-            case MOB_SPAWNING:
-                return true;
-            default:
-                return false;
-            }
-        }
+        row.setSettings(serializeSettings());
     }
 
-    public Object getSetting(Setting setting) {
-        Object result = settings.get(setting);
-        return result != null
-            ? result
-            : setting.defaultValue;
-    }
-
-    public boolean getBoolSetting(Setting setting) {
-        Object result = settings.get(setting);
-        if (result == null) result = setting.defaultValue;
-        return result == Boolean.TRUE;
-    }
-
-    public void setArea(Area newArea) {
-        Area oldArea = this.area;
-        this.area = newArea;
-        if (oldArea != null) {
-            plugin.claimCache.resize(this, oldArea, newArea);
-        }
-    }
-
-    // SQL Interface
-
-    public SQLClaim toSQLRow() {
-        SQLClaim row = new SQLClaim();
-        if (id > 0) row.setId(id);
-        row.setOwner(owner);
-        row.setWorld(world);
-        row.setAx(area.ax);
-        row.setAy(area.ay);
-        row.setBx(area.bx);
-        row.setBy(area.by);
-        row.setBlocks(blocks);
-        row.setCreated(new Date(created));
+    private String serializeSettings() {
         Map<String, Object> settingsMap = new LinkedHashMap<>();
-        for (Map.Entry<Setting, Object> setting : settings.entrySet()) {
-            settingsMap.put(setting.getKey().name().toLowerCase(), setting.getValue());
+        for (Map.Entry<ClaimSetting, Boolean> entry : settings.entrySet()) {
+            ClaimSetting setting = entry.getKey();
+            boolean value = entry.getValue();
+            if (value == setting.defaultValue) continue;
+            settingsMap.put(setting.key, value);
         }
-        settingsMap.put("center", Arrays.asList(centerX, centerY));
-        row.setSettings(Json.serialize(settingsMap));
-        row.setName(name);
-        return row;
+        settingsMap.put("center", List.of(centerX, centerY));
+        return Json.serialize(settingsMap);
     }
 
-    public void loadSQLRow(SQLClaim row) {
-        this.id = row.getId();
-        this.owner = row.getOwner();
-        this.world = row.getWorld();
-        this.area = new Area(row.getAx(), row.getAy(), row.getBx(), row.getBy());
-        this.blocks = row.getBlocks();
-        this.created = row.getCreated().getTime();
+    private void loadSQLRow() {
+        this.area = row.getArea();
         @SuppressWarnings("unchecked")
         Map<String, Object> settingsMap = (Map<String, Object>) Json.deserialize(row.getSettings(), Map.class);
         settings.clear();
-        for (Setting setting : Setting.values()) {
-            Object value = settingsMap.get(setting.key);
-            if (value != null) settings.put(setting, value);
+        for (ClaimSetting setting : ClaimSetting.values()) {
+            if (settingsMap.get(setting.key) instanceof Boolean value) {
+                settings.put(setting, value != null ? value : setting.defaultValue);
+            }
         }
-        @SuppressWarnings("unchecked")
-        List<Number> center = (List<Number>) settingsMap.get("center");
-        if (center == null) {
+        if (settingsMap.get("center") instanceof List list
+            && list.size() == 2
+            && list.get(0) instanceof Number x
+            && list.get(1) instanceof Number y) {
+            centerX = x.intValue();
+            centerY = y.intValue();
+        } else {
             centerX = area.centerX();
             centerY = area.centerY();
-        } else {
-            centerX = center.get(0).intValue();
-            centerY = center.get(1).intValue();
         }
-        name = row.getName();
     }
 
-    public void saveToDatabase() {
-        SQLClaim row = toSQLRow();
-        plugin.getDb().save(row);
-        id = row.getId();
+    public void updateSQLRow(SQLClaim newRow) {
+        Area newArea = newRow.getArea();
+        if (!area.equals(newArea)) {
+            loadArea(newArea);
+        }
+        row = newRow;
+        loadSQLRow();
     }
 
-    // Utility
+    public void insertIntoDatabase(Consumer<Boolean> callback) {
+        plugin.db.insertAsync(row, res -> {
+                if (res != 0) broadcastClaimUpdate(this);
+                callback.accept(res != 0);
+            });
+    }
+
+    public int getId() {
+        return row.getId() != null ? row.getId() : 0;
+    }
+
+    public UUID getOwner() {
+        return row.getOwner();
+    }
+
+    public void setOwner(UUID uuid) {
+        row.setOwner(uuid);
+        plugin.db.saveAsync(row, res -> broadcastClaimUpdate(this), "owner");
+    }
+
+    public String getWorld() {
+        return row.getWorld();
+    }
+
+    public int getBlocks() {
+        return row.getBlocks();
+    }
+
+    public void setBlocks(int blocks) {
+        if (row.getBlocks() == blocks) return;
+        row.setBlocks(blocks);
+        plugin.db.updateAsync(row, res -> broadcastClaimUpdate(this), "blocks");
+    }
+
+    public String getName() {
+        return row.getName();
+    }
+
+    public void setName(String name) {
+        row.setName(name);
+        plugin.db.updateAsync(row, res -> broadcastClaimUpdate(this), "name");
+    }
+
+    public Date getCreated() {
+        return row.getCreated();
+    }
+
+    private void loadArea(Area newArea) {
+        if (area.equals(newArea)) return;
+        Area oldArea = area;
+        area = newArea;
+        plugin.claimCache.resize(this, oldArea, newArea);
+    }
+
+    public void setArea(Area newArea) {
+        loadArea(newArea);
+        row.setArea(area);
+        plugin.db.updateAsync(row, res -> broadcastClaimUpdate(this), "ax", "bx", "ay", "by");
+    }
+
+    public boolean getSetting(ClaimSetting setting) {
+        return settings.getOrDefault(setting, setting.defaultValue);
+    }
+
+    public void setSetting(ClaimSetting setting, boolean value) {
+        if (getSetting(setting) == value) return;
+        settings.put(setting, value);
+        row.setSettings(serializeSettings());
+        plugin.db.updateAsync(row, res -> broadcastClaimUpdate(this), "settings");
+    }
 
     public static boolean ownsAdminClaims(Player player) {
         return player.hasPermission("home.adminclaims");
     }
 
     public TrustType getPublicTrust() {
-        if (getBoolSetting(Setting.PUBLIC)) return TrustType.BUILD;
-        if (getBoolSetting(Setting.PUBLIC_CONTAINER)) return TrustType.CONTAINER;
-        if (getBoolSetting(Setting.PUBLIC_INVITE)) return TrustType.INTERACT;
+        if (getSetting(ClaimSetting.PUBLIC)) return TrustType.BUILD;
+        if (getSetting(ClaimSetting.PUBLIC_CONTAINER)) return TrustType.CONTAINER;
+        if (getSetting(ClaimSetting.PUBLIC_INVITE)) return TrustType.INTERACT;
         return TrustType.NONE;
     }
 
     public TrustType getTrustType(UUID uuid) {
         if (plugin.doesIgnoreClaims(uuid)) return TrustType.OWNER;
-        if (uuid.equals(owner)) return TrustType.OWNER;
+        if (getOwner().equals(uuid)) return TrustType.OWNER;
         if (isAdminClaim() && Perm.get().has(uuid, "home.adminclaims")) return TrustType.OWNER;
-        ClaimTrust entry = trusted.get(uuid);
+        SQLClaimTrust entry = trusted.get(uuid);
         TrustType playerTrustType = entry != null ? entry.parseTrustType() : TrustType.NONE;
         if (playerTrustType.isBan()) return playerTrustType;
         return playerTrustType.max(getPublicTrust());
@@ -198,13 +206,35 @@ public final class Claim {
         return getTrustType(player.getUniqueId());
     }
 
+    public boolean setTrustType(UUID uuid, TrustType trustType) {
+        if (trustType.isNone()) return removeTrust(uuid);
+        SQLClaimTrust oldRow = trusted.get(uuid);
+        if (oldRow != null) {
+            if (oldRow.parseTrustType() == trustType) return false;
+            trusted.remove(uuid);
+            plugin.getDb().deleteAsync(oldRow, null);
+        }
+        SQLClaimTrust newRow = new SQLClaimTrust(this, trustType, uuid);
+        trusted.put(uuid, newRow);
+        plugin.getDb().insertAsync(newRow, res -> plugin.getConnectListener().broadcastClaimUpdate(this));
+        return true;
+    }
+
+    public boolean removeTrust(UUID uuid) {
+        SQLClaimTrust oldRow = trusted.get(uuid);
+        if (oldRow == null) return false;
+        trusted.remove(uuid);
+        plugin.getDb().deleteAsync(oldRow, res -> plugin.getConnectListener().broadcastClaimUpdate(this));
+        return true;
+    }
+
     public TrustType getTrustType(UUID uuid, BlockVector vec) {
         TrustType claimTrustType = getTrustType(uuid);
         if (claimTrustType.isBan()) return TrustType.BAN;
         if (claimTrustType.isCoOwner()) return claimTrustType;
         Subclaim subclaim = getSubclaimAt(vec);
         if (subclaim == null) return claimTrustType;
-        return getBoolSetting(Setting.INHERITANCE)
+        return getSetting(ClaimSetting.INHERITANCE)
             ? claimTrustType.max(subclaim.getTrustType(uuid))
             : subclaim.getTrustType(uuid);
     }
@@ -230,20 +260,20 @@ public final class Claim {
     }
 
     public boolean isPvPAllowed(BlockVector vec) {
-        return getBoolSetting(Setting.PVP);
+        return getSetting(ClaimSetting.PVP);
     }
 
     public boolean isInWorld(String worldName) {
-        return this.world.equals(worldName);
+        return getWorld().equals(worldName);
     }
 
     public boolean isAdminClaim() {
-        return ADMIN_ID.equals(owner);
+        return getOwner().equals(ADMIN_ID);
     }
 
     public String getOwnerName() {
-        if (ADMIN_ID.equals(owner)) return "admin";
-        return PlayerCache.nameForUuid(owner);
+        if (isAdminClaim()) return "admin";
+        return PlayerCache.nameForUuid(getOwner());
     }
 
     public String getOwnerGenitive() {
@@ -253,12 +283,12 @@ public final class Claim {
 
     public boolean contains(Location location) {
         String lwn = location.getWorld().getName();
-        if (!world.equals(lwn) && !world.equals(plugin.getMirrorWorlds().get(lwn))) return false;
+        if (!getWorld().equals(lwn) && !getWorld().equals(plugin.getMirrorWorlds().get(lwn))) return false;
         return area.contains(location.getBlockX(), location.getBlockZ());
     }
 
     public boolean isHidden() {
-        return getBoolSetting(Setting.HIDDEN);
+        return getSetting(ClaimSetting.HIDDEN);
     }
 
     public Subclaim getSubclaim(int subclaimId) {
@@ -266,10 +296,6 @@ public final class Claim {
             if (subclaim.getId() == subclaimId) return subclaim;
         }
         return null;
-    }
-
-    public List<Subclaim> getSubclaims() {
-        return new ArrayList<>(subclaims);
     }
 
     public List<Subclaim> getSubclaims(World inWorld) {
@@ -304,25 +330,14 @@ public final class Claim {
         return null;
     }
 
-    /**
-     * Used for subclaim creation or loading at startup.
-     */
-    public void addSubclaim(Subclaim subclaim) {
-        subclaims.add(subclaim);
-    }
-
     public boolean removeSubclaim(Subclaim subclaim) {
         return subclaims.remove(subclaim);
     }
 
     public ClaimOperationResult growTo(int x, int z) {
-        int ax = Math.min(area.ax, x);
-        int ay = Math.min(area.ay, z);
-        int bx = Math.max(area.bx, x);
-        int by = Math.max(area.by, z);
-        Area newArea = new Area(ax, ay, bx, by);
+        Area newArea = area.growTo(x, z);
         if (getBlocks() < newArea.size()) return ClaimOperationResult.INSUFFICIENT_BLOCKS;
-        for (Claim other : plugin.findClaimsInWorld(world)) {
+        for (Claim other : plugin.findClaimsInWorld(getWorld())) {
             if (other != this && other.getArea().overlaps(newArea)) {
                 return ClaimOperationResult.OVERLAP;
             }
@@ -333,9 +348,9 @@ public final class Claim {
 
     public List<PlayerCache> listPlayers(Predicate<TrustType> predicate) {
         List<PlayerCache> result = new ArrayList<>();
-        for (ClaimTrust row : trusted.values()) {
-            if (!predicate.test(row.parseTrustType())) continue;
-            PlayerCache playerCache = PlayerCache.forUuid(row.getTrustee());
+        for (SQLClaimTrust trustedRow : trusted.values()) {
+            if (!predicate.test(trustedRow.parseTrustType())) continue;
+            PlayerCache playerCache = PlayerCache.forUuid(trustedRow.getTrustee());
             if (playerCache == null) continue;
             result.add(playerCache);
         }
@@ -354,6 +369,6 @@ public final class Claim {
     }
 
     public boolean isValid() {
-        return !deleted;
+        return getId() > 0 && !deleted;
     }
 }

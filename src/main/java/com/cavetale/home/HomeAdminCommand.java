@@ -2,6 +2,8 @@ package com.cavetale.home;
 
 import com.cavetale.core.command.AbstractCommand;
 import com.cavetale.core.command.CommandWarn;
+import com.cavetale.home.sql.SQLHome;
+import com.cavetale.home.sql.SQLHomeInvite;
 import com.winthier.playercache.PlayerCache;
 import java.util.List;
 import org.bukkit.command.CommandSender;
@@ -52,19 +54,19 @@ public final class HomeAdminCommand extends AbstractCommand<HomePlugin> {
         String name = args[0];
         PlayerCache player = PlayerCache.forName(name);
         if (player == null) throw new CommandWarn("Player not found: " + name);
-        List<Home> homes = plugin.findHomes(player.uuid);
+        List<SQLHome> homes = plugin.getHomes().findOwnedHomes(player.uuid);
         int count = homes.size();
         sender.sendMessage(text(player.name + " has " + count
-                                          + (count == 1 ? " home:" : " homes:"),
-                                          YELLOW));
-        for (Home home : homes) {
+                                + (count == 1 ? " home:" : " homes:"),
+                                YELLOW));
+        for (SQLHome home : homes) {
             String brief = "-"
-                + "id=" + home.id
-                + " name=" + (home.name != null ? home.name : "-")
-                + (" loc=" + home.world + ":"
-                   + blk(home.x) + "," + blk(home.y) + "," + blk(home.z))
-                + " public=" + (home.publicName != null
-                                 ? home.publicName : "-");
+                + "id=" + home.getId()
+                + " name=" + (home.getName() != null ? home.getName() : "-")
+                + (" loc=" + home.getWorld() + ":"
+                   + blk(home.getX()) + "," + blk(home.getY()) + "," + blk(home.getZ()))
+                + " public=" + (home.getPublicName() != null
+                                ? home.getPublicName() : "-");
             sender.sendMessage(text(brief, YELLOW));
         }
         return true;
@@ -105,7 +107,7 @@ public final class HomeAdminCommand extends AbstractCommand<HomePlugin> {
         if (to == null) throw new CommandWarn("Player not found: " + args[1]);
         if (from.equals(to)) throw new CommandWarn("Players are identical: " + from.getName());
         int homeCount = 0;
-        for (Home home : plugin.homes) {
+        for (SQLHome home : plugin.getHomes()) {
             if (from.uuid.equals(home.getOwner())) {
                 plugin.db.delete(home);
                 home.setId(null);
@@ -113,18 +115,18 @@ public final class HomeAdminCommand extends AbstractCommand<HomePlugin> {
                 plugin.db.save(home);
                 homeCount += 1;
             }
-            if (home.invites.remove(from.uuid)) {
+            if (home.getInvites().remove(from.uuid)) {
                 // This will not persist!
-                home.invites.add(to.uuid);
+                home.getInvites().add(to.uuid);
             }
         }
-        List<HomeInvite> inviteRows = plugin.db.find(HomeInvite.class)
+        List<SQLHomeInvite> inviteRows = plugin.db.find(SQLHomeInvite.class)
             .eq("invitee", from.uuid)
             .findList();
         int inviteCount  = 0;
         if (!inviteRows.isEmpty()) {
-            for (HomeInvite inviteRow : inviteRows) {
-                inviteCount += plugin.db.insertIgnore(new HomeInvite(inviteRow.getHomeId(), to.uuid));
+            for (SQLHomeInvite inviteRow : inviteRows) {
+                inviteCount += plugin.db.insertIgnore(new SQLHomeInvite(inviteRow.getHomeId(), to.uuid));
             }
             plugin.db.delete(inviteRows);
         }

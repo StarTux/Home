@@ -36,10 +36,10 @@ public final class EventListener implements Listener {
             int claimCount = plugin.findClaims(player).size();
             PluginPlayerQuery.Name.CLAIM_COUNT.respond(query, plugin, claimCount);
         } else if (name == PluginPlayerQuery.Name.HOME_COUNT) {
-            int homeCount = plugin.findHomes(player.getUniqueId()).size();
+            int homeCount = plugin.getHomes().findOwnedHomes(player.getUniqueId()).size();
             PluginPlayerQuery.Name.HOME_COUNT.respond(query, plugin, homeCount);
         } else if (name == PluginPlayerQuery.Name.PRIMARY_HOME_IS_SET) {
-            boolean primaryHomeIsSet = plugin.findHome(player.getUniqueId(), null) != null;
+            boolean primaryHomeIsSet = plugin.getHomes().findPrimaryHome(player.getUniqueId()) != null;
             PluginPlayerQuery.Name.PRIMARY_HOME_IS_SET.respond(query, plugin, primaryHomeIsSet);
         } else if (name == PluginPlayerQuery.Name.INSIDE_OWNED_CLAIM) {
             Claim claim = plugin.getClaimAt(player.getLocation());

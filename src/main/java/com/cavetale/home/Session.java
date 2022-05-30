@@ -196,7 +196,7 @@ public final class Session {
         final int range = 64;
         Area area = new Area(x - range, z - range, x + range, z + range);
         for (Claim claim : plugin.getClaimCache().within(w, area)) {
-            if (claim.getBoolSetting(Claim.Setting.ELYTRA)) continue;
+            if (claim.getSetting(ClaimSetting.ELYTRA)) continue;
             Title title = Title.title(Component.text("WARNING", NamedTextColor.RED, TextDecoration.BOLD),
                                       Component.text("Approaching No-Fly Zone!", NamedTextColor.RED, TextDecoration.BOLD),
                                       Title.Times.times(Duration.ZERO, Duration.ofMillis(550), Duration.ZERO));
@@ -261,14 +261,14 @@ public final class Session {
 
     private void triggerClaimActions(Player player) {
         if (currentClaim.isOwner(player)) {
-            if (currentClaim.getBoolSetting(Claim.Setting.AUTOGROW)
+            if (currentClaim.getSetting(ClaimSetting.AUTOGROW)
                 && currentClaim.getBlocks() > currentClaim.getArea().size()
                 && (ticks % 100) == 0
                 && plugin.autoGrowClaim(currentClaim).isSuccessful()) {
                 plugin.highlightClaim(currentClaim, player);
             }
         }
-        if (player.isGliding() && !currentClaim.getBoolSetting(Claim.Setting.ELYTRA)) {
+        if (player.isGliding() && !currentClaim.getSetting(ClaimSetting.ELYTRA)) {
             player.setGliding(false);
             Component msg = Component.text("You cannot fly in this claim!", TextColor.color(0xFF0000));
             if (notify(player, msg)) {
@@ -280,26 +280,26 @@ public final class Session {
 
     private void notifyClaimChange(Player player, Claim oldClaim, Claim newClaim) {
         if (newClaim == null && oldClaim != null) {
-            if (oldClaim.getBoolSetting(Claim.Setting.HIDDEN)) return;
+            if (oldClaim.getSetting(ClaimSetting.HIDDEN)) return;
             String name = oldClaim.getName();
             String namePart = name != null ? " " + name : "";
             Component message = oldClaim.isOwner(player)
                 ? Component.text("Leaving your claim" + namePart, NamedTextColor.GRAY)
                 : Component.text("Leaving " + oldClaim.getOwnerGenitive() + " claim" + namePart, NamedTextColor.GRAY);
             player.sendActionBar(message);
-            if (oldClaim.getBoolSetting(Claim.Setting.SHOW_BORDERS)) {
+            if (oldClaim.getSetting(ClaimSetting.SHOW_BORDERS)) {
                 plugin.highlightClaim(oldClaim, player);
             }
             return;
         } else if (newClaim != null) {
-            if (newClaim.getBoolSetting(Claim.Setting.HIDDEN)) return;
+            if (newClaim.getSetting(ClaimSetting.HIDDEN)) return;
             String name = newClaim.getName();
             String namePart = name != null ? " " + name : "";
             Component message = newClaim.isOwner(player)
                 ? Component.text("Entering your claim" + namePart, NamedTextColor.GRAY)
                 : Component.text("Entering " + newClaim.getOwnerGenitive() + " claim" + namePart, NamedTextColor.GRAY);
             player.sendActionBar(message);
-            if (newClaim.getBoolSetting(Claim.Setting.SHOW_BORDERS)) {
+            if (newClaim.getSetting(ClaimSetting.SHOW_BORDERS)) {
                 plugin.highlightClaim(newClaim, player);
             }
         }

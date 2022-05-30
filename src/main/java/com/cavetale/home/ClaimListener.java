@@ -265,7 +265,7 @@ final class ClaimListener implements Listener {
                 if (claim == null) {
                     return;
                 }
-                if (claim.getBoolSetting(Claim.Setting.EXPLOSIONS)) return;
+                if (claim.getSetting(ClaimSetting.EXPLOSIONS)) return;
                 if (damaged instanceof Player) return;
                 if (damaged instanceof Mob) return;
                 event.setCancelled(true);
@@ -299,7 +299,7 @@ final class ClaimListener implements Listener {
             if (claim == null) {
                 return;
             }
-            if (claim.getBoolSetting(Claim.Setting.EXPLOSIONS)) return;
+            if (claim.getSetting(ClaimSetting.EXPLOSIONS)) return;
             if (damaged instanceof Player) return;
             if (damaged instanceof Mob) return;
             event.setCancelled(true);
@@ -458,7 +458,7 @@ final class ClaimListener implements Listener {
                     checkPlayerAction(player, block, TrustType.CONTAINER, event, true);
                 } else if (Tag.BEDS.isTagged(mat)) {
                     if (block.getWorld().getEnvironment() != World.Environment.NORMAL) {
-                        if (claim != null && !claim.getBoolSetting(Claim.Setting.EXPLOSIONS)) {
+                        if (claim != null && !claim.getSetting(ClaimSetting.EXPLOSIONS)) {
                             plugin.sessions.of(player).notify(player, claim);
                             event.setCancelled(true);
                             return;
@@ -479,7 +479,7 @@ final class ClaimListener implements Listener {
                     case RESPAWN_ANCHOR:
                         if (block.getWorld().getEnvironment() != World.Environment.NETHER) {
                             RespawnAnchor data = (RespawnAnchor) block.getBlockData();
-                            if (data.getCharges() >= data.getMaximumCharges() && claim != null && !claim.getBoolSetting(Claim.Setting.EXPLOSIONS)) {
+                            if (data.getCharges() >= data.getMaximumCharges() && claim != null && !claim.getSetting(ClaimSetting.EXPLOSIONS)) {
                                 plugin.sessions.of(player).notify(player, claim);
                                 event.setCancelled(true);
                                 return;
@@ -557,7 +557,7 @@ final class ClaimListener implements Listener {
         if (!plugin.isLocalHomeWorld(event.getEntity().getWorld())) return;
         if (event.getCause() == HangingBreakEvent.RemoveCause.EXPLOSION) {
             Claim claim = plugin.getClaimAt(event.getEntity().getLocation().getBlock());
-            if (claim == null || !claim.getBoolSetting(Claim.Setting.EXPLOSIONS)) {
+            if (claim == null || !claim.getSetting(ClaimSetting.EXPLOSIONS)) {
                 event.setCancelled(true);
             }
         }
@@ -579,7 +579,7 @@ final class ClaimListener implements Listener {
         }
         if (event.getCause() == HangingBreakEvent.RemoveCause.EXPLOSION) {
             Claim claim = plugin.getClaimAt(event.getEntity().getLocation().getBlock());
-            if (claim == null || !claim.getBoolSetting(Claim.Setting.EXPLOSIONS)) {
+            if (claim == null || !claim.getSetting(ClaimSetting.EXPLOSIONS)) {
                 event.setCancelled(true);
             }
         }
@@ -600,7 +600,7 @@ final class ClaimListener implements Listener {
         if (!plugin.isLocalHomeWorld(event.getEntity().getWorld())) return;
         for (Iterator<Block> iter = event.blockList().iterator(); iter.hasNext();) {
             Claim claim = plugin.getClaimAt(iter.next());
-            if (claim == null || !claim.getBoolSetting(Claim.Setting.EXPLOSIONS)) {
+            if (claim == null || !claim.getSetting(ClaimSetting.EXPLOSIONS)) {
                 iter.remove();
             }
         }
@@ -610,13 +610,13 @@ final class ClaimListener implements Listener {
     public void onBlockExplode(BlockExplodeEvent event) {
         if (!plugin.isLocalHomeWorld(event.getBlock().getWorld())) return;
         Claim claim = plugin.getClaimAt(event.getBlock());
-        if (claim != null && !claim.getBoolSetting(Claim.Setting.EXPLOSIONS)) {
+        if (claim != null && !claim.getSetting(ClaimSetting.EXPLOSIONS)) {
             event.setCancelled(true);
             return;
         }
         for (Iterator<Block> iter = event.blockList().iterator(); iter.hasNext();) {
             claim = plugin.getClaimAt(iter.next());
-            if (claim == null || !claim.getBoolSetting(Claim.Setting.EXPLOSIONS)) {
+            if (claim == null || !claim.getSetting(ClaimSetting.EXPLOSIONS)) {
                 iter.remove();
             }
         }
@@ -626,7 +626,7 @@ final class ClaimListener implements Listener {
     public void onBlockBurn(BlockBurnEvent event) {
         if (!plugin.isLocalHomeWorld(event.getBlock().getWorld())) return;
         Claim claim = plugin.getClaimAt(event.getBlock());
-        if (claim == null || !claim.getBoolSetting(Claim.Setting.FIRE)) {
+        if (claim == null || !claim.getSetting(ClaimSetting.FIRE)) {
             event.setCancelled(true);
             return;
         }
@@ -648,7 +648,7 @@ final class ClaimListener implements Listener {
             break;
         }
         Claim claim = plugin.getClaimAt(event.getBlock());
-        if (claim == null || !claim.getBoolSetting(Claim.Setting.FIRE)) {
+        if (claim == null || !claim.getSetting(ClaimSetting.FIRE)) {
             event.setCancelled(true);
             return;
         }
@@ -756,7 +756,7 @@ final class ClaimListener implements Listener {
         // Respect claim settings
         Claim claim = plugin.getClaimAt(location);
         if (claim == null) return;
-        if (!claim.getBoolSetting(Claim.Setting.MOB_SPAWNING)) {
+        if (!claim.getSetting(ClaimSetting.MOB_SPAWNING)) {
             event.setCancelled(true);
             return;
         }
@@ -825,7 +825,7 @@ final class ClaimListener implements Listener {
             Player player = event.getPlayer();
             Claim claim = plugin.getClaimAt(event.getTo());
             if (claim == null) return;
-            if (!claim.getBoolSetting(Claim.Setting.ENDER_PEARL)) {
+            if (!claim.getSetting(ClaimSetting.ENDER_PEARL)) {
                 plugin.sessions.of(player).notify(player, claim);
                 event.setCancelled(true);
                 return;
@@ -845,7 +845,7 @@ final class ClaimListener implements Listener {
         if (claim == null) return;
         switch (projectile.getType()) {
         case ENDER_PEARL:
-            if (!claim.getBoolSetting(Claim.Setting.ENDER_PEARL)) {
+            if (!claim.getSetting(ClaimSetting.ENDER_PEARL)) {
                 plugin.sessions.of(player).notify(player, claim);
                 event.setCancelled(true);
                 return;
@@ -860,7 +860,7 @@ final class ClaimListener implements Listener {
         Player player = (Player) event.getEntity();
         Claim claim = plugin.getClaimAt(player.getLocation());
         if (claim == null) return;
-        if (event.isGliding() && !claim.getBoolSetting(Claim.Setting.ELYTRA)) {
+        if (event.isGliding() && !claim.getSetting(ClaimSetting.ELYTRA)) {
             Component msg = Component.text("You cannot fly in this claim!", TextColor.color(0xFF0000));
             plugin.sessions.of(player).notify(player, msg);
             event.setCancelled(true);
@@ -882,7 +882,7 @@ final class ClaimListener implements Listener {
         case FLY: {
             Claim claim = plugin.getClaimAt(query.getBlock());
             if (claim == null) return;
-            if (!claim.getBoolSetting(Claim.Setting.ELYTRA)) {
+            if (!claim.getSetting(ClaimSetting.ELYTRA)) {
                 query.setCancelled(true);
             }
             break;

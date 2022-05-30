@@ -3,6 +3,7 @@ package com.cavetale.home;
 import com.cavetale.core.command.AbstractCommand;
 import com.cavetale.core.command.CommandArgCompleter;
 import com.cavetale.core.command.CommandWarn;
+import com.cavetale.home.sql.SQLClaimTrust;
 import com.winthier.playercache.PlayerCache;
 import java.util.List;
 import java.util.UUID;
@@ -78,11 +79,11 @@ public final class ClaimAdminCommand extends AbstractCommand<HomePlugin> {
         int id = 0;
         for (Claim claim : claims) {
             String brief = "-"
-                + "id=" + claim.id
-                + (" loc=" + claim.world + ":"
-                   + claim.area.centerX() + "," + claim.area.centerY())
-                + " blocks=" + claim.blocks;
-            String cmd = "/claimadmin tp " + claim.id;
+                + "id=" + claim.getId()
+                + (" loc=" + claim.getWorld() + ":"
+                   + claim.getArea().centerX() + "," + claim.getArea().centerY())
+                + " blocks=" + claim.getBlocks();
+            String cmd = "/claimadmin tp " + claim.getId();
             sender.sendMessage(text(brief, YELLOW)
                                .hoverEvent(showText(text(cmd, YELLOW)))
                                .clickEvent(runCommand(cmd)));
@@ -106,9 +107,8 @@ public final class ClaimAdminCommand extends AbstractCommand<HomePlugin> {
         int newblocks = claim.getBlocks() + blocks;
         if (newblocks < 0) newblocks = 0;
         claim.setBlocks(newblocks);
-        claim.saveToDatabase();
         player.sendMessage(text("Claim owned by " + claim.getOwnerName()
-                                + " now has " + newblocks + " claim blocks.",
+                                + " now has " + claim.getBlocks() + " claim blocks.",
                                 AQUA));
         return true;
     }
@@ -120,8 +120,8 @@ public final class ClaimAdminCommand extends AbstractCommand<HomePlugin> {
         if (claim == null) throw new CommandWarn("Claim not found: " + claimId);
         final World world = Bukkit.getWorld(claim.getWorld());
         if (world == null) throw new CommandWarn("World not found: " + claim.getWorld());
-        final int x = claim.centerX;
-        final int z = claim.centerY;
+        final int x = claim.getCenterX();
+        final int z = claim.getCenterY();
         world.getChunkAtAsync(x >> 4, z >> 4, (Consumer<Chunk>) chunk -> {
                 if (!player.isValid()) return;
                 final Location target;
@@ -160,18 +160,21 @@ public final class ClaimAdminCommand extends AbstractCommand<HomePlugin> {
         Area area = new Area(loc.getBlockX() - 31, loc.getBlockZ() - 31,
                              loc.getBlockX() + 32, loc.getBlockZ() + 32);
         for (Claim other : plugin.getClaimCache().within(w, area)) {
-            if (other.area.contains(area)) {
-                player.sendMessage(text("This claim would overlap an existing claim owned by "
-                                        + other.getOwnerName() + ".",
-                                        RED));
-                return true;
+            if (other.getArea().overlaps(area)) {
+                throw new CommandWarn("This claim would overlap an existing claim owned by " + other.getOwnerName());
             }
         }
         Claim claim = new Claim(plugin, Claim.ADMIN_ID, w, area);
         plugin.getClaimCache().add(claim);
-        claim.saveToDatabase();
-        player.sendMessage(text("Admin claim created", AQUA));
-        plugin.highlightClaim(claim, player);
+        claim.insertIntoDatabase(res -> {
+                if (res) {
+                    player.sendMessage(text("Admin claim created", AQUA));
+                    plugin.highlightClaim(claim, player);
+                } else {
+                    player.sendMessage(text("Something went wrong!", RED));
+                    plugin.getClaimCache().remove(claim);
+                }
+            });
         return true;
     }
 
@@ -188,7 +191,6 @@ public final class ClaimAdminCommand extends AbstractCommand<HomePlugin> {
         Claim claim = plugin.getClaimAt(player.getLocation());
         if (claim == null) throw new CommandWarn("There is no claim here!");
         claim.setOwner(targetId);
-        claim.saveToDatabase();
         player.sendMessage(text("Claim transferred to " + claim.getOwnerName(), AQUA));
         return true;
     }
@@ -234,16 +236,15 @@ public final class ClaimAdminCommand extends AbstractCommand<HomePlugin> {
         for (Claim claim : plugin.claimCache.getAllClaims()) {
             if (from.uuid.equals(claim.getOwner())) {
                 claim.setOwner(to.uuid);
-                claim.saveToDatabase();
                 claimCount += 1;
                 total += 1;
             }
-            ClaimTrust trust;
+            SQLClaimTrust trust;
             // Convert from->to
-            ClaimTrust fromTrust = claim.getTrusted().remove(from.uuid);
+            SQLClaimTrust fromTrust = claim.getTrusted().remove(from.uuid);
             if (fromTrust != null) {
                 // Remove `to` to avoid duplicates
-                ClaimTrust toTrust = claim.getTrusted().remove(to.uuid);
+                SQLClaimTrust toTrust = claim.getTrusted().remove(to.uuid);
                 if (toTrust != null) {
                     plugin.db.delete(toTrust);
                     total += 1;
@@ -255,10 +256,9 @@ public final class ClaimAdminCommand extends AbstractCommand<HomePlugin> {
                 trustCount += 1;
             }
             for (Subclaim subclaim : claim.getSubclaims()) {
-                Subclaim.Trust fromSubTrust = subclaim.getTag().getTrusted().remove(from.uuid);
+                SubclaimTrust fromSubTrust = subclaim.removeTrust(from.uuid);
                 if (fromSubTrust != null) {
-                    subclaim.getTag().getTrusted().put(to.uuid, fromSubTrust);
-                    subclaim.saveToDatabase();
+                    subclaim.setTrust(to.uuid, fromSubTrust);
                     total += 1;
                     subclaimCount += 1;
                 }

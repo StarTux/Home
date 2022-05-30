@@ -16,138 +16,104 @@ import org.bukkit.World;
 import org.bukkit.entity.Player;
 
 public final class Subclaim {
-    private Integer id = null;
-    private final HomePlugin plugin;
-    @Getter private final Claim parent;
-    @Getter private String world;
-    @Getter private Area area;
-    @Getter private Tag tag;
     public static final UUID PUBLIC_UUID = new UUID(0, 0);
 
-    /**
-     * Base constructor.
-     */
-    public Subclaim(final HomePlugin plugin, final Claim parent, final String world, final Area area, final Tag tag) {
-        this.plugin = plugin;
-        this.parent = parent;
-        this.world = world;
-        this.area = area;
-        this.tag = tag;
-    }
+    private final HomePlugin plugin;
+    @Getter private final Claim parent;
+    private final SQLSubclaim row;
+
+    @Getter private Area area;
+    private Tag tag;
 
     /**
-     * Constructor to load from database. (Parent claim resolution is
-     * external!)
+     * Constructor to load from database.
      */
     public Subclaim(final HomePlugin plugin, final Claim parent, final SQLSubclaim row) {
-        this(plugin, parent, row.getWorld(),
-             new Area(row.getAx(), row.getAy(), row.getBx(), row.getBy()),
-             Json.deserialize(row.getTag(), Tag.class, Tag::new));
-        this.id = row.getId();
+        this.plugin = plugin;
+        this.parent = parent;
+        this.row = row;
+        this.area = row.getArea();
+        this.tag = Json.deserialize(row.getTag(), Tag.class, Tag::new);
     }
 
     /**
      * Constructor for a new subclaim.
      */
     public Subclaim(final HomePlugin plugin, final Claim parent, final World world, final Area area) {
-        this(plugin, parent, world.getName(), area, new Tag());
-    }
-
-    public enum Trust {
-        NONE,
-        ACCESS,
-        CONTAINER,
-        BUILD,
-        CO_OWNER("Co-owner"),
-        OWNER;
-
-        public final String key;
-        public final String displayName;
-
-        Trust(final String displayName) {
-            this.key = name().toLowerCase();
-            this.displayName = displayName;
-        }
-
-        Trust() {
-            this.key = name().toLowerCase();
-            this.displayName = name().substring(0, 1) + name().substring(1).toLowerCase();
-        }
-
-        public boolean entails(Trust other) {
-            return ordinal() >= other.ordinal();
-        }
-
-        public boolean exceeds(Trust other) {
-            return ordinal() > other.ordinal();
-        }
+        this.plugin = plugin;
+        this.parent = parent;
+        this.area = area;
+        this.row = new SQLSubclaim(parent.getId(), world.getName(), area);
+        this.tag = new Tag();
     }
 
     @Getter
     public static final class Tag {
-        Map<UUID, Trust> trusted = new HashMap<>();
+        Map<UUID, SubclaimTrust> trusted = new HashMap<>();
     }
 
     public int getId() {
-        return id != null ? id : -1;
+        return row.getId() != null ? row.getId() : 0;
     }
 
     public String getListInfo() {
-        return plugin.worldDisplayName(world) + " " + area;
+        return plugin.worldDisplayName(getWorld()) + " " + area;
     }
 
-    public boolean isInWorld(World inWorld) {
-        return inWorld.getName().equals(world);
+    public String getWorld() {
+        return row.getWorld();
     }
 
-    public SQLSubclaim toSQLRow() {
-        return new SQLSubclaim(id, parent.getId(), world,
-                               area.ax, area.ay, area.bx, area.by,
-                               Json.serialize(tag));
-    }
-
-    public void saveToDatabase() {
-        SQLSubclaim row = toSQLRow();
-        plugin.db.save(row);
-        this.id = row.getId();
+    public boolean isInWorld(World world) {
+        return world.getName().equals(getWorld());
     }
 
     public List<UUID> getTrustedUuids() {
         return new ArrayList<>(tag.trusted.keySet());
     }
 
-    public Map<Trust, Set<UUID>> getTrustedMap() {
-        Map<Trust, Set<UUID>> map = new EnumMap<>(Trust.class);
-        for (Trust trust : Trust.values()) map.put(trust, new HashSet<>());
-        for (Map.Entry<UUID, Trust> entry : tag.trusted.entrySet()) {
+    public Map<SubclaimTrust, Set<UUID>> getTrustedMap() {
+        Map<SubclaimTrust, Set<UUID>> map = new EnumMap<>(SubclaimTrust.class);
+        for (SubclaimTrust trust : SubclaimTrust.values()) map.put(trust, new HashSet<>());
+        for (Map.Entry<UUID, SubclaimTrust> entry : tag.trusted.entrySet()) {
             UUID uuid = entry.getKey();
-            Trust trust = entry.getValue();
+            SubclaimTrust trust = entry.getValue();
             Set<UUID> set = map.get(trust);
             set.add(uuid);
         }
         return map;
     }
 
-    public Trust getTrust(Player player) {
-        if (parent.isOwner(player)) return Trust.OWNER;
+    public SubclaimTrust getTrust(Player player) {
+        if (parent.isOwner(player)) return SubclaimTrust.OWNER;
         return getTrust(player.getUniqueId());
     }
 
-    public Trust getTrust(UUID uuid) {
-        if (parent.isOwner(uuid)) return Trust.OWNER;
-        Trust trust = tag.trusted.get(uuid);
+    public SubclaimTrust getTrust(UUID uuid) {
+        if (parent.isOwner(uuid)) return SubclaimTrust.OWNER;
+        SubclaimTrust trust = tag.trusted.get(uuid);
         if (trust != null) return trust;
         trust = tag.trusted.get(PUBLIC_UUID);
         if (trust != null) return trust;
-        return Trust.NONE;
+        return SubclaimTrust.NONE;
     }
 
-    public void setTrust(UUID uuid, Trust trust) {
+    private void saveTag() {
+        row.setTag(Json.serialize(tag));
+        plugin.getDb().updateAsync(row, Set.of("tag"), res -> {
+                plugin.getConnectListener().broadcastClaimUpdate(parent);
+            });
+    }
+
+    public void setTrust(UUID uuid, SubclaimTrust trust) {
         tag.trusted.put(uuid, trust);
+        saveTag();
     }
 
-    public Trust removeTrust(UUID uuid) {
-        return tag.trusted.remove(uuid);
+    public SubclaimTrust removeTrust(UUID uuid) {
+        SubclaimTrust result = tag.trusted.remove(uuid);
+        if (result != null) saveTag();
+        return result;
     }
 
     public static UUID cachedPlayerUuid(String name) {
@@ -161,7 +127,7 @@ public final class Subclaim {
     }
 
     public TrustType getTrustType(UUID uuid) {
-        Trust trust = getTrust(uuid);
+        SubclaimTrust trust = getTrust(uuid);
         switch (trust) {
         case NONE: return TrustType.NONE;
         case ACCESS: return TrustType.INTERACT;
@@ -171,5 +137,17 @@ public final class Subclaim {
         case OWNER: return TrustType.OWNER;
         default: throw new IllegalStateException("trust=" + trust);
         }
+    }
+
+    public void insertIntoDatabase() {
+        plugin.getDb().insertAsync(row, res -> {
+                plugin.getConnectListener().broadcastClaimUpdate(parent);
+            });
+    }
+
+    public void deleteFromDatabase() {
+        plugin.getDb().deleteAsync(row, res -> {
+                plugin.getConnectListener().broadcastClaimUpdate(parent);
+            });
     }
 }

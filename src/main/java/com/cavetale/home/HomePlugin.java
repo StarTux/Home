@@ -5,6 +5,9 @@ import com.cavetale.core.connect.Connect;
 import com.cavetale.core.perm.Perm;
 import com.cavetale.home.claimcache.ClaimCache;
 import com.cavetale.home.sql.SQLClaim;
+import com.cavetale.home.sql.SQLClaimTrust;
+import com.cavetale.home.sql.SQLHome;
+import com.cavetale.home.sql.SQLHomeInvite;
 import com.cavetale.home.sql.SQLHomeWorld;
 import com.cavetale.home.sql.SQLSubclaim;
 import com.cavetale.home.struct.BlockVector;
@@ -55,12 +58,13 @@ public final class HomePlugin extends JavaPlugin {
     // Homes
     protected List<SQLHomeWorld> worldList = List.of();
     protected List<String> localHomeWorlds = List.of();
-    protected final List<Home> homes = new ArrayList<>();
+    protected final Homes homes = new Homes();
     protected final ClaimCache claimCache = new ClaimCache();
     protected final Sessions sessions = new Sessions(this);
     protected final EventListener eventListener = new EventListener(this);
     private MagicMapListener magicMapListener;
     private ClaimListener claimListener;
+    protected final ConnectListener connectListener = new ConnectListener(this);
     // Utilty
     protected long ticks;
     protected Random random = ThreadLocalRandom.current();
@@ -84,15 +88,16 @@ public final class HomePlugin extends JavaPlugin {
     public void onEnable() {
         instance = this;
         db = new SQLDatabase(this);
-        db.registerTables(SQLClaim.class,
-                          SQLSubclaim.class,
-                          ClaimTrust.class,
-                          Home.class,
-                          HomeInvite.class,
-                          SQLHomeWorld.class);
+        db.registerTables(List.of(SQLHomeWorld.class,
+                                  SQLClaim.class,
+                                  SQLClaimTrust.class,
+                                  SQLSubclaim.class,
+                                  SQLHome.class,
+                                  SQLHomeInvite.class));
         db.createAllTables();
         claimListener = new ClaimListener(this).enable();
         eventListener.enable();
+        connectListener.enable();
         homeAdminCommand.enable();
         claimAdminCommand.enable();
         claimCommand.enable();
@@ -218,7 +223,6 @@ public final class HomePlugin extends JavaPlugin {
             if (other != claim) return ClaimOperationResult.OVERLAP;
         }
         claim.setArea(newArea);
-        claim.saveToDatabase();
         return ClaimOperationResult.SUCCESS;
     }
 
@@ -234,8 +238,7 @@ public final class HomePlugin extends JavaPlugin {
         claimCache.initialize(localHomeWorlds);
         homes.clear();
         for (SQLClaim row : db.find(SQLClaim.class).findList()) {
-            Claim claim = new Claim(this);
-            claim.loadSQLRow(row);
+            Claim claim = new Claim(this, row);
             claimCache.add(claim);
         }
         if (deleteOverlappingClaims) {
@@ -255,7 +258,7 @@ public final class HomePlugin extends JavaPlugin {
                     }
                 }
                 if (overlappingClaims.size() == 1) continue;
-                Collections.sort(overlappingClaims, (l, r) -> Integer.compare(r.blocks, l.blocks));
+                Collections.sort(overlappingClaims, (l, r) -> Integer.compare(r.getBlocks(), l.getBlocks()));
                 for (int j = 1; j < overlappingClaims.size(); j += 1) {
                     deleteClaims.add(overlappingClaims.get(j));
                 }
@@ -267,8 +270,8 @@ public final class HomePlugin extends JavaPlugin {
                 }
             }
         }
-        for (ClaimTrust trust : db.find(ClaimTrust.class).findList()) {
-            Claim claim = getClaimById(trust.claimId);
+        for (SQLClaimTrust trust : db.find(SQLClaimTrust.class).findList()) {
+            Claim claim = getClaimById(trust.getClaimId());
             if (claim == null) {
                 getLogger().warning("Trust without claim: " + trust);
                 db.deleteAsync(trust, null);
@@ -278,7 +281,7 @@ public final class HomePlugin extends JavaPlugin {
                 getLogger().warning("Empty trust: " + trust);
                 continue;
             }
-            claim.trusted.put(trust.getTrustee(), trust);
+            claim.getTrusted().put(trust.getTrustee(), trust);
         }
         for (SQLSubclaim row : db.find(SQLSubclaim.class).findList()) {
             Claim claim = getClaimById(row.getClaimId());
@@ -288,20 +291,82 @@ public final class HomePlugin extends JavaPlugin {
                 continue;
             }
             Subclaim subclaim = new Subclaim(this, claim, row);
-            claim.addSubclaim(subclaim);
+            claim.getSubclaims().add(subclaim);
         }
-        for (Home home : db.find(Home.class).findList()) {
+        for (SQLHome home : db.find(SQLHome.class).findList()) {
             home.unpack();
             homes.add(home);
         }
-        for (HomeInvite invite : db.find(HomeInvite.class).findList()) {
-            for (Home home : homes) {
-                if (home.id.equals(invite.homeId)) {
-                    home.invites.add(invite.getInvitee());
-                    break;
-                }
+        for (SQLHomeInvite invite : db.find(SQLHomeInvite.class).findList()) {
+            SQLHome home = homes.findById(invite.getHomeId());
+            if (home == null) {
+                getLogger().warning("Home invite without home id: " + invite);
+                continue;
             }
+            home.getInvites().add(invite.getInvitee());
         }
+    }
+
+    protected void reloadClaim(int claimId) {
+        final Claim oldClaim = getClaimById(claimId);
+        db.scheduleAsyncTask(() -> {
+                final SQLClaim row = db.find(SQLClaim.class)
+                    .eq("id", claimId)
+                    .findUnique();
+                if (row == null) {
+                    if (oldClaim != null) {
+                        Bukkit.getScheduler().runTask(this, () -> {
+                                claimCache.remove(oldClaim);
+                            });
+                    }
+                    return;
+                }
+                final List<SQLClaimTrust> claimTrustList = db.find(SQLClaimTrust.class)
+                    .eq("claimId", claimId)
+                    .findList();
+                final List<SQLSubclaim> subclaimList = db.find(SQLSubclaim.class)
+                    .eq("claimId", claimId)
+                    .findList();
+                Bukkit.getScheduler().runTask(this, () -> {
+                        Claim claim;
+                        if (oldClaim != null) {
+                            claim = oldClaim;
+                            claim.updateSQLRow(row);
+                        } else {
+                            claim = new Claim(this, row);
+                            claimCache.add(claim);
+                        }
+                        claim.getTrusted().clear();
+                        claim.getSubclaims().clear();
+                        for (SQLClaimTrust claimTrustRow : claimTrustList) {
+                            claim.getTrusted().put(claimTrustRow.getTrustee(), claimTrustRow);
+                        }
+                        for (SQLSubclaim subclaimRow : subclaimList) {
+                            claim.getSubclaims().add(new Subclaim(this, claim, subclaimRow));
+                        }
+                    });
+            });
+    }
+
+    protected void reloadHome(int homeId) {
+        SQLHome oldHome = homes.findById(homeId);
+        db.scheduleAsyncTask(() -> {
+                SQLHome newHome = db.find(SQLHome.class)
+                    .eq("id", homeId)
+                    .findUnique();
+                List<SQLHomeInvite> inviteList = db.find(SQLHomeInvite.class)
+                    .eq("homeId", homeId)
+                    .findList();
+                Bukkit.getScheduler().runTask(this, () -> {
+                        if (oldHome != null) homes.remove(oldHome);
+                        if (newHome == null) return;
+                        newHome.unpack();
+                        for (SQLHomeInvite inviteRow : inviteList) {
+                            newHome.getInvites().add(inviteRow.getInvitee());
+                        }
+                        homes.add(newHome);
+                    });
+            });
     }
 
     public String worldDisplayName(String worldName) {
@@ -425,28 +490,6 @@ public final class HomePlugin extends JavaPlugin {
         }
     }
 
-    public List<Home> findHomes(UUID owner) {
-        List<Home> list = new ArrayList<>();
-        for (Home home : homes) {
-            if (home.isOwner(owner)) list.add(home);
-        }
-        return list;
-    }
-
-    public Home findHome(UUID owner, String name) {
-        for (Home home : homes) {
-            if (home.isOwner(owner) && home.isNamed(name)) return home;
-        }
-        return null;
-    }
-
-    public Home findPublicHome(String name) {
-        for (Home home : homes) {
-            if (name.equalsIgnoreCase(home.getPublicName())) return home;
-        }
-        return null;
-    }
-
     public Claim findPrimaryClaim(UUID owner) {
         List<Claim> playerClaims = findClaims(owner);
         return playerClaims.isEmpty() ? null : playerClaims.get(0);
@@ -464,7 +507,7 @@ public final class HomePlugin extends JavaPlugin {
         for (Claim claim : claimCache.getAllClaims()) {
             if (claim.isOwner(owner)) list.add(claim);
         }
-        Collections.sort(list, (a, b) -> Long.compare(b.created, a.created));
+        Collections.sort(list, (a, b) -> b.getCreated().compareTo(a.getCreated()));
         return list;
     }
 
@@ -487,16 +530,28 @@ public final class HomePlugin extends JavaPlugin {
     }
 
     public void deleteClaim(Claim claim) {
-        int claimId = claim.getId();
-        int claimCount = db.find(SQLClaim.class).eq("id", claimId).delete();
-        int trustCount = db.find(ClaimTrust.class).eq("claimId", claimId).delete();
-        int subclaimCount = db.find(SQLSubclaim.class).eq("claimId", claimId).delete();
         claimCache.remove(claim);
         claim.setDeleted(true);
-        getLogger().info("Deleted claim #" + claimId
-                         + " claims=" + claimCount
-                         + " trusted=" + trustCount
-                         + " subclaims=" + subclaimCount);
+        final int claimId = claim.getId();
+        db.scheduleAsyncTask(() -> {
+                int trustCount = db.find(SQLClaimTrust.class).eq("claimId", claimId).delete();
+                int subclaimCount = db.find(SQLSubclaim.class).eq("claimId", claimId).delete();
+                int claimCount = db.find(SQLClaim.class).eq("id", claimId).delete();
+                getLogger().info("Deleted claim #" + claimId
+                                 + " claims=" + claimCount
+                                 + " trusted=" + trustCount
+                                 + " subclaims=" + subclaimCount);
+                Bukkit.getScheduler().runTask(this, () -> connectListener.broadcastClaimUpdate(claim));
+            });
+    }
+
+    public void deleteHome(SQLHome home) {
+        homes.remove(home);
+        db.find(SQLHomeInvite.class)
+            .eq("home_id", home.getId())
+            .deleteAsync(null);
+        db.deleteAsync(home, null);
+        connectListener.broadcastHomeUpdate(home);
     }
 
     protected <T> Optional<T> getMetadata(Metadatable entity, String key, Class<T> clazz) {

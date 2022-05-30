@@ -1,25 +1,38 @@
-package com.cavetale.home;
+package com.cavetale.home.sql;
 
+import com.cavetale.home.Claim;
+import com.cavetale.home.TrustType;
 import com.winthier.sql.SQLRow;
 import java.util.UUID;
 import javax.persistence.Column;
 import javax.persistence.Id;
+import javax.persistence.Index;
 import javax.persistence.Table;
 import javax.persistence.UniqueConstraint;
 import lombok.Data;
 
-@Data @Table(name = "claim_trust",
-             uniqueConstraints = @UniqueConstraint(columnNames = {"claim_id", "trustee"}))
-public final class ClaimTrust implements SQLRow {
-    @Id Integer id;
-    @Column(nullable = false) Integer claimId;
-    @Column(nullable = false, length = 15) String type;
-    @Column(nullable = false) UUID trustee;
+@Data
+@Table(name = "claim_trust",
+       indexes = @Index(name = "claim_id", columnList = "claim_id"),
+       uniqueConstraints = @UniqueConstraint(columnNames = {"claim_id", "trustee"}))
+public final class SQLClaimTrust implements SQLRow {
+    @Id
+    private Integer id;
+
+    @Column(nullable = false)
+    private Integer claimId;
+
+    @Column(nullable = false, length = 15)
+    private String type;
+
+    @Column(nullable = false)
+    private UUID trustee;
+
     protected transient TrustType trustType;
 
-    public ClaimTrust() { }
+    public SQLClaimTrust() { }
 
-    ClaimTrust(final Claim claim, final TrustType type, final UUID trustee) {
+    public SQLClaimTrust(final Claim claim, final TrustType type, final UUID trustee) {
         this.claimId = claim.getId();
         this.type = type.key;
         this.trustee = trustee;

@@ -1,5 +1,6 @@
 package com.cavetale.home;
 
+import com.cavetale.home.sql.SQLClaimTrust;
 import com.winthier.exploits.Exploits;
 import com.winthier.playerinfo.PlayerInfo;
 import java.time.Duration;
@@ -46,14 +47,14 @@ public final class OldClaimFinder {
         for (Claim claim : plugin.getClaimCache().getAllLocalClaims()) {
             perWorldClaimCount.compute(claim.getWorld(), (w, i) -> i != null ? i + 1 : 1);
             if (claim.getOwner() == null || claim.isAdminClaim()) continue;
-            if (claim.getCreated() > then) continue;
+            if (claim.getCreated().getTime() > then) continue;
             if (!plugin.localHomeWorlds.contains(claim.getWorld())) continue;
             final int initialSize = Globals.INITIAL_CLAIM_SIZE;
             if (claim.getArea().width() >= initialSize + 8 || claim.getArea().width() >= initialSize + 8) continue;
             OldClaim oldClaim = new OldClaim(claim);
             lastLogCount += 1;
             PlayerInfo.getInstance().lastLog(claim.getOwner(), date -> lastLogCallback(oldClaim, date));
-            for (Map.Entry<UUID, ClaimTrust> entry : claim.getTrusted().entrySet()) {
+            for (Map.Entry<UUID, SQLClaimTrust> entry : claim.getTrusted().entrySet()) {
                 if (entry.getValue().parseTrustType().canBuild()) {
                     lastLogCount += 1;
                     PlayerInfo.getInstance().lastLog(entry.getKey(), date -> lastLogCallback(oldClaim, date));

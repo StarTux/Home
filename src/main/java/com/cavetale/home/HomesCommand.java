@@ -9,27 +9,35 @@ import com.cavetale.core.command.RemotePlayer;
 import com.cavetale.core.connect.Connect;
 import com.cavetale.core.event.player.PluginPlayerEvent.Detail;
 import com.cavetale.core.event.player.PluginPlayerEvent;
+import com.cavetale.home.sql.SQLHome;
+import com.cavetale.home.sql.SQLHomeInvite;
 import com.cavetale.home.sql.SQLHomeWorld;
 import com.cavetale.home.struct.BlockVector;
 import com.winthier.playercache.PlayerCache;
 import java.time.Duration;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Set;
 import java.util.UUID;
 import java.util.function.Consumer;
-import java.util.stream.Collectors;
 import net.kyori.adventure.text.Component;
 import net.kyori.adventure.text.ComponentLike;
-import net.kyori.adventure.text.JoinConfiguration;
 import net.kyori.adventure.text.TextComponent;
-import net.kyori.adventure.text.event.ClickEvent;
-import net.kyori.adventure.text.event.HoverEvent;
-import net.kyori.adventure.text.format.NamedTextColor;
 import net.kyori.adventure.title.Title;
 import org.bukkit.Chunk;
 import org.bukkit.Location;
 import org.bukkit.World;
 import org.bukkit.entity.Player;
+import static net.kyori.adventure.text.Component.empty;
+import static net.kyori.adventure.text.Component.join;
+import static net.kyori.adventure.text.Component.newline;
+import static net.kyori.adventure.text.Component.space;
+import static net.kyori.adventure.text.Component.text;
+import static net.kyori.adventure.text.JoinConfiguration.separator;
+import static net.kyori.adventure.text.event.ClickEvent.runCommand;
+import static net.kyori.adventure.text.event.ClickEvent.suggestCommand;
+import static net.kyori.adventure.text.event.HoverEvent.showText;
+import static net.kyori.adventure.text.format.NamedTextColor.*;
 
 public final class HomesCommand extends AbstractCommand<HomePlugin> {
     protected final int pageLen = 9;
@@ -55,7 +63,7 @@ public final class HomesCommand extends AbstractCommand<HomePlugin> {
         rootNode.addChild("visit").arguments("[name]")
             .description("Visit a public home")
             .completers(this::completePublicHomes)
-            .playerCaller(this::visit);
+            .remotePlayerCaller(this::visit);
         rootNode.addChild("invite").arguments("<player> [home]")
             .description("Invite someone")
             .completers(CommandArgCompleter.NULL, this::completeOwnedHomes)
@@ -88,7 +96,7 @@ public final class HomesCommand extends AbstractCommand<HomePlugin> {
     protected boolean list(Player player, String[] args) {
         if (args.length != 0) return false;
         final UUID uuid = player.getUniqueId();
-        List<Home> playerHomes = plugin.findHomes(uuid);
+        List<SQLHome> playerHomes = plugin.homes.findOwnedHomes(uuid);
         if (playerHomes.isEmpty()) {
             throw new CommandWarn("No homes to show");
         }
@@ -104,21 +112,20 @@ public final class HomesCommand extends AbstractCommand<HomePlugin> {
             for (int i = 0; i < pageLen; i += 1) {
                 int homeIndex = pageIndex * pageLen + i;
                 if (homeIndex >= playerHomes.size()) break;
-                Home home = playerHomes.get(homeIndex);
-                boolean primary = home.getName() == null;
-                String cmd = primary ? "/home" : "/home " + home.getName();
-                lines.add(Component.text().color(NamedTextColor.WHITE)
-                          .append(Component.text(" + ", NamedTextColor.BLUE))
-                          .append(primary
-                                  ? Component.text("Primary", NamedTextColor.GOLD)
-                                  : Component.text(home.getName(), NamedTextColor.WHITE))
-                          .clickEvent(ClickEvent.runCommand(cmd))
-                          .hoverEvent(HoverEvent.showText(Component.join(JoinConfiguration.separator(Component.newline()),
-                                                                         Component.text(cmd, NamedTextColor.GREEN),
-                                                                         Component.text("Visit this home", NamedTextColor.GRAY))))
+                SQLHome home = playerHomes.get(homeIndex);
+                String cmd = home.isPrimary() ? "/home" : "/home " + home.getName();
+                lines.add(text().color(WHITE)
+                          .append(text(" + ", BLUE))
+                          .append(home.isPrimary()
+                                  ? text("Primary", GOLD)
+                                  : text(home.getName(), WHITE))
+                          .clickEvent(runCommand(cmd))
+                          .hoverEvent(showText(join(separator(newline()),
+                                                    text(cmd, GREEN),
+                                                    text("Visit this home", GRAY))))
                           .build());
             }
-            pages.add(Component.join(JoinConfiguration.separator(Component.newline()), lines));
+            pages.add(join(separator(newline()), lines));
         }
         if (pages.size() == 1) {
             player.sendMessage(pages.get(0));
@@ -145,7 +152,7 @@ public final class HomesCommand extends AbstractCommand<HomePlugin> {
     private void home0(RemotePlayer player) {
         final UUID uuid = player.getUniqueId();
         // Try to find a set home
-        Home home = plugin.findHome(player.getUniqueId(), null);
+        SQLHome home = plugin.getHomes().findPrimaryHome(player.getUniqueId());
         if (home != null) {
             SQLHomeWorld homeWorld = plugin.findHomeWorld(home.getWorld());
             if (homeWorld != null && !homeWorld.isOnThisServer() && player.isPlayer()) {
@@ -169,9 +176,9 @@ public final class HomesCommand extends AbstractCommand<HomePlugin> {
                     PluginPlayerEvent.Name.USE_PRIMARY_HOME.make(plugin, player2)
                         .detail(Detail.LOCATION, location)
                         .callEvent();
-                    player2.sendMessage(Component.text("Welcome home :)", NamedTextColor.GREEN));
-                    player2.showTitle(Title.title(Component.empty(),
-                                                  Component.text("Welcome home :)", NamedTextColor.GREEN),
+                    player2.sendMessage(text("Welcome home :)", GREEN));
+                    player2.showTitle(Title.title(empty(),
+                                                  text("Welcome home :)", GREEN),
                                                   Title.Times.times(Duration.ofMillis(500),
                                                                     Duration.ofSeconds(1),
                                                                     Duration.ofMillis(500))));
@@ -190,8 +197,8 @@ public final class HomesCommand extends AbstractCommand<HomePlugin> {
                     Location location = bworld.getHighestBlockAt(x, z).getLocation().add(0.5, 0.0, 0.5);
                     player.bring(plugin, location, player2 -> {
                             if (player2 == null) return;
-                            player2.sendMessage(Component.text("Welcome to your claim. :)",
-                                                               NamedTextColor.GREEN));
+                            player2.sendMessage(text("Welcome to your claim. :)",
+                                                     GREEN));
                         });
                 });
             return;
@@ -204,7 +211,7 @@ public final class HomesCommand extends AbstractCommand<HomePlugin> {
 
     private void home1(RemotePlayer player, String arg) {
         final UUID uuid = player.getUniqueId();
-        Home home;
+        SQLHome home;
         if (arg.contains(":")) {
             String[] toks = arg.split(":", 2);
             String ownerName = toks[0];
@@ -213,7 +220,7 @@ public final class HomesCommand extends AbstractCommand<HomePlugin> {
             if (target == null) {
                 throw new CommandWarn("Player not found: " + ownerName);
             }
-            home = plugin.findHome(target.uuid, homeName);
+            home = plugin.getHomes().findOwnedHome(target.uuid, homeName);
             if (home == null) {
                 throw new CommandWarn(homeName != null
                                       ? "Home not found: " + homeName + "!"
@@ -225,7 +232,7 @@ public final class HomesCommand extends AbstractCommand<HomePlugin> {
                                       : "Home not found!");
             }
         } else {
-            home = plugin.findHome(uuid, arg);
+            home = plugin.getHomes().findOwnedHome(uuid, arg);
         }
         if (home == null) {
             throw new CommandWarn("Home not found: " + arg);
@@ -245,9 +252,9 @@ public final class HomesCommand extends AbstractCommand<HomePlugin> {
         }
         player.bring(plugin, location, player2 -> {
                 if (player2 == null) return;
-                player2.sendMessage(Component.text("Welcome home", NamedTextColor.GREEN));
-                player2.showTitle(Title.title(Component.empty(),
-                                              Component.text("Welcome home", NamedTextColor.GREEN),
+                player2.sendMessage(text("Welcome home", GREEN));
+                player2.showTitle(Title.title(empty(),
+                                              text("Welcome home", GREEN),
                                               Title.Times.times(Duration.ofMillis(500),
                                                                 Duration.ofSeconds(1),
                                                                 Duration.ofMillis(500))));
@@ -284,7 +291,7 @@ public final class HomesCommand extends AbstractCommand<HomePlugin> {
         int playerX = player.getLocation().getBlockX();
         int playerZ = player.getLocation().getBlockZ();
         String homeName = args.length == 0 ? null : args[0];
-        for (Home home : plugin.findHomes(uuid)) {
+        for (SQLHome home : plugin.getHomes().findOwnedHomes(uuid)) {
             if (home.isInWorld(playerWorld)
                 && !home.isNamed(homeName)
                 && Math.abs(playerX - (int) home.getX()) < Globals.HOME_MARGIN
@@ -296,22 +303,20 @@ public final class HomesCommand extends AbstractCommand<HomePlugin> {
                 }
             }
         }
-        Home home = plugin.findHome(uuid, homeName);
+        SQLHome home = plugin.getHomes().findOwnedHome(uuid, homeName);
         if (home == null) {
-            home = new Home(uuid, player.getLocation(), homeName);
+            home = new SQLHome(uuid, player.getLocation(), homeName);
             plugin.getHomes().add(home);
-            home.pack();
-            plugin.getDb().insertAsync(home, null);
+            home.saveToDatabase();
         } else {
             home.setLocation(player.getLocation());
-            home.pack();
-            plugin.getDb().updateAsync(home, null);
+            home.saveToDatabase();
         }
         if (homeName == null) {
-            player.sendMessage(Component.text("Primary home set", NamedTextColor.GREEN));
+            player.sendMessage(text("Primary home set", GREEN));
             PluginPlayerEvent.Name.SET_PRIMARY_HOME.call(plugin, player);
         } else {
-            player.sendMessage(Component.text("Home \"" + homeName + "\" set", NamedTextColor.GREEN));
+            player.sendMessage(text("Home \"" + homeName + "\" set", GREEN));
             PluginPlayerEvent.Name.SET_NAMED_HOME.make(plugin, player)
                 .detail(Detail.NAME, homeName)
                 .callEvent();
@@ -321,11 +326,11 @@ public final class HomesCommand extends AbstractCommand<HomePlugin> {
 
     protected boolean info(Player player, String[] args) {
         if (args.length != 0 && args.length != 1) return false;
-        final Home home;
+        final SQLHome home;
         if (args.length == 0) {
-            home = plugin.findHome(player.getUniqueId(), null);
+            home = plugin.getHomes().findPrimaryHome(player.getUniqueId());
         } else {
-            home = plugin.findHome(player.getUniqueId(), args[0]);
+            home = plugin.getHomes().findOwnedHome(player.getUniqueId(), args[0]);
         }
         if (home == null) throw new CommandWarn("Home not found.");
         if (home.getName() == null) {
@@ -337,42 +342,42 @@ public final class HomesCommand extends AbstractCommand<HomePlugin> {
         for (UUID inviteId : home.getInvites()) {
             sb.append(" ").append(PlayerCache.nameForUuid(inviteId));
         }
-        player.sendMessage(Component.text().color(NamedTextColor.WHITE)
-                           .append(Component.text(" Location: ", NamedTextColor.GRAY))
-                           .append(Component.text(String.format("%s %d,%d,%d",
-                                                                plugin.worldDisplayName(home.getWorld()),
-                                                                (int) Math.floor(home.getX()),
-                                                                (int) Math.floor(home.getY()),
-                                                                (int) Math.floor(home.getZ())))));
-        TextComponent.Builder message = Component.text().color(NamedTextColor.WHITE)
-            .append(Component.text(" Invited: " + home.getInvites().size(), NamedTextColor.GRAY));
+        player.sendMessage(text().color(WHITE)
+                           .append(text(" Location: ", GRAY))
+                           .append(text(String.format("%s %d,%d,%d",
+                                                      plugin.worldDisplayName(home.getWorld()),
+                                                      (int) Math.floor(home.getX()),
+                                                      (int) Math.floor(home.getY()),
+                                                      (int) Math.floor(home.getZ())))));
+        TextComponent.Builder message = text().color(WHITE)
+            .append(text(" Invited: " + home.getInvites().size(), GRAY));
         for (UUID invitee : home.getInvites()) {
-            message.append(Component.text(" " + PlayerCache.nameForUuid(invitee)));
+            message.append(text(" " + PlayerCache.nameForUuid(invitee)));
         }
         player.sendMessage(message);
-        player.sendMessage(Component.text().color(NamedTextColor.WHITE)
-                           .append(Component.text(" Public: ", NamedTextColor.GRAY))
-                           .append(Component.text(home.getPublicName() != null ? "yes" : "no")));
+        player.sendMessage(text().color(WHITE)
+                           .append(text(" Public: ", GRAY))
+                           .append(text(home.getPublicName() != null ? "yes" : "no")));
         return true;
     }
 
     protected boolean invites(Player player, String[] args) {
         if (args.length != 0) return false;
-        TextComponent.Builder message = Component.text().color(NamedTextColor.WHITE)
-            .append(Component.text("Your invites: ", NamedTextColor.GRAY));
+        TextComponent.Builder message = text().color(WHITE)
+            .append(text("Your invites: ", GRAY));
         UUID uuid = player.getUniqueId();
-        for (Home home : plugin.getHomes()) {
+        for (SQLHome home : plugin.getHomes()) {
             if (home.isInvited(uuid)) {
                 String homename = home.getName() == null
                     ? home.getOwnerName() + ":"
                     : home.getOwnerName() + ":" + home.getName();
-                message.append(Component.space());
-                Component tooltip = Component.join(JoinConfiguration.separator(Component.newline()),
-                                                   Component.text("/home " + homename, NamedTextColor.GREEN),
-                                                   Component.text("Use this home invite", NamedTextColor.GRAY));
-                message.append(Component.text(homename, NamedTextColor.GREEN)
-                               .clickEvent(ClickEvent.runCommand("/home " + homename))
-                               .hoverEvent(HoverEvent.showText(tooltip)));
+                message.append(space());
+                Component tooltip = join(separator(newline()),
+                                         text("/home " + homename, GREEN),
+                                         text("Use this home invite", GRAY));
+                message.append(text(homename, GREEN)
+                               .clickEvent(runCommand("/home " + homename))
+                               .hoverEvent(showText(tooltip)));
             }
         }
         player.sendMessage(message);
@@ -392,7 +397,7 @@ public final class HomesCommand extends AbstractCommand<HomePlugin> {
             throw new CommandWarn("You cannot invite yourself!");
         }
         String homeName = args.length >= 2 ? args[1] : null;
-        Home home = this.plugin.findHome(uuid, homeName);
+        SQLHome home = plugin.getHomes().findOwnedHome(uuid, homeName);
         if (home == null) {
             if (homeName == null) {
                 throw new CommandWarn("Your primary home is not set");
@@ -400,32 +405,32 @@ public final class HomesCommand extends AbstractCommand<HomePlugin> {
                 throw new CommandWarn("You have no home named " + homeName);
             }
         }
-        if (!home.invites.contains(targetId)) {
-            HomeInvite invite = new HomeInvite(home.getId(), targetId);
-            this.plugin.getDb().saveAsync(invite, null);
-            home.invites.add(targetId);
+        if (!home.getInvites().contains(targetId)) {
+            SQLHomeInvite invite = new SQLHomeInvite(home.getId(), targetId);
+            plugin.getDb().saveAsync(invite, null);
+            home.getInvites().add(targetId);
         }
-        player.sendMessage(Component.text("Invite sent to " + targetName, NamedTextColor.GREEN));
-        Player target = this.plugin.getServer().getPlayer(targetId);
+        player.sendMessage(text("Invite sent to " + targetName, GREEN));
+        Player target = plugin.getServer().getPlayer(targetId);
         if (target != null) {
             if (home.getName() == null) {
                 String cmd = "/home " + player.getName() + ":";
-                Component tooltip = Component.join(JoinConfiguration.separator(Component.newline()),
-                                                   Component.text(cmd, NamedTextColor.GREEN),
-                                                   Component.text("Visit this home", NamedTextColor.GRAY));
-                target.sendMessage(Component.text(player.getName() + " invited you to their primary home ")
-                                   .append(Component.text("[Visit]", NamedTextColor.GREEN))
-                                   .clickEvent(ClickEvent.runCommand(cmd))
-                                   .hoverEvent(HoverEvent.showText(tooltip)));
+                Component tooltip = join(separator(newline()),
+                                         text(cmd, GREEN),
+                                         text("Visit this home", GRAY));
+                target.sendMessage(text(player.getName() + " invited you to their primary home ")
+                                   .append(text("[Visit]", GREEN))
+                                   .clickEvent(runCommand(cmd))
+                                   .hoverEvent(showText(tooltip)));
             } else {
                 String cmd = "/home " + player.getName() + ":" + home.getName();
-                Component tooltip = Component.join(JoinConfiguration.separator(Component.newline()),
-                                                   Component.text(cmd, NamedTextColor.GREEN),
-                                                   Component.text("Visit this home", NamedTextColor.GRAY));
-                target.sendMessage(Component.text(player.getName() + " invited you to their home " + home.getName() + " ")
-                                   .append(Component.text("[Visit]", NamedTextColor.GREEN))
-                                   .clickEvent(ClickEvent.runCommand(cmd))
-                                   .hoverEvent(HoverEvent.showText(tooltip)));
+                Component tooltip = join(separator(newline()),
+                                         text(cmd, GREEN),
+                                         text("Visit this home", GRAY));
+                target.sendMessage(text(player.getName() + " invited you to their home " + home.getName() + " ")
+                                   .append(text("[Visit]", GREEN))
+                                   .clickEvent(runCommand(cmd))
+                                   .hoverEvent(showText(tooltip)));
             }
         }
         PluginPlayerEvent.Name.INVITE_HOME.make(plugin, player)
@@ -440,21 +445,21 @@ public final class HomesCommand extends AbstractCommand<HomePlugin> {
         final String targetName = args[0];
         UUID target = PlayerCache.uuidForName(targetName);
         if (target == null) throw new CommandWarn("Player not found: " + targetName + "!");
-        Home home;
+        SQLHome home;
         if (args.length >= 2) {
             String arg = args[1];
-            home = plugin.findHome(player.getUniqueId(), arg);
+            home = plugin.getHomes().findOwnedHome(player.getUniqueId(), arg);
             if (home == null) throw new CommandWarn("Home not found: " + arg + "!");
         } else {
-            home = plugin.findHome(player.getUniqueId(), null);
+            home = plugin.getHomes().findPrimaryHome(player.getUniqueId());
             if (home == null) throw new CommandWarn("Default home not set.");
         }
-        if (!home.invites.contains(target)) throw new CommandWarn("Player not invited.");
-        plugin.getDb().find(HomeInvite.class)
+        if (!home.getInvites().contains(target)) throw new CommandWarn("Player not invited.");
+        plugin.getDb().find(SQLHomeInvite.class)
             .eq("home_id", home.getId())
             .eq("invitee", target).deleteAsync(null);
         home.getInvites().remove(target);
-        player.sendMessage(Component.text(targetName + " was uninvited", NamedTextColor.GREEN));
+        player.sendMessage(text(targetName + " was uninvited", GREEN));
         PluginPlayerEvent.Name.UNINVITE_HOME.make(plugin, player)
             .detail(Detail.TARGET, target)
             .detail(Detail.NAME, home.getName())
@@ -465,7 +470,7 @@ public final class HomesCommand extends AbstractCommand<HomePlugin> {
     protected boolean makePublic(Player player, String[] args) {
         if (args.length != 1 && args.length != 2) return false;
         String homeName = args[0];
-        Home home = plugin.findHome(player.getUniqueId(), homeName);
+        SQLHome home = plugin.getHomes().findOwnedHome(player.getUniqueId(), homeName);
         if (home == null) throw new CommandWarn("Home not found: " + homeName);
         if (home.getPublicName() != null) {
             throw new CommandWarn("Home is already public under the alias \""
@@ -477,24 +482,33 @@ public final class HomesCommand extends AbstractCommand<HomePlugin> {
         if (publicName == null) {
             throw new CommandWarn("Please supply a public name for this home");
         }
-        if (plugin.findPublicHome(publicName) != null) {
+        if (plugin.getHomes().findPublicHome(publicName) != null) {
             throw new CommandWarn("A public home by that name already exists."
                                   + " Please supply a different alias.");
         }
         home.setPublicName(publicName);
-        plugin.getDb().saveAsync(home, null, "public_name");
-        String cmd = "/visit " + publicName;
-        Component tooltip = Component.join(JoinConfiguration.separator(Component.newline()),
-                                           Component.text(cmd, NamedTextColor.GREEN),
-                                           Component.text("Find all public homes", NamedTextColor.GRAY),
-                                           Component.text("via ", NamedTextColor.GRAY)
-                                           .append(Component.text("/visit", NamedTextColor.WHITE)));
-        ComponentLike message = Component.text()
-            .content("Home made public. Players may visit via ")
-            .append(Component.text(cmd, NamedTextColor.GREEN))
-            .clickEvent(ClickEvent.suggestCommand(cmd))
-            .hoverEvent(HoverEvent.showText(tooltip));
-        player.sendMessage(message);
+        plugin.getDb().updateAsync(home, Set.of("public_name"), res -> {
+                if (res == 0) {
+                    home.setPublicName(null);
+                    player.sendMessage(text("A public home by that name already exists."
+                                            + " Please supply a different alias.", RED));
+                    return;
+                }
+                plugin.getHomes().add(home);
+                plugin.getConnectListener().broadcastHomeUpdate(home);
+                String cmd = "/visit " + publicName;
+                Component tooltip = join(separator(newline()),
+                                         text(cmd, GREEN),
+                                         text("Find all public homes", GRAY),
+                                         text("via ", GRAY)
+                                         .append(text("/visit", WHITE)));
+                ComponentLike message = text()
+                    .content("Home made public. Players may visit via ")
+                    .append(text(cmd, GREEN))
+                    .clickEvent(suggestCommand(cmd))
+                    .hoverEvent(showText(tooltip));
+                player.sendMessage(message);
+            });
         return true;
     }
 
@@ -503,7 +517,7 @@ public final class HomesCommand extends AbstractCommand<HomePlugin> {
         String homeName = args.length >= 1
             ? args[0]
             : null;
-        Home home = plugin.findHome(player.getUniqueId(), homeName);
+        SQLHome home = plugin.getHomes().findOwnedHome(player.getUniqueId(), homeName);
         if (home == null) {
             if (homeName == null) {
                 throw new CommandWarn("Your primary home is not set");
@@ -511,13 +525,11 @@ public final class HomesCommand extends AbstractCommand<HomePlugin> {
                 throw new CommandWarn("You do not have a home named \"" + homeName + "\"");
             }
         }
-        plugin.getDb().find(HomeInvite.class).eq("home_id", home.getId()).delete();
-        plugin.getDb().delete(home);
-        plugin.getHomes().remove(home);
+        plugin.deleteHome(home);
         if (homeName == null) {
-            player.sendMessage(Component.text("Your primary home was unset", NamedTextColor.GREEN));
+            player.sendMessage(text("Your primary home was unset", GREEN));
         } else {
-            player.sendMessage(Component.text("Home \"" + homeName + "\" deleted", NamedTextColor.GREEN));
+            player.sendMessage(text("Home \"" + homeName + "\" deleted", GREEN));
         }
         PluginPlayerEvent.Name.DELETE_HOME.make(plugin, player)
             .detail(Detail.NAME, homeName)
@@ -539,21 +551,29 @@ public final class HomesCommand extends AbstractCommand<HomePlugin> {
         return true;
     }
 
-    protected boolean visit(Player player, String[] args) {
+    protected boolean visit(RemotePlayer player, String[] args) {
         if (args.length == 0) {
-            listPublicHomes(player);
+            if (player.isPlayer()) {
+                listPublicHomes(player.getPlayer());
+            }
             return true;
         }
-        Home home = plugin.findPublicHome(args[0]);
+        String homeName = String.join(" ", args);
+        SQLHome home = plugin.getHomes().findPublicHome(homeName);
         if (home == null) {
-            throw new CommandWarn("Public home not found: " + args[0]);
+            throw new CommandWarn("Public home not found: " + homeName);
+        }
+        SQLHomeWorld homeWorld = plugin.findHomeWorld(home.getWorld());
+        if (homeWorld != null && !homeWorld.isOnThisServer() && player.isPlayer()) {
+            Connect.get().dispatchRemoteCommand(player.getPlayer(), "visit " + homeName, homeWorld.getServer());
+            return true;
         }
         BlockVector blockVector = home.createBlockVector();
         Claim claim = plugin.getClaimAt(blockVector);
         if (claim != null && !claim.canBuild(home.getOwner(), blockVector)) {
             throw new CommandWarn("The invite is no longer valid in this claim");
         }
-        if (claim != null && claim.getTrustType(player).isBan()) {
+        if (claim != null && claim.getTrustType(player.getUniqueId()).isBan()) {
             throw new CommandWarn("You are banned from this claim");
         }
         final String ownerName = home.getOwnerName();
@@ -562,31 +582,31 @@ public final class HomesCommand extends AbstractCommand<HomePlugin> {
         if (location == null) {
             throw new CommandWarn("Could not take you to this home.");
         }
-        PluginPlayerEvent.Name.VISIT_PUBLIC_HOME
-            .make(plugin, player)
-            .detail(Detail.NAME, publicName)
-            .detail(Detail.OWNER, home.getOwner())
-            .detail(Detail.LOCATION, location)
-            .callEvent();
-        plugin.warpTo(player, location, () -> {
-                player.sendMessage(Component.text("Teleported to "
-                                                  + ownerName + "'s public home \""
-                                                  + publicName + "\"",
-                                                  NamedTextColor.GREEN));
-                home.onVisit(player.getUniqueId());
+        player.bring(plugin, location, player2 -> {
+                home.onVisit(player2.getUniqueId());
+                player2.sendMessage(text("Teleported to "
+                                         + ownerName + "'s public home \""
+                                         + publicName + "\"",
+                                         GREEN));
+                PluginPlayerEvent.Name.VISIT_PUBLIC_HOME
+                    .make(plugin, player2)
+                    .detail(Detail.NAME, publicName)
+                    .detail(Detail.OWNER, home.getOwner())
+                    .detail(Detail.LOCATION, location)
+                    .callEvent();
             });
         return true;
     }
 
     protected void listPublicHomes(Player player) {
-        List<Home> publicHomes = plugin.getHomes().stream()
-            .filter(h -> h.getPublicName() != null)
-            .peek(Home::updateScore)
-            .sorted(Home::rank)
-            .collect(Collectors.toList());
+        List<SQLHome> publicHomes = plugin.getHomes().getPublicHomes();
         if (publicHomes.isEmpty()) {
             throw new CommandWarn("No public homes to show");
         }
+        for (SQLHome home : publicHomes) {
+            home.updateScore();
+        }
+        publicHomes.sort(SQLHome.RANK_COMPARATOR);
         player.sendMessage(Util.frame(publicHomes.size() == 1
                                       ? "One public home"
                                       : publicHomes.size() + " public homes"));
@@ -597,20 +617,20 @@ public final class HomesCommand extends AbstractCommand<HomePlugin> {
             for (int i = 0; i < pageLen; i += 1) {
                 int homeIndex = pageIndex * pageLen + i;
                 if (homeIndex >= publicHomes.size()) break;
-                Home home = publicHomes.get(homeIndex);
+                SQLHome home = publicHomes.get(homeIndex);
                 String cmd = "/visit " + home.getPublicName();
-                Component tooltip = Component.join(JoinConfiguration.separator(Component.newline()),
-                                                   Component.text(cmd, NamedTextColor.BLUE),
-                                                   Component.text("Visit this home", NamedTextColor.GRAY));
-                lines.add(Component.text().color(NamedTextColor.WHITE)
-                          .append(Component.text(" + ", NamedTextColor.AQUA))
-                          .append(Component.text(home.getPublicName()))
-                          .append(Component.text(" by " + home.getOwnerName(), NamedTextColor.GRAY))
-                          .clickEvent(ClickEvent.runCommand(cmd))
-                          .hoverEvent(HoverEvent.showText(tooltip))
+                Component tooltip = join(separator(newline()),
+                                         text(cmd, BLUE),
+                                         text("Visit this home", GRAY));
+                lines.add(text().color(WHITE)
+                          .append(text(" + ", AQUA))
+                          .append(text(home.getPublicName()))
+                          .append(text(" by " + home.getOwnerName(), GRAY))
+                          .clickEvent(runCommand(cmd))
+                          .hoverEvent(showText(tooltip))
                           .build());
             }
-            pages.add(Component.join(JoinConfiguration.separator(Component.newline()), lines));
+            pages.add(join(separator(newline()), lines));
         }
         if (pages.size() == 1) {
             player.sendMessage(pages.get(0));
@@ -622,40 +642,52 @@ public final class HomesCommand extends AbstractCommand<HomePlugin> {
     }
 
     protected List<String> completeOwnedHomes(CommandContext context, CommandNode node, String arg) {
-        if (context.player == null) return null;
-        return plugin.getHomes().stream()
-            .filter(h -> h.isOwner(context.player.getUniqueId())
-                    && h.getName() != null)
-            .map(Home::getName)
-            .filter(a -> a.contains(arg))
-            .collect(Collectors.toList());
+        if (context.player == null) return List.of();
+        List<String> result = new ArrayList<>();
+        String lower = arg.toLowerCase();
+        for (SQLHome home : plugin.getHomes().findOwnedHomes(context.player.getUniqueId())) {
+            if (home.isPrimary()) continue;
+            if (lower.isEmpty() || home.getName().toLowerCase().contains(lower)) {
+                result.add(home.getName());
+            }
+        }
+        result.sort(String.CASE_INSENSITIVE_ORDER);
+        return result;
     }
 
     protected List<String> completePublicableHomes(CommandContext context, CommandNode node, String arg) {
-        if (context.player == null) return null;
-        return plugin.getHomes().stream()
-            .filter(h -> h.isOwner(context.player.getUniqueId())
-                    && h.getName() != null
-                    && h.getPublicName() == null)
-            .map(Home::getName)
-            .filter(a -> a.contains(arg))
-            .collect(Collectors.toList());
+        if (context.player == null) return List.of();
+        List<String> result = new ArrayList<>();
+        String lower = arg.toLowerCase();
+        for (SQLHome home : plugin.getHomes().findOwnedHomes(context.player.getUniqueId())) {
+            if (home.isPrimary() || home.isPublic()) continue;
+            if (lower.isEmpty() || home.getName().toLowerCase().contains(lower)) {
+                result.add(home.getName());
+            }
+        }
+        result.sort(String.CASE_INSENSITIVE_ORDER);
+        return result;
     }
 
     protected List<String> completePublicHomes(CommandContext context, CommandNode node, String arg) {
-        return plugin.getHomes().stream()
-            .filter(h -> h.getPublicName() != null
-                    && h.getPublicName().startsWith(arg))
-            .map(Home::getPublicName)
-            .collect(Collectors.toList());
+        if (context.player == null) return List.of();
+        List<String> result = new ArrayList<>();
+        String lower = arg.toLowerCase();
+        for (SQLHome home : plugin.getHomes().getPublicHomes()) {
+            if (lower.isEmpty() || home.getPublicName().toLowerCase().contains(lower)) {
+                result.add(home.getPublicName());
+            }
+        }
+        result.sort(String.CASE_INSENSITIVE_ORDER);
+        return result;
     }
 
     protected List<String> completeUsableHomes(CommandContext context, CommandNode node, String arg) {
-        if (context.player == null) return null;
+        if (context.player == null) return List.of();
         UUID uuid = context.player.getUniqueId();
         List<String> result = new ArrayList<>();
         boolean ignore = plugin.doesIgnoreClaims(context.player);
-        for (Home home : plugin.getHomes()) {
+        for (SQLHome home : plugin.getHomes()) {
             if (home.isOwner(uuid)) {
                 if (home.getName() != null && home.getName().startsWith(arg)) {
                     result.add(home.getName());
@@ -672,6 +704,7 @@ public final class HomesCommand extends AbstractCommand<HomePlugin> {
                 }
             }
         }
+        result.sort(String.CASE_INSENSITIVE_ORDER);
         return result;
     }
 }

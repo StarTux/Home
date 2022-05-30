@@ -99,6 +99,11 @@ public final class Area {
                         outer.clampX(bx), outer.clampY(by));
     }
 
+    public Area growTo(int x, int y) {
+        return new Area(Math.min(ax, x), Math.min(ay, y),
+                        Math.max(bx, x), Math.max(by, y));
+    }
+
     public Vec2i getNearestOutside(Vec2i nearby) {
         int distX = Math.min(Math.abs(ax - nearby.x), Math.abs(bx - nearby.x));
         int distY = Math.min(Math.abs(ay - nearby.y), Math.abs(by - nearby.y));

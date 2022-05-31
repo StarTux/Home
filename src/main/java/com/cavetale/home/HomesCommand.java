@@ -687,9 +687,10 @@ public final class HomesCommand extends AbstractCommand<HomePlugin> {
         UUID uuid = context.player.getUniqueId();
         List<String> result = new ArrayList<>();
         boolean ignore = plugin.doesIgnoreClaims(context.player);
+        String lower = arg.toLowerCase();
         for (SQLHome home : plugin.getHomes()) {
             if (home.isOwner(uuid)) {
-                if (home.getName() != null && home.getName().startsWith(arg)) {
+                if (home.getName() != null && home.getName().contains(lower)) {
                     result.add(home.getName());
                 }
             } else {
@@ -700,7 +701,7 @@ public final class HomesCommand extends AbstractCommand<HomePlugin> {
                     } else {
                         name = home.getOwnerName() + ":" + home.getName();
                     }
-                    if (name.startsWith(arg)) result.add(name);
+                    if (name.toLowerCase().contains(lower)) result.add(name);
                 }
             }
         }

@@ -1,8 +1,9 @@
 package com.cavetale.home;
 
+import com.cavetale.core.connect.Connect;
+import com.cavetale.core.connect.ServerGroup;
+import com.cavetale.core.event.connect.ConnectMessageEvent;
 import com.cavetale.home.sql.SQLHome;
-import com.winthier.connect.Connect;
-import com.winthier.connect.event.ConnectMessageEvent;
 import lombok.RequiredArgsConstructor;
 import org.bukkit.Bukkit;
 import org.bukkit.event.EventHandler;
@@ -19,24 +20,24 @@ public final class ConnectListener implements Listener {
     }
 
     public static void broadcastClaimUpdate(Claim claim) {
-        Connect.getInstance().broadcast(CHANNEL_CLAIM_UPDATE, "" + claim.getId());
+        Connect.get().broadcastMessage(ServerGroup.current(), CHANNEL_CLAIM_UPDATE, "" + claim.getId());
     }
 
     public static void broadcastHomeUpdate(SQLHome home) {
-        Connect.getInstance().broadcast(CHANNEL_HOME_UPDATE, "" + home.getId());
+        Connect.get().broadcastMessage(ServerGroup.current(), CHANNEL_HOME_UPDATE, "" + home.getId());
     }
 
     @EventHandler
     private void onConnectMessage(ConnectMessageEvent event) {
-        switch (event.getMessage().getChannel()) {
+        switch (event.getChannel()) {
         case CHANNEL_CLAIM_UPDATE: {
-            int claimId = Integer.parseInt(event.getMessage().getPayload());
+            int claimId = Integer.parseInt(event.getPayload());
             plugin.reloadClaim(claimId);
             plugin.getLogger().info("Received claim update: " + claimId); // debug
             break;
         }
         case CHANNEL_HOME_UPDATE: {
-            int homeId = Integer.parseInt(event.getMessage().getPayload());
+            int homeId = Integer.parseInt(event.getPayload());
             plugin.reloadHome(homeId);
             plugin.getLogger().info("Received home update: " + homeId); // debug
             break;

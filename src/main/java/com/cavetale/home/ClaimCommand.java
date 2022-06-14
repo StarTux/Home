@@ -9,9 +9,10 @@ import com.cavetale.core.command.RemotePlayer;
 import com.cavetale.core.connect.Connect;
 import com.cavetale.core.event.player.PluginPlayerEvent.Detail;
 import com.cavetale.core.event.player.PluginPlayerEvent;
+import com.cavetale.core.money.Money;
 import com.cavetale.home.sql.SQLHomeWorld;
 import com.cavetale.home.struct.BlockVector;
-import com.cavetale.money.Money;
+import com.cavetale.mytems.item.coin.Coin;
 import com.winthier.playercache.PlayerCache;
 import java.util.ArrayList;
 import java.util.Collections;
@@ -24,8 +25,6 @@ import lombok.Value;
 import net.kyori.adventure.text.Component;
 import net.kyori.adventure.text.ComponentLike;
 import net.kyori.adventure.text.TextComponent;
-import net.kyori.adventure.text.event.ClickEvent;
-import net.kyori.adventure.text.event.HoverEvent;
 import net.kyori.adventure.text.format.TextColor;
 import org.bukkit.Bukkit;
 import org.bukkit.Chunk;
@@ -40,6 +39,8 @@ import static net.kyori.adventure.text.Component.space;
 import static net.kyori.adventure.text.Component.text;
 import static net.kyori.adventure.text.JoinConfiguration.noSeparators;
 import static net.kyori.adventure.text.JoinConfiguration.separator;
+import static net.kyori.adventure.text.event.ClickEvent.runCommand;
+import static net.kyori.adventure.text.event.HoverEvent.showText;
 import static net.kyori.adventure.text.format.NamedTextColor.*;
 
 public final class ClaimCommand extends AbstractCommand<HomePlugin> {
@@ -181,8 +182,8 @@ public final class ClaimCommand extends AbstractCommand<HomePlugin> {
         if (claim.getTrustType(player).canBuild()) {
             player.sendMessage(text("Teleport ", GRAY)
                                .append(text("[Port]", BLUE))
-                               .hoverEvent(HoverEvent.showText(text("Port to this claim", BLUE)))
-                               .clickEvent(ClickEvent.runCommand("/claim port " + claim.getId())));
+                               .hoverEvent(showText(text("Port to this claim", BLUE)))
+                               .clickEvent(runCommand("/claim port " + claim.getId())));
         }
         player.sendMessage("");
         plugin.highlightClaim(claim, player);
@@ -219,8 +220,8 @@ public final class ClaimCommand extends AbstractCommand<HomePlugin> {
             claimSize = Globals.SECONDARY_CLAIM_SIZE;
             claimCost = Globals.SECONDARY_CLAIM_COST;
         }
-        if (Money.get(uuid) < claimCost) {
-            throw new CommandWarn("You cannot afford " + Money.format(claimCost) + "!");
+        if (!Money.get().has(uuid, claimCost)) {
+            throw new CommandWarn(join(noSeparators(), text("You cannot afford ", RED), Coin.format(claimCost)));
         }
         final int rad = claimSize / 2;
         final int tol = (rad * 2 == claimSize) ? 1 : 0;
@@ -244,7 +245,7 @@ public final class ClaimCommand extends AbstractCommand<HomePlugin> {
             .append(text(" around your current location."));
         if (claimCost >= 0.01) {
             message.append(text(" This will cost you "))
-                .append(text(Money.format(claimCost), GOLD))
+                .append(Coin.format(claimCost))
                 .append(text("."));
         }
         message.append(text(" Your new claim will have "))
@@ -252,7 +253,7 @@ public final class ClaimCommand extends AbstractCommand<HomePlugin> {
             .append(text(" claim blocks."));
         if (Globals.CLAIM_BLOCK_COST >= 0.01) {
             message.append(text(" You can buy additional claim blocks for "))
-                .append(text(Money.format(Globals.CLAIM_BLOCK_COST), GOLD))
+                .append(Coin.format(Globals.CLAIM_BLOCK_COST))
                 .append(text(" per block."));
         }
         message.append(text(" You can abandon the claim after a cooldown of "))
@@ -263,12 +264,12 @@ public final class ClaimCommand extends AbstractCommand<HomePlugin> {
             .append(newline())
             .append(text("Proceed? ", GRAY))
             .append(text("[Confirm]", GREEN)
-                    .clickEvent(ClickEvent.runCommand("/claim confirm " + ncmeta.token))
-                    .hoverEvent(HoverEvent.showText(text("Confirm this purchase", GREEN))))
+                    .clickEvent(runCommand("/claim confirm " + ncmeta.token))
+                    .hoverEvent(showText(text("Confirm this purchase", GREEN))))
             .append(space())
             .append(text("[Cancel]", RED)
-                    .clickEvent(ClickEvent.runCommand("/claim cancel"))
-                    .hoverEvent(HoverEvent.showText(text("Cancel this purchase", RED))))
+                    .clickEvent(runCommand("/claim cancel"))
+                    .hoverEvent(showText(text("Cancel this purchase", RED))))
             .append(newline());
         player.sendMessage(message);
         return true;
@@ -353,10 +354,11 @@ public final class ClaimCommand extends AbstractCommand<HomePlugin> {
             throw new CommandWarn("You do not own this claim!");
         }
         double price = (double) buyClaimBlocks * Globals.CLAIM_BLOCK_COST;
-        String priceFormat = Money.format(price);
-        if (Money.get(uuid) < price) {
-            throw new CommandWarn("You do not have " + priceFormat + " to buy "
-                                  + buyClaimBlocks + " claim blocks");
+        if (!Money.get().has(uuid, price)) {
+            throw new CommandWarn(join(noSeparators(), text("You do not have "),
+                                       Coin.format(price), text(" to buy "),
+                                       text(buyClaimBlocks + " claim blocks"))
+                                  .color(RED));
         }
         BuyClaimBlocks meta = new BuyClaimBlocks(buyClaimBlocks, price, claim.getId(), ""
                                                  + ThreadLocalRandom.current().nextInt(9999));
@@ -365,21 +367,20 @@ public final class ClaimCommand extends AbstractCommand<HomePlugin> {
             .content("Buying ")
             .append(text(buyClaimBlocks, GREEN))
             .append(text(" for "))
-            .append(text(priceFormat, GOLD))
+            .append(Coin.format(price))
             .append(text("."))
             .append(newline())
             .append(text("Confirm this purchase ", GRAY))
             .append(text("[Confirm]", GREEN)
-                    .clickEvent(ClickEvent.runCommand("/claim confirm " + meta.token))
-                    .hoverEvent(HoverEvent.showText(join(separator(newline()),
-                                                         text("Confirm", GREEN),
-                                                         text("Buy " + buyClaimBlocks
-                                                              + " for " + priceFormat,
-                                                              GRAY)))))
+                    .clickEvent(runCommand("/claim confirm " + meta.token))
+                    .hoverEvent(showText(join(separator(newline()),
+                                              text("Confirm", GREEN),
+                                              text("Buy " + buyClaimBlocks + " for ", GRAY),
+                                              Coin.format(price)))))
             .append(space())
             .append(text("[Cancel]", RED)
-                    .clickEvent(ClickEvent.runCommand("/claim cancel"))
-                    .hoverEvent(HoverEvent.showText(text("Cancel purchase", RED))));
+                    .clickEvent(runCommand("/claim cancel"))
+                    .hoverEvent(showText(text("Cancel purchase", RED))));
         player.sendMessage(message);
         return true;
     }
@@ -397,8 +398,8 @@ public final class ClaimCommand extends AbstractCommand<HomePlugin> {
             if (!args[0].equals(meta.token)) {
                 throw new CommandWarn("Purchase expired");
             }
-            if (!Money.take(uuid, meta.price, plugin, "Buy " + meta.amount + " claim blocks")) {
-                throw new CommandWarn("You cannot afford " + Money.format(meta.price));
+            if (!Money.get().take(uuid, meta.price, plugin, "Buy " + meta.amount + " claim blocks")) {
+                throw new CommandWarn(join(noSeparators(), text("You cannot afford ", RED), Coin.format(meta.price)));
             }
             claim.setBlocks(claim.getBlocks() + meta.amount);
             Session.ClaimGrowSnippet snippet = plugin.sessions.of(player).getClaimGrowSnippet();
@@ -447,9 +448,9 @@ public final class ClaimCommand extends AbstractCommand<HomePlugin> {
                 }
             }
             if (ncmeta.price >= 0.01) {
-                if (!Money.take(uuid, ncmeta.price, plugin,
-                                "Make new claim in " + plugin.worldDisplayName(ncmeta.world))) {
-                    throw new CommandWarn("You cannot afford " + Money.format(ncmeta.price) + "!");
+                if (!Money.get().take(uuid, ncmeta.price, plugin,
+                                      "Make new claim in " + plugin.worldDisplayName(ncmeta.world))) {
+                    throw new CommandWarn(join(noSeparators(), text("You cannot afford ", RED), Coin.format(ncmeta.price)));
                 }
             }
             Claim claim = new Claim(plugin, uuid, ncmeta.world, ncmeta.area);
@@ -463,11 +464,11 @@ public final class ClaimCommand extends AbstractCommand<HomePlugin> {
                     ComponentLike message = text().color(WHITE)
                         .append(text("Claim created!  "))
                         .append(text("[View]", GREEN))
-                        .clickEvent(ClickEvent.runCommand("/claim info"))
-                        .hoverEvent(HoverEvent.showText(join(separator(newline()),
-                                                             text("/claim info"),
-                                                             text("View claim info and highlight your claim",
-                                                                  GRAY))));
+                        .clickEvent(runCommand("/claim info"))
+                        .hoverEvent(showText(join(separator(newline()),
+                                                  text("/claim info"),
+                                                  text("View claim info and highlight your claim",
+                                                       GRAY))));
                     player.sendMessage(message);
                     plugin.highlightClaim(claim, player);
                     PluginPlayerEvent.Name.CREATE_CLAIM.call(plugin, player);
@@ -603,12 +604,12 @@ public final class ClaimCommand extends AbstractCommand<HomePlugin> {
             boolean on = claim.getSetting(setting);
             String key = setting.name().toLowerCase();
             line.append(text("[ON]", (on ? GREEN : DARK_GRAY))
-                        .clickEvent(ClickEvent.runCommand("/claim set " + key + " on"))
-                        .hoverEvent(HoverEvent.showText(text("Enable " + setting.displayName, GREEN))));
+                        .clickEvent(runCommand("/claim set " + key + " on"))
+                        .hoverEvent(showText(text("Enable " + setting.displayName, GREEN))));
             line.append(space());
             line.append(text("[OFF]", (on ? DARK_GRAY : RED))
-                        .clickEvent(ClickEvent.runCommand("/claim set " + key + " off"))
-                        .hoverEvent(HoverEvent.showText(text("Disable " + setting.displayName, RED))));
+                        .clickEvent(runCommand("/claim set " + key + " off"))
+                        .hoverEvent(showText(text("Disable " + setting.displayName, RED))));
             line.append(space());
             line.append(text(setting.displayName, setting.isAdminOnly() ? RED : WHITE));
             lines.add(line);
@@ -638,17 +639,16 @@ public final class ClaimCommand extends AbstractCommand<HomePlugin> {
         Area newArea = new Area(ax, ay, bx, by);
         if (claim.getBlocks() < newArea.size()) {
             int needed = newArea.size() - claim.getBlocks();
-            String formatMoney = Money.format((double) needed * Globals.CLAIM_BLOCK_COST);
             Component tooltip = join(separator(newline()),
                                      text("/claim buy " + needed, YELLOW),
                                      text("Buy more " + needed + " claim blocks", GRAY),
-                                     text("for ", GRAY)
-                                     .append(text(formatMoney, GOLD)));
+                                     text("for ", GRAY),
+                                     Coin.format((double) needed * Globals.CLAIM_BLOCK_COST));
             ComponentLike message = text().color(YELLOW)
                 .append(text(needed + " more claim blocks required. "))
                 .append(text("[Buy More]", GRAY)
-                        .clickEvent(ClickEvent.runCommand("/claim buy " + needed))
-                        .hoverEvent(HoverEvent.showText(tooltip)));
+                        .clickEvent(runCommand("/claim buy " + needed))
+                        .hoverEvent(showText(tooltip)));
             player.sendMessage(message);
             Session.ClaimGrowSnippet snippet = new Session.ClaimGrowSnippet(player.getWorld().getName(), x, z, claim.getId());
             plugin.sessions.of(player).setClaimGrowSnippet(snippet);
@@ -728,12 +728,12 @@ public final class ClaimCommand extends AbstractCommand<HomePlugin> {
             .append(newline())
             .append(text("This cannot be undone! "))
             .append(text("[Confirm]", RED)
-                    .clickEvent(ClickEvent.runCommand("/claim confirm " + claim.getId()))
-                    .hoverEvent(HoverEvent.showText(text("Confirm Claim Abandonment", RED))))
+                    .clickEvent(runCommand("/claim confirm " + claim.getId()))
+                    .hoverEvent(showText(text("Confirm Claim Abandonment", RED))))
             .append(space())
             .append(text("[Cancel]", GREEN)
-                    .clickEvent(ClickEvent.runCommand("/claim cancel"))
-                    .hoverEvent(HoverEvent.showText(text("Cancel Claim Abandonment", GREEN))));
+                    .clickEvent(runCommand("/claim cancel"))
+                    .hoverEvent(showText(text("Cancel Claim Abandonment", GREEN))));
         player.sendMessage(message);
         return true;
     }
@@ -825,8 +825,8 @@ public final class ClaimCommand extends AbstractCommand<HomePlugin> {
                 lines.add(text().color(WHITE)
                           .append(text(" + ", GREEN))
                           .append(text(displayName))
-                          .clickEvent(ClickEvent.runCommand("/claim info " + claim.getId()))
-                          .hoverEvent(HoverEvent.showText(makeClaimInfo(player, claim)))
+                          .clickEvent(runCommand("/claim info " + claim.getId()))
+                          .hoverEvent(showText(makeClaimInfo(player, claim)))
                           .build());
             }
             pages.add(join(separator(newline()), lines));
@@ -857,10 +857,10 @@ public final class ClaimCommand extends AbstractCommand<HomePlugin> {
             String claimName = claim.getName() != null ? claim.getName() : claim.getOwnerName();
             message.append(space());
             message.append(text("[" + claimName + "]", GREEN)
-                           .clickEvent(ClickEvent.runCommand("/claim info " + claim.getId()))
-                           .hoverEvent(HoverEvent.showText(text(claim.getOwnerName()
-                                                                + " invited you to this claim",
-                                                                GREEN))));
+                           .clickEvent(runCommand("/claim info " + claim.getId()))
+                           .hoverEvent(showText(text(claim.getOwnerName()
+                                                     + " invited you to this claim",
+                                                     GREEN))));
         }
         player.sendMessage(message);
         return true;

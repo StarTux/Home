@@ -33,7 +33,7 @@
     <dependency>
       <groupId>io.papermc.paper</groupId>
       <artifactId>paper-api</artifactId>
-      <version>1.18.2-R0.1-SNAPSHOT</version>
+      <version>1.19-R0.1-SNAPSHOT</version>
       <scope>provided</scope>
     </dependency>
 
@@ -93,10 +93,10 @@
       <scope>provided</scope>
     </dependency>
 
-    <!-- Money -->
+    <!-- Mytems -->
     <dependency>
-      <groupId>com.cavetale.money</groupId>
-      <artifactId>money</artifactId>
+      <groupId>com.cavetale.mytems</groupId>
+      <artifactId>mytems</artifactId>
       <version>0.1-SNAPSHOT</version>
       <scope>provided</scope>
     </dependency>
@@ -113,14 +113,6 @@
     <dependency>
       <groupId>com.winthier.playerinfo</groupId>
       <artifactId>playerinfo</artifactId>
-      <version>0.1-SNAPSHOT</version>
-      <scope>provided</scope>
-    </dependency>
-
-    <!-- Connect -->
-    <dependency>
-      <groupId>com.winthier.connect</groupId>
-      <artifactId>connect</artifactId>
       <version>0.1-SNAPSHOT</version>
       <scope>provided</scope>
     </dependency>

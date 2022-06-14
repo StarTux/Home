@@ -908,7 +908,7 @@ public final class ClaimCommand extends AbstractCommand<HomePlugin> {
         if (claim.isOwner(target)) {
             throw new CommandWarn("You cannot kick a claim owner!");
         }
-        if (!claim.contains(player.getLocation())) {
+        if (!claim.contains(target.getLocation())) {
             throw new CommandWarn(target.getName() + " is not in this claim!");
         }
         if (claim.getTrustType(target).gt(claim.getTrustType(player))) {

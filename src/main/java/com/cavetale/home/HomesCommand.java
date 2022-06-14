@@ -690,7 +690,7 @@ public final class HomesCommand extends AbstractCommand<HomePlugin> {
         String lower = arg.toLowerCase();
         for (SQLHome home : plugin.getHomes()) {
             if (home.isOwner(uuid)) {
-                if (home.getName() != null && home.getName().contains(lower)) {
+                if (home.getName() != null && home.getName().toLowerCase().contains(lower)) {
                     result.add(home.getName());
                 }
             } else {

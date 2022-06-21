@@ -3,6 +3,7 @@ package com.cavetale.home;
 import com.cavetale.core.event.block.PlayerBlockAbilityQuery;
 import com.cavetale.core.event.block.PlayerBreakBlockEvent;
 import com.cavetale.core.event.entity.PlayerEntityAbilityQuery;
+import com.cavetale.core.event.hud.PlayerHudEvent;
 import com.cavetale.home.struct.BlockVector;
 import com.destroystokyo.paper.event.entity.PreCreatureSpawnEvent;
 import com.winthier.exploits.Exploits;
@@ -995,5 +996,11 @@ final class ClaimListener implements Listener {
         if (!Objects.equals(from, to)) {
             event.setCancelled(true);
         }
+    }
+
+    @EventHandler
+    protected void onPlayerHud(PlayerHudEvent event) {
+        Player player = event.getPlayer();
+        plugin.sessions.of(player).onPlayerHud(player, event);
     }
 }

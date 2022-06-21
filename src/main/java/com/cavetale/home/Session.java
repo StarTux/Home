@@ -1,24 +1,24 @@
 package com.cavetale.home;
 
 import com.cavetale.core.command.CommandWarn;
+import com.cavetale.core.event.hud.PlayerHudEvent;
+import com.cavetale.core.event.hud.PlayerHudPriority;
 import com.cavetale.core.event.player.PluginPlayerQuery;
-import com.cavetale.sidebar.PlayerSidebarEvent;
-import com.cavetale.sidebar.Priority;
+import com.cavetale.home.sql.SQLHomeWorld;
 import java.time.Duration;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Set;
 import java.util.UUID;
 import java.util.function.Function;
 import lombok.Getter;
 import lombok.Setter;
 import lombok.Value;
+import net.kyori.adventure.bossbar.BossBar;
 import net.kyori.adventure.text.Component;
-import net.kyori.adventure.text.JoinConfiguration;
 import net.kyori.adventure.text.event.ClickEvent;
 import net.kyori.adventure.text.event.HoverEvent;
-import net.kyori.adventure.text.format.NamedTextColor;
 import net.kyori.adventure.text.format.TextColor;
-import net.kyori.adventure.text.format.TextDecoration;
 import net.kyori.adventure.title.Title;
 import org.bukkit.Bukkit;
 import org.bukkit.GameMode;
@@ -28,8 +28,18 @@ import org.bukkit.SoundCategory;
 import org.bukkit.World;
 import org.bukkit.entity.Player;
 import org.bukkit.event.player.PlayerInteractEvent;
+import static com.cavetale.core.font.Unicode.tiny;
+import static net.kyori.adventure.text.Component.join;
+import static net.kyori.adventure.text.Component.newline;
+import static net.kyori.adventure.text.Component.space;
+import static net.kyori.adventure.text.Component.text;
+import static net.kyori.adventure.text.JoinConfiguration.noSeparators;
+import static net.kyori.adventure.text.JoinConfiguration.separator;
+import static net.kyori.adventure.text.format.NamedTextColor.*;
+import static net.kyori.adventure.text.format.TextDecoration.*;
 
 public final class Session {
+    private static final int MAX_NOTIFY = 100;
     private final HomePlugin plugin;
     private final UUID uuid;
     @Setter private Function<PlayerInteractEvent, Boolean> playerInteractCallback = null;
@@ -38,13 +48,19 @@ public final class Session {
     private List<Component> storedPages = new ArrayList<>();
     private long notifyCooldown = 0L;
     @Getter @Setter private ClaimGrowSnippet claimGrowSnippet;
+    private SQLHomeWorld currentHomeWorld;
     private Claim currentClaim;
     private int ticks;
-    @Setter private int sidebarTicks;
+    private int notifyTicks;
 
     public Session(final HomePlugin plugin, final Player player) {
         this.plugin = plugin;
         this.uuid = player.getUniqueId();
+        final World world = player.getWorld();
+        if (plugin.isLocalHomeWorld(world)) {
+            currentHomeWorld = plugin.findHomeWorld(world.getName());
+            currentClaim = plugin.getClaimAt(player.getLocation());
+        }
     }
 
     public Player getPlayer() {
@@ -81,20 +97,20 @@ public final class Session {
     public void requireConfirmation(String message, Runnable callback) {
         confirmCallback = callback;
         confirmMessage = message;
-        Component confirmTooltip = Component.join(JoinConfiguration.separator(Component.newline()),
-                                                  Component.text("Confirm", NamedTextColor.GREEN),
-                                                  Component.text(message, NamedTextColor.GRAY));
-        Component cancelTooltip = Component.join(JoinConfiguration.separator(Component.newline()),
-                                                 Component.text("Cancel", NamedTextColor.GREEN),
-                                                 Component.text(message, NamedTextColor.GRAY));
-        getPlayer().sendMessage(Component.text().color(NamedTextColor.WHITE)
+        Component confirmTooltip = join(separator(newline()),
+                                        text("Confirm", GREEN),
+                                        text(message, GRAY));
+        Component cancelTooltip = join(separator(newline()),
+                                       text("Cancel", GREEN),
+                                       text(message, GRAY));
+        getPlayer().sendMessage(text().color(WHITE)
                                 .content(message)
-                                .append(Component.space())
-                                .append(Component.text().content("[Confirm]").color(NamedTextColor.GREEN)
+                                .append(space())
+                                .append(text().content("[Confirm]").color(GREEN)
                                         .clickEvent(ClickEvent.runCommand("/subclaim confirm"))
                                         .hoverEvent(HoverEvent.showText(confirmTooltip)))
-                                .append(Component.space())
-                                .append(Component.text().content("[Cancel]").color(NamedTextColor.RED)
+                                .append(space())
+                                .append(text().content("[Cancel]").color(RED)
                                         .clickEvent(ClickEvent.runCommand("/subclaim cancel"))
                                         .hoverEvent(HoverEvent.showText(cancelTooltip))));
     }
@@ -107,7 +123,7 @@ public final class Session {
         String message = confirmMessage;
         confirmCallback = null;
         confirmMessage = null;
-        getPlayer().sendMessage(Component.text("Cancelled: " + message, NamedTextColor.RED));
+        getPlayer().sendMessage(text("Cancelled: " + message, RED));
     }
 
     /**
@@ -121,7 +137,7 @@ public final class Session {
         try {
             callback.run();
         } catch (CommandWarn warn) {
-            getPlayer().sendMessage(Component.text(warn.getMessage(), NamedTextColor.RED));
+            getPlayer().sendMessage(text(warn.getMessage(), RED));
         }
     }
 
@@ -135,12 +151,12 @@ public final class Session {
         player.sendMessage(page);
         if (pageIndex == storedPages.size() - 1) return true;
         int remainingPages = storedPages.size() - pageIndex - 1;
-        player.sendMessage(Component.text().color(NamedTextColor.GRAY)
+        player.sendMessage(text().color(GRAY)
                            .content("Showing page " + (pageIndex + 1) + "/" + storedPages.size())
-                           .append(Component.space())
-                           .append(Component.text("[View Next]", NamedTextColor.GREEN))
+                           .append(space())
+                           .append(text("[View Next]", GREEN))
                            .clickEvent(ClickEvent.runCommand("/homes page " + (pageIndex + 2)))
-                           .hoverEvent(HoverEvent.showText(Component.text("View Next Page", NamedTextColor.GREEN))));
+                           .hoverEvent(HoverEvent.showText(text("View Next Page", GREEN))));
         return true;
     }
 
@@ -148,8 +164,7 @@ public final class Session {
         long now = System.currentTimeMillis();
         if (notifyCooldown > now) return;
         notifyCooldown = now + 1000L;
-        player.sendActionBar(Component.text("This claim belongs to " + claim.getOwnerName(),
-                                            TextColor.color(0xFF0000)));
+        player.sendActionBar(text("This claim belongs to " + claim.getOwnerName(), RED));
     }
 
     public boolean notify(Player player, Component component) {
@@ -197,8 +212,8 @@ public final class Session {
         Area area = new Area(x - range, z - range, x + range, z + range);
         for (Claim claim : plugin.getClaimCache().within(w, area)) {
             if (claim.getSetting(ClaimSetting.ELYTRA)) continue;
-            Title title = Title.title(Component.text("WARNING", NamedTextColor.RED, TextDecoration.BOLD),
-                                      Component.text("Approaching No-Fly Zone!", NamedTextColor.RED, TextDecoration.BOLD),
+            Title title = Title.title(text("WARNING", RED, BOLD),
+                                      text("Approaching No-Fly Zone!", RED, BOLD),
                                       Title.Times.times(Duration.ZERO, Duration.ofMillis(550), Duration.ZERO));
             player.showTitle(title);
             player.playSound(player.getEyeLocation(),
@@ -212,11 +227,13 @@ public final class Session {
         if (player.getGameMode() == GameMode.SPECTATOR) return;
         final World world = player.getWorld();
         if (!plugin.isLocalHomeWorld(world)) {
+            currentHomeWorld = null;
             currentClaim = null;
             ticks = 0;
-            sidebarTicks = 0;
+            notifyTicks = 0;
             return;
         }
+        currentHomeWorld = plugin.findHomeWorld(world.getName());
         final Location location = player.getLocation();
         final Claim oldClaim = currentClaim;
         final Claim newClaim;
@@ -229,7 +246,7 @@ public final class Session {
         if (newClaim != null) {
             if (newClaim.getTrustType(player).isBan()) {
                 newClaim.kick(player);
-                Component msg = Component.text("You cannot enter this claim!", TextColor.color(0xFF0000));
+                Component msg = text("You cannot enter this claim!", TextColor.color(0xFF0000));
                 player.sendActionBar(msg);
                 player.sendMessage(msg);
                 plugin.highlightClaim(newClaim, player);
@@ -244,11 +261,11 @@ public final class Session {
             kicked = false;
         }
         if (kicked) {
-            sidebarTicks = 0;
+            notifyTicks = MAX_NOTIFY;
         }
         if (!kicked && oldClaim != currentClaim) {
             notifyClaimChange(player, oldClaim, currentClaim);
-            sidebarTicks = 0;
+            notifyTicks = MAX_NOTIFY;
         }
         if (!kicked && currentClaim != null) {
             triggerClaimActions(player);
@@ -256,6 +273,7 @@ public final class Session {
         if (!kicked && ticks % 10 == 0) {
             tickNoFlyZone(player);
         }
+        if (notifyTicks > 0) notifyTicks -= 1;
         ticks += 1;
     }
 
@@ -270,7 +288,7 @@ public final class Session {
         }
         if (player.isGliding() && !currentClaim.getSetting(ClaimSetting.ELYTRA)) {
             player.setGliding(false);
-            Component msg = Component.text("You cannot fly in this claim!", TextColor.color(0xFF0000));
+            Component msg = text("You cannot fly in this claim!", TextColor.color(0xFF0000));
             if (notify(player, msg)) {
                 player.sendMessage(msg);
                 plugin.highlightClaim(currentClaim, player);
@@ -284,8 +302,8 @@ public final class Session {
             String name = oldClaim.getName();
             String namePart = name != null ? " " + name : "";
             Component message = oldClaim.isOwner(player)
-                ? Component.text("Leaving your claim" + namePart, NamedTextColor.GRAY)
-                : Component.text("Leaving " + oldClaim.getOwnerGenitive() + " claim" + namePart, NamedTextColor.GRAY);
+                ? text("Leaving your claim" + namePart, GRAY)
+                : text("Leaving " + oldClaim.getOwnerGenitive() + " claim" + namePart, GRAY);
             player.sendActionBar(message);
             if (oldClaim.getSetting(ClaimSetting.SHOW_BORDERS)) {
                 plugin.highlightClaim(oldClaim, player);
@@ -296,8 +314,8 @@ public final class Session {
             String name = newClaim.getName();
             String namePart = name != null ? " " + name : "";
             Component message = newClaim.isOwner(player)
-                ? Component.text("Entering your claim" + namePart, NamedTextColor.GRAY)
-                : Component.text("Entering " + newClaim.getOwnerGenitive() + " claim" + namePart, NamedTextColor.GRAY);
+                ? text("Entering your claim" + namePart, GRAY)
+                : text("Entering " + newClaim.getOwnerGenitive() + " claim" + namePart, GRAY);
             player.sendActionBar(message);
             if (newClaim.getSetting(ClaimSetting.SHOW_BORDERS)) {
                 plugin.highlightClaim(newClaim, player);
@@ -305,37 +323,27 @@ public final class Session {
         }
     }
 
-    protected void onPlayerSidebar(Player player, PlayerSidebarEvent event) {
-        if (ticks == 0) return;
-        if (sidebarTicks > 300) return;
-        sidebarTicks += 1;
-        List<Component> lines = new ArrayList<>();
-        if (currentClaim == null) {
-            lines.add(Component.text().color(NamedTextColor.AQUA)
-                      .append(Component.text("Area not "))
-                      .append(Component.text("/claim", NamedTextColor.YELLOW))
-                      .append(Component.text("ed"))
-                      .build());
-        } else {
-            lines.add(Component.text().color(NamedTextColor.AQUA)
-                      .append(Component.text("Current "))
-                      .append(Component.text("/claim", NamedTextColor.YELLOW))
-                      .append(Component.text(":"))
-                      .build());
-            boolean canBuild = currentClaim.getTrustType(player).canBuild();
-            Component ownerName = Component.text((currentClaim.isOwner(player)
-                                                  ? "Your"
-                                                  : currentClaim.getOwnerGenitive()));
-            Component claimName = currentClaim.getName() != null
-                ? Component.text(currentClaim.getName(), null, TextDecoration.ITALIC)
-                : Component.text("Claim");
-            lines.add(Component.text().color(canBuild ? NamedTextColor.GREEN : NamedTextColor.AQUA)
-                      .append(Component.space())
-                      .append(ownerName)
-                      .append(Component.space())
-                      .append(claimName)
-                      .build());
+    protected void onPlayerHud(Player player, PlayerHudEvent event) {
+        List<Component> header = new ArrayList<>();
+        if (currentHomeWorld != null) {
+            header.add(join(noSeparators(), text(tiny("world "), GRAY), text(currentHomeWorld.getDisplayName(), BLUE)));
         }
-        event.add(plugin, Priority.DEFAULT, lines);
+        if (currentClaim != null) {
+            TrustType trust = currentClaim.getTrustType(player);
+            String claimName = currentClaim.getName() != null
+                ? currentClaim.getName()
+                : currentClaim.getOwnerName();
+            TextColor claimColor = trust.canBuild() ? BLUE : (trust.canInteract() ? AQUA : RED);
+            Component claimLine = join(noSeparators(), text(tiny("claim "), GRAY), text(claimName, claimColor));
+            header.add(claimLine);
+            if (notifyTicks > 0) {
+                BossBar.Color bossColor = trust.canBuild() ? BossBar.Color.BLUE : BossBar.Color.RED;
+                float progress = (float) notifyTicks / (float) MAX_NOTIFY;
+                event.bossbar(PlayerHudPriority.LOWEST, claimLine, bossColor, BossBar.Overlay.PROGRESS, Set.of(), progress);
+            }
+        } else {
+            header.add(join(noSeparators(), text(tiny("claim "), GRAY), text(tiny("none"), DARK_GRAY)));
+        }
+        event.header(PlayerHudPriority.HIGH, header);
     }
 }

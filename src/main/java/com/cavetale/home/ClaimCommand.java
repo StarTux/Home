@@ -159,7 +159,6 @@ public final class ClaimCommand extends AbstractCommand<HomePlugin> {
 
     private boolean info(Player player, String[] args) {
         if (args.length > 1) return false;
-        plugin.sessions.of(player).setSidebarTicks(0);
         Claim claim;
         if (args.length == 0) {
             claim = plugin.getClaimAt(player.getLocation());

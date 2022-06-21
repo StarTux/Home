@@ -28,7 +28,6 @@ import lombok.Getter;
 import net.kyori.adventure.text.Component;
 import org.bukkit.Bukkit;
 import org.bukkit.Chunk;
-import org.bukkit.GameMode;
 import org.bukkit.Location;
 import org.bukkit.Material;
 import org.bukkit.Particle;
@@ -63,7 +62,6 @@ public final class HomePlugin extends JavaPlugin {
     protected final Sessions sessions = new Sessions(this);
     protected final EventListener eventListener = new EventListener(this);
     private MagicMapListener magicMapListener;
-    private ClaimListener claimListener;
     protected final ConnectListener connectListener = new ConnectListener(this);
     // Utilty
     protected long ticks;
@@ -95,7 +93,14 @@ public final class HomePlugin extends JavaPlugin {
                                   SQLHome.class,
                                   SQLHomeInvite.class));
         db.createAllTables();
-        claimListener = new ClaimListener(this).enable();
+        loadFromDatabase();
+        if (localHomeWorlds.isEmpty()) {
+            getLogger().info("Local home worlds is empty");
+        }
+        if (!localHomeWorlds.isEmpty()) {
+            new ClaimListener(this).enable();
+        }
+        sessions.enable();
         eventListener.enable();
         connectListener.enable();
         homeAdminCommand.enable();
@@ -110,8 +115,6 @@ public final class HomePlugin extends JavaPlugin {
         inviteHomeCommand.enable();
         unInviteHomeCommand.enable();
         subclaimCommand.enable();
-        loadFromDatabase();
-        getServer().getScheduler().runTaskTimer(this, this::onTick, 1, 1);
         enableDynmap();
         if (getServer().getPluginManager().isPluginEnabled("MagicMap")) {
             magicMapListener = new MagicMapListener(this).enable();
@@ -126,40 +129,6 @@ public final class HomePlugin extends JavaPlugin {
         db.waitForAsyncTask();
         db.close();
         disableDynmap();
-    }
-
-    private void onTick() {
-        for (Player player : getServer().getOnlinePlayers()) {
-            sessions.of(player).tick(player);
-        }
-        for (World world : getServer().getWorlds()) {
-            if (!(isLocalHomeWorld(world))) continue;
-            tickHomeWorld(world);
-        }
-        ticks += 1;
-    }
-
-    private void tickHomeWorld(World world) {
-        if (world.getEnvironment() == World.Environment.NORMAL && !world.isDayTime()) {
-            int total = 0;
-            int sleeping = 0;
-            for (Player player : world.getPlayers()) {
-                if (player.isSleepingIgnored()) continue;
-                if (player.getGameMode() == GameMode.SPECTATOR) continue;
-                total += 1;
-                if (player.isDeeplySleeping()) {
-                    sleeping += 1;
-                }
-            }
-            int half = (total - 1) / 2 + 1;
-            if (total > 0 && sleeping > 0 && sleeping >= half) {
-                getLogger().info("Skipping night in " + world.getName());
-                world.setTime(0L);
-                for (Player player : world.getPlayers()) {
-                    if (player.isSleeping()) player.wakeup(false);
-                }
-            }
-        }
     }
 
     protected void findPlaceToBuild(RemotePlayer player) {

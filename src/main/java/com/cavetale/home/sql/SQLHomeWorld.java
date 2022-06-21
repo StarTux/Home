@@ -1,33 +1,19 @@
 package com.cavetale.home.sql;
 
 import com.cavetale.core.connect.Connect;
+import com.winthier.sql.SQLRow.Name;
+import com.winthier.sql.SQLRow.NotNull;
 import com.winthier.sql.SQLRow;
-import javax.persistence.Column;
-import javax.persistence.Id;
-import javax.persistence.Table;
 import lombok.Data;
 
-@Data @Table(name = "worlds")
+@Data @NotNull @Name("worlds")
 public final class SQLHomeWorld implements SQLRow {
-    @Id
-    private Integer id;
-
-    @Column(nullable = false, length = 32, unique = true)
-    private String world;
-
-    @Column(nullable = false, length = 32)
-    private String server;
-
-    @Column(nullable = true, length = 255)
-    private String displayName;
-
-    @Column(nullable = false)
+    @Id private Integer id;
+    @VarChar(40) @Unique private String world;
+    @VarChar(40) private String server;
+    @VarChar(255) @Nullable private String displayName;
     private boolean wild;
-
-    @Column(nullable = false)
     private int claims;
-
-    @Column(nullable = false)
     private long free;
 
     public SQLHomeWorld() { }
@@ -39,5 +25,19 @@ public final class SQLHomeWorld implements SQLRow {
 
     public boolean isOnThisServer() {
         return this.server.equals(Connect.get().getServerName());
+    }
+
+    public String computeDisplayName() {
+        if (displayName != null) return displayName;
+        if (world.endsWith("_nether")) return "Nether";
+        if (world.endsWith("_the_end")) return "End";
+        return "Overworld";
+    }
+
+    public String getDisplayName() {
+        if (displayName == null) {
+            displayName = computeDisplayName();
+        }
+        return displayName;
     }
 }

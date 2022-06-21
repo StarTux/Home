@@ -1,7 +1,6 @@
 package com.cavetale.home;
 
 import com.cavetale.core.event.player.PluginPlayerQuery;
-import com.cavetale.sidebar.PlayerSidebarEvent;
 import lombok.RequiredArgsConstructor;
 import org.bukkit.entity.Player;
 import org.bukkit.event.EventHandler;
@@ -50,11 +49,5 @@ public final class EventListener implements Listener {
             boolean insideTrustedClaim = claim != null ? (!claim.isOwner(player) && claim.getTrustType(player).canBuild()) : false;
             PluginPlayerQuery.Name.INSIDE_TRUSTED_CLAIM.respond(query, plugin, insideTrustedClaim);
         }
-    }
-
-    @EventHandler
-    protected void onPlayerSidebar(PlayerSidebarEvent event) {
-        Player player = event.getPlayer();
-        plugin.sessions.of(player).onPlayerSidebar(player, event);
     }
 }

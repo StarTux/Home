@@ -324,10 +324,9 @@ public final class Session {
     }
 
     protected void onPlayerHud(Player player, PlayerHudEvent event) {
+        if (currentHomeWorld == null) return;
         List<Component> header = new ArrayList<>();
-        if (currentHomeWorld != null) {
-            header.add(join(noSeparators(), text(tiny("world "), GRAY), text(currentHomeWorld.getDisplayName(), BLUE)));
-        }
+        header.add(join(noSeparators(), text(tiny("world "), GRAY), text(currentHomeWorld.getDisplayName(), BLUE)));
         if (currentClaim != null) {
             TrustType trust = currentClaim.getTrustType(player);
             String claimName = currentClaim.getName() != null

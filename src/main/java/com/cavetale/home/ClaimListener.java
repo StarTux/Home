@@ -4,10 +4,12 @@ import com.cavetale.core.event.block.PlayerBlockAbilityQuery;
 import com.cavetale.core.event.block.PlayerBreakBlockEvent;
 import com.cavetale.core.event.entity.PlayerEntityAbilityQuery;
 import com.cavetale.core.event.hud.PlayerHudEvent;
+import com.cavetale.core.structure.Structures;
 import com.cavetale.home.struct.BlockVector;
 import com.destroystokyo.paper.event.entity.PreCreatureSpawnEvent;
 import com.winthier.exploits.Exploits;
 import java.util.Iterator;
+import java.util.List;
 import java.util.Objects;
 import lombok.RequiredArgsConstructor;
 import net.kyori.adventure.text.Component;
@@ -19,6 +21,7 @@ import org.bukkit.Material;
 import org.bukkit.Particle;
 import org.bukkit.Sound;
 import org.bukkit.SoundCategory;
+import org.bukkit.StructureType;
 import org.bukkit.Tag;
 import org.bukkit.World;
 import org.bukkit.block.Block;
@@ -88,7 +91,9 @@ import org.bukkit.event.vehicle.VehicleEntityCollisionEvent;
 import org.bukkit.inventory.InventoryHolder;
 import org.bukkit.inventory.ItemStack;
 import org.spigotmc.event.entity.EntityMountEvent;
+import static com.cavetale.core.util.CamelCase.toCamelCase;
 import static net.kyori.adventure.text.Component.empty;
+import static net.kyori.adventure.text.Component.text;
 
 @RequiredArgsConstructor
 final class ClaimListener implements Listener {
@@ -106,12 +111,27 @@ final class ClaimListener implements Listener {
      *
      * @return True if the event is permitted, false otherwise.
      */
-    public boolean checkPlayerAction(Player player, BlockVector at, TrustType requiredTrust, Cancellable cancellable, boolean notify) {
+    public boolean checkPlayerAction(Player player, Block block, TrustType requiredTrust, Cancellable cancellable, boolean notify) {
         if (plugin.doesIgnoreClaims(player)) return true;
-        if (!plugin.isLocalHomeWorld(at.world)) return true;
-        Claim claim = plugin.getClaimAt(at);
-        if (claim == null) return true;
-        TrustType trustType = claim.getTrustType(player, at);
+        if (!plugin.isLocalHomeWorld(block.getWorld())) return true;
+        Claim claim = plugin.getClaimAt(block);
+        if (claim == null) {
+            if (requiredTrust.gt(TrustType.INTERACT)) {
+                StructureType structureType = Structures.get().structureTypeAt(block);
+                if (structureType != null) {
+                    if (cancellable != null) cancellable.setCancelled(true);
+                    if (notify) {
+                        Component msg = text("You cannot modify an unclaimed "
+                                             + toCamelCase(" ", List.of(structureType.getName().split("_"))),
+                                             NamedTextColor.RED);
+                        plugin.sessions.of(player).notify(player, msg);
+                    }
+                    return false;
+                }
+            }
+            return true;
+        }
+        TrustType trustType = claim.getTrustType(player.getUniqueId(), block);
         if (trustType.gte(requiredTrust)) return true;
         if (cancellable instanceof PlayerInteractEvent) {
             PlayerInteractEvent pis = (PlayerInteractEvent) cancellable;
@@ -125,12 +145,8 @@ final class ClaimListener implements Listener {
         return false;
     }
 
-    public boolean checkPlayerAction(Player player, Block block, TrustType requiredTrust, Cancellable cancellable, boolean notify) {
-        return checkPlayerAction(player, BlockVector.of(block), requiredTrust, cancellable, notify);
-    }
-
     public boolean checkPlayerAction(Player player, Location location, TrustType requiredTrust, Cancellable cancellable, boolean notify) {
-        return checkPlayerAction(player, BlockVector.of(location), requiredTrust, cancellable, notify);
+        return checkPlayerAction(player, location.getBlock(), requiredTrust, cancellable, notify);
     }
 
     /**
@@ -205,7 +221,7 @@ final class ClaimListener implements Listener {
     public void onBlockBreak(BlockBreakEvent event) {
         Block block = event.getBlock();
         Player player = event.getPlayer();
-        checkPlayerAction(player, BlockVector.of(block), TrustType.BUILD, event, true);
+        checkPlayerAction(player, block, TrustType.BUILD, event, true);
     }
 
     @EventHandler(ignoreCancelled = true, priority = EventPriority.LOW)

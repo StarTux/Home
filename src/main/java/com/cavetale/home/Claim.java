@@ -239,6 +239,17 @@ public final class Claim {
             : subclaim.getTrustType(uuid);
     }
 
+    public TrustType getTrustType(UUID uuid, Block block) {
+        TrustType claimTrustType = getTrustType(uuid);
+        if (claimTrustType.isBan()) return TrustType.BAN;
+        if (claimTrustType.isCoOwner()) return claimTrustType;
+        Subclaim subclaim = getSubclaimAt(block);
+        if (subclaim == null) return claimTrustType;
+        return getSetting(ClaimSetting.INHERITANCE)
+            ? claimTrustType.max(subclaim.getTrustType(uuid))
+            : subclaim.getTrustType(uuid);
+    }
+
     public TrustType getTrustType(Player player, BlockVector vec) {
         return getTrustType(player.getUniqueId(), vec);
     }

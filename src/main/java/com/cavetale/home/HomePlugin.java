@@ -166,7 +166,8 @@ public final class HomePlugin extends JavaPlugin {
             player.sendMessage(Component.text("Something went wrong. Please contact an administrator.", RED));
             return;
         }
-        rows.sort((a, b) -> Long.compare(b.getFree(), a.getFree()));
+        //rows.sort((a, b) -> Long.compare(b.getFree(), a.getFree()));
+tt        Collections.shuffle(rows);
         SQLHomeWorld homeWorld = rows.get(0);
         if (!homeWorld.isOnThisServer() && player.isPlayer()) {
             Connect.get().dispatchRemoteCommand(player.getPlayer(), "wild", homeWorld.getServer());

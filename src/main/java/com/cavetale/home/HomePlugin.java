@@ -2,6 +2,7 @@ package com.cavetale.home;
 
 import com.cavetale.core.command.RemotePlayer;
 import com.cavetale.core.connect.Connect;
+import com.cavetale.core.event.player.PluginPlayerEvent;
 import com.cavetale.core.perm.Perm;
 import com.cavetale.home.claimcache.ClaimCache;
 import com.cavetale.home.sql.SQLClaim;
@@ -167,7 +168,7 @@ public final class HomePlugin extends JavaPlugin {
             return;
         }
         //rows.sort((a, b) -> Long.compare(b.getFree(), a.getFree()));
-tt        Collections.shuffle(rows);
+        Collections.shuffle(rows);
         SQLHomeWorld homeWorld = rows.get(0);
         if (!homeWorld.isOnThisServer() && player.isPlayer()) {
             Connect.get().dispatchRemoteCommand(player.getPlayer(), "wild", homeWorld.getServer());
@@ -182,6 +183,9 @@ tt        Collections.shuffle(rows);
         }
         WildTask wildTask = new WildTask(this, bworld, player);
         wildTask.withCooldown();
+        if (player.isPlayer()) {
+            PluginPlayerEvent.Name.USE_WILD.call(this, player.getPlayer());
+        }
     }
 
     protected ClaimOperationResult autoGrowClaim(Claim claim) {

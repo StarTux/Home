@@ -7,7 +7,6 @@ import com.cavetale.core.event.hud.PlayerHudEvent;
 import com.cavetale.core.structure.Structures;
 import com.cavetale.home.struct.BlockVector;
 import com.destroystokyo.paper.event.entity.PreCreatureSpawnEvent;
-import com.winthier.exploits.Exploits;
 import java.util.Iterator;
 import java.util.List;
 import java.util.Objects;
@@ -18,14 +17,10 @@ import net.kyori.adventure.text.format.TextColor;
 import org.bukkit.Bukkit;
 import org.bukkit.Location;
 import org.bukkit.Material;
-import org.bukkit.Particle;
-import org.bukkit.Sound;
-import org.bukkit.SoundCategory;
 import org.bukkit.StructureType;
 import org.bukkit.Tag;
 import org.bukkit.World;
 import org.bukkit.block.Block;
-import org.bukkit.block.BlockFace;
 import org.bukkit.block.data.type.RespawnAnchor;
 import org.bukkit.entity.AnimalTamer;
 import org.bukkit.entity.Animals;
@@ -89,7 +84,6 @@ import org.bukkit.event.vehicle.VehicleDamageEvent;
 import org.bukkit.event.vehicle.VehicleDestroyEvent;
 import org.bukkit.event.vehicle.VehicleEntityCollisionEvent;
 import org.bukkit.inventory.InventoryHolder;
-import org.bukkit.inventory.ItemStack;
 import org.spigotmc.event.entity.EntityMountEvent;
 import static com.cavetale.core.util.CamelCase.toCamelCase;
 import static net.kyori.adventure.text.Component.empty;
@@ -467,7 +461,6 @@ final class ClaimListener implements Listener {
             return;
         case RIGHT_CLICK_BLOCK:
             if (plugin.sessions.of(player).onPlayerInteract(event)) return;
-            if (slimeballUse(player, event, block, claim)) return;
             if (mat.isInteractable()) {
                 if (Tag.DOORS.isTagged(mat) || Tag.BUTTONS.isTagged(mat) || Tag.TRAPDOORS.isTagged(mat)) {
                     checkPlayerAction(player, block, TrustType.INTERACT, event, true);
@@ -526,31 +519,6 @@ final class ClaimListener implements Listener {
         default:
             break;
         }
-    }
-
-    /**
-     * @return true if this is the valid use of a slimeball, false otherwise.
-     */
-    protected boolean slimeballUse(Player player, PlayerInteractEvent event, Block block, Claim claim) {
-        if (claim == null) return false;
-        ItemStack item = event.getItem();
-        if (item == null || item.getType() != Material.SLIME_BALL) return false;
-        if (!block.getType().isSolid()) return false;
-        if (event.getBlockFace() != BlockFace.UP) return false;
-        if (block.getY() > 40) return false;
-        if (!claim.canBuild(player, BlockVector.of(block))) return false;
-        if (block.getChunk().isSlimeChunk()) {
-            player.sendMessage(Component.text("Slime chunk!", NamedTextColor.GREEN));
-            Location loc = block.getRelative(event.getBlockFace())
-                .getLocation().add(0.5, 0.05, 0.5);
-            player.playSound(loc, Sound.BLOCK_SLIME_BLOCK_BREAK,
-                             SoundCategory.BLOCKS, 1.0f, 1.0f);
-            player.spawnParticle(Particle.SLIME, loc, 8,
-                                 0.25, 0.0, 0.25, 0);
-        } else {
-            player.sendMessage(Component.text("Not a slime chunk!", NamedTextColor.RED));
-        }
-        return true;
     }
 
     @EventHandler(ignoreCancelled = true, priority = EventPriority.LOW)
@@ -763,7 +731,7 @@ final class ClaimListener implements Listener {
             return;
         case NATURAL:
             if (entityType == EntityType.PHANTOM) {
-                // No phantom spawning in the
+                // No phantom spawning in the home world
                 event.setCancelled(true);
                 return;
             }
@@ -776,39 +744,6 @@ final class ClaimListener implements Listener {
         if (!claim.getSetting(ClaimSetting.MOB_SPAWNING)) {
             event.setCancelled(true);
             return;
-        }
-        // No spawning on player placed blocks which are lit
-        if (!claim.isAdminClaim() && isHostileMob(entityType) && location.getWorld().getEnvironment() == World.Environment.NORMAL) {
-            switch (entityType) {
-                // These are exempt
-            case SLIME:
-            case GUARDIAN:
-            case ELDER_GUARDIAN:
-                break;
-            default:
-                switch (reason) {
-                case NATURAL:
-                case REINFORCEMENTS:
-                case VILLAGE_INVASION:
-                case TRAP: // Skeleton riders(?)
-                    Block block = location.getBlock();
-                    int light = block.getLightFromBlocks();
-                    if (light > 0) {
-                        event.setCancelled(true);
-                        return;
-                    }
-                    int sunlight = block.getLightFromSky();
-                    if (sunlight > 0) {
-                        Block baseBlock = location.getBlock().getRelative(0, -1, 0);
-                        if (!baseBlock.isEmpty() && !baseBlock.isLiquid() && Exploits.isPlayerPlaced(baseBlock)) {
-                            event.setCancelled(true);
-                        }
-                    }
-                    break;
-                default: break;
-                }
-                break;
-            }
         }
     }
 

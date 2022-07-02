@@ -38,7 +38,7 @@ public final class ClaimAdminCommand extends AbstractCommand<HomePlugin> {
             .description("Print Claim Info")
             .playerCaller(this::info);
         rootNode.addChild("blocks").arguments("<amount>")
-            .completers(CommandArgCompleter.integer(i -> i > 0))
+            .completers(CommandArgCompleter.integer(i -> i != 0))
             .description("Change Claim Blocks")
             .playerCaller(this::blocks);
         rootNode.addChild("tp").arguments("<id>")
@@ -103,7 +103,7 @@ public final class ClaimAdminCommand extends AbstractCommand<HomePlugin> {
         if (args.length != 1) return false;
         Claim claim = plugin.getClaimAt(player.getLocation());
         if (claim == null) throw new CommandWarn("There is no claim here!");
-        int blocks = CommandArgCompleter.requireInt(args[0], i -> i > 0);
+        int blocks = CommandArgCompleter.requireInt(args[0], i -> i != 0);
         int newblocks = claim.getBlocks() + blocks;
         if (newblocks < 0) newblocks = 0;
         claim.setBlocks(newblocks);

@@ -407,11 +407,13 @@ public final class HomesCommand extends AbstractCommand<HomePlugin> {
         }
         if (!home.getInvites().contains(targetId)) {
             SQLHomeInvite invite = new SQLHomeInvite(home.getId(), targetId);
-            plugin.getDb().saveAsync(invite, null);
+            plugin.getDb().saveAsync(invite, r -> {
+                    plugin.getConnectListener().broadcastHomeUpdate(home);
+                });
             home.getInvites().add(targetId);
         }
         player.sendMessage(text("Invite sent to " + targetName, GREEN));
-        Player target = plugin.getServer().getPlayer(targetId);
+        RemotePlayer target = Connect.get().getRemotePlayer(targetId);
         if (target != null) {
             if (home.getName() == null) {
                 String cmd = "/home " + player.getName() + ":";
@@ -457,7 +459,9 @@ public final class HomesCommand extends AbstractCommand<HomePlugin> {
         if (!home.getInvites().contains(target)) throw new CommandWarn("Player not invited.");
         plugin.getDb().find(SQLHomeInvite.class)
             .eq("home_id", home.getId())
-            .eq("invitee", target).deleteAsync(null);
+            .eq("invitee", target).deleteAsync(r -> {
+                    plugin.getConnectListener().broadcastHomeUpdate(home);
+                });
         home.getInvites().remove(target);
         player.sendMessage(text(targetName + " was uninvited", GREEN));
         PluginPlayerEvent.Name.UNINVITE_HOME.make(plugin, player)

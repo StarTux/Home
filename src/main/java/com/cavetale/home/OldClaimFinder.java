@@ -1,7 +1,6 @@
 package com.cavetale.home;
 
 import com.cavetale.home.sql.SQLClaimTrust;
-import com.winthier.exploits.Exploits;
 import com.winthier.playerinfo.PlayerInfo;
 import java.time.Duration;
 import java.util.ArrayList;
@@ -18,6 +17,7 @@ import org.bukkit.Bukkit;
 import org.bukkit.Chunk;
 import org.bukkit.World;
 import org.bukkit.block.Block;
+import static com.cavetale.core.exploits.PlayerPlacedBlocks.isPlayerPlaced;
 
 @RequiredArgsConstructor
 public final class OldClaimFinder {
@@ -133,7 +133,7 @@ public final class OldClaimFinder {
                                         for (int z = 0; z < 16; z += 1) {
                                             for (int x = 0; x < 16; x += 1) {
                                                 Block block = chunk.getBlock(x, y, z);
-                                                if (!block.isEmpty() && Exploits.isPlayerPlaced(block)) {
+                                                if (!block.isEmpty() && isPlayerPlaced(block)) {
                                                     oldClaim.playerPlacedBlocks += 1;
                                                 }
                                             }

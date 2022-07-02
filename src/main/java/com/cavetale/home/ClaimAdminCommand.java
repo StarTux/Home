@@ -84,7 +84,6 @@ public final class ClaimAdminCommand extends AbstractCommand<HomePlugin> {
         for (Claim claim : claims) {
             String brief = "-"
                 + " id=" + claim.getId()
-                + " owner=" + claim.getOwnerName()
                 + (" loc=" + claim.getWorld() + ":"
                    + claim.getArea().centerX() + "," + claim.getArea().centerY())
                 + " blocks=" + claim.getBlocks();

@@ -471,7 +471,7 @@ public final class HomePlugin extends JavaPlugin {
 
     public boolean hasAClaim(UUID owner) {
         for (Claim claim : claimCache.getAllClaims()) {
-            if (claim.isOwner(owner)) return true;
+            if (claim.isPrimaryOwner(owner)) return true;
         }
         return false;
     }
@@ -479,7 +479,7 @@ public final class HomePlugin extends JavaPlugin {
     public List<Claim> findClaims(UUID owner) {
         List<Claim> list = new ArrayList<>();
         for (Claim claim : claimCache.getAllClaims()) {
-            if (claim.isOwner(owner)) list.add(claim);
+            if (claim.isPrimaryOwner(owner)) list.add(claim);
         }
         Collections.sort(list, (a, b) -> b.getCreated().compareTo(a.getCreated()));
         return list;
@@ -487,16 +487,6 @@ public final class HomePlugin extends JavaPlugin {
 
     public List<Claim> findClaims(Player player) {
         return findClaims(player.getUniqueId());
-    }
-
-    public List<Claim> findClaimsInWorld(UUID owner, String w) {
-        List<Claim> list = new ArrayList<>();
-        for (Claim claim : claimCache.inWorld(mirrorWorlds.getOrDefault(w, w))) {
-            if (claim.isOwner(owner)) {
-                list.add(claim);
-            }
-        }
-        return list;
     }
 
     public List<Claim> findClaimsInWorld(String w) {

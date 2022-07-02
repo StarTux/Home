@@ -211,8 +211,7 @@ public final class ClaimCommand extends AbstractCommand<HomePlugin> {
         // Check for claim collisions
         final int claimSize;
         final double claimCost;
-        int playerClaimCount = plugin.findClaims(uuid).size();
-        if (playerClaimCount == 0) {
+        if (!plugin.hasAClaim(uuid)) {
             claimSize = Globals.INITIAL_CLAIM_SIZE;
             claimCost = Globals.INITIAL_CLAIM_COST;
         } else {

@@ -254,6 +254,10 @@ public final class Claim {
         return getTrustType(player.getUniqueId(), vec);
     }
 
+    public boolean isPrimaryOwner(UUID uuid) {
+        return uuid.equals(getOwner());
+    }
+
     public boolean isOwner(Player player) {
         return getTrustType(player).isOwner();
     }

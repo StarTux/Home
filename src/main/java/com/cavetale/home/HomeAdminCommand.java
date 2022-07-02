@@ -72,8 +72,7 @@ public final class HomeAdminCommand extends AbstractCommand<HomePlugin> {
         return true;
     }
 
-    private boolean ignore(Player player, String[] args) {
-        if (args.length != 0) return false;
+    protected void ignore(Player player) {
         if (plugin.doesIgnoreClaims(player)) {
             plugin.ignoreClaims(player, false);
             player.sendMessage(text("Respecting home and claim permissions", YELLOW));
@@ -81,7 +80,6 @@ public final class HomeAdminCommand extends AbstractCommand<HomePlugin> {
             plugin.ignoreClaims(player, true);
             player.sendMessage(text("Ignoring home and claim permissions", YELLOW));
         }
-        return true;
     }
 
     private boolean debug(CommandSender sender, String[] args) {

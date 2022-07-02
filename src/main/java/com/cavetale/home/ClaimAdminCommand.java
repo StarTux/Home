@@ -34,8 +34,9 @@ public final class ClaimAdminCommand extends AbstractCommand<HomePlugin> {
             .description("List Player Claims")
             .completers(PlayerCache.NAME_COMPLETER)
             .senderCaller(this::list);
-        rootNode.addChild("info").denyTabCompletion()
+        rootNode.addChild("info").arguments("[id]")
             .description("Print Claim Info")
+            .completers(CommandArgCompleter.integer(i -> i > 0))
             .playerCaller(this::info);
         rootNode.addChild("blocks").arguments("<amount>")
             .completers(CommandArgCompleter.integer(i -> i != 0))
@@ -64,6 +65,9 @@ public final class ClaimAdminCommand extends AbstractCommand<HomePlugin> {
             .completers(PlayerCache.NAME_COMPLETER,
                         PlayerCache.NAME_COMPLETER)
             .senderCaller(this::transferAll);
+        rootNode.addChild("ignore").denyTabCompletion()
+            .description("Toggle Home/Claim Ignore")
+            .playerCaller(plugin.homeAdminCommand::ignore);
     }
 
     private boolean list(CommandSender sender, String[] args) {
@@ -79,7 +83,8 @@ public final class ClaimAdminCommand extends AbstractCommand<HomePlugin> {
         int id = 0;
         for (Claim claim : claims) {
             String brief = "-"
-                + "id=" + claim.getId()
+                + " id=" + claim.getId()
+                + " owner=" + claim.getOwnerName()
                 + (" loc=" + claim.getWorld() + ":"
                    + claim.getArea().centerX() + "," + claim.getArea().centerY())
                 + " blocks=" + claim.getBlocks();
@@ -92,10 +97,22 @@ public final class ClaimAdminCommand extends AbstractCommand<HomePlugin> {
     }
 
     private boolean info(Player player, String[] args) {
-        if (args.length != 0) return false;
-        Claim claim = plugin.getClaimAt(player.getLocation());
-        if (claim == null) throw new CommandWarn("There is no claim here!");
-        player.sendMessage(text("" + claim, AQUA));
+        final Claim claim;
+        if (args.length == 1) {
+            int claimId = CommandArgCompleter.requireInt(args[0], i -> i > 0);
+            claim = plugin.getClaimById(claimId);
+            if (claim == null) throw new CommandWarn("Claim not found: " + claimId);
+        } else if (args.length == 0) {
+            claim = plugin.getClaimAt(player.getLocation());
+            if (claim == null) throw new CommandWarn("There is no claim here!");
+        } else {
+            return false;
+        }
+        player.sendMessage(text(claim.getRow().toString(), AQUA));
+        player.sendMessage(text("Subclaims: " + claim.getSubclaims().size(), AQUA));
+        for (SQLClaimTrust row : claim.getTrusted().values()) {
+            player.sendMessage(text("+ " + row.getType() + " "  + PlayerCache.nameForUuid(row.getTrustee()), YELLOW));
+        }
         return true;
     }
 

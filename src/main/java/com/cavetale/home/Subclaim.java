@@ -20,7 +20,7 @@ public final class Subclaim {
 
     private final HomePlugin plugin;
     @Getter private final Claim parent;
-    private final SQLSubclaim row;
+    @Getter private final SQLSubclaim row;
 
     @Getter private Area area;
     private Tag tag;

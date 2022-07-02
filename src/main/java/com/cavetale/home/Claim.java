@@ -31,7 +31,7 @@ public final class Claim {
     public static final UUID ADMIN_ID = new UUID(0L, 0L);
     private final HomePlugin plugin;
 
-    private SQLClaim row;
+    @Getter private SQLClaim row;
     @Getter private Area area;
     private final Map<ClaimSetting, Boolean> settings = new EnumMap<>(ClaimSetting.class);
     @Getter private int centerX;

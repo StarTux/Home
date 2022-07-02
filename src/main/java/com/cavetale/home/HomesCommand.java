@@ -189,6 +189,11 @@ public final class HomesCommand extends AbstractCommand<HomePlugin> {
         List<Claim> playerClaims = plugin.findClaims(uuid);
         if (!playerClaims.isEmpty()) {
             Claim claim = playerClaims.get(0);
+            SQLHomeWorld homeWorld = plugin.findHomeWorld(claim.getWorld());
+            if (homeWorld != null && !homeWorld.isOnThisServer() && player.isPlayer()) {
+                Connect.get().dispatchRemoteCommand(player.getPlayer(), "home", homeWorld.getServer());
+                return;
+            }
             World bworld = plugin.getServer().getWorld(claim.getWorld());
             Area area = claim.getArea();
             final int x = area.centerX();

@@ -17,7 +17,7 @@ import net.kyori.adventure.text.format.TextColor;
 import org.bukkit.Bukkit;
 import org.bukkit.Location;
 import org.bukkit.Material;
-import org.bukkit.StructureType;
+import org.bukkit.NamespacedKey;
 import org.bukkit.Tag;
 import org.bukkit.World;
 import org.bukkit.block.Block;
@@ -111,12 +111,12 @@ final class ClaimListener implements Listener {
         Claim claim = plugin.getClaimAt(block);
         if (claim == null) {
             if (requiredTrust.gt(TrustType.INTERACT)) {
-                StructureType structureType = Structures.get().structureTypeAt(block);
-                if (structureType != null) {
+                NamespacedKey structureKey = Structures.get().structureKeyAt(block);
+                if (structureKey != null) {
                     if (cancellable != null) cancellable.setCancelled(true);
                     if (notify) {
                         Component msg = text("You cannot modify an unclaimed "
-                                             + toCamelCase(" ", List.of(structureType.getName().split("_"))),
+                                             + toCamelCase(" ", List.of(structureKey.getKey().split("_"))),
                                              NamedTextColor.RED);
                         plugin.sessions.of(player).notify(player, msg);
                     }

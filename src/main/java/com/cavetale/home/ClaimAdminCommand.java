@@ -37,7 +37,7 @@ public final class ClaimAdminCommand extends AbstractCommand<HomePlugin> {
         rootNode.addChild("info").arguments("[id]")
             .description("Print Claim Info")
             .completers(CommandArgCompleter.integer(i -> i > 0))
-            .playerCaller(this::info);
+            .senderCaller(this::info);
         rootNode.addChild("blocks").arguments("<amount>")
             .completers(CommandArgCompleter.integer(i -> i != 0))
             .description("Change Claim Blocks")
@@ -95,22 +95,25 @@ public final class ClaimAdminCommand extends AbstractCommand<HomePlugin> {
         return true;
     }
 
-    private boolean info(Player player, String[] args) {
+    private boolean info(CommandSender sender, String[] args) {
         final Claim claim;
         if (args.length == 1) {
             int claimId = CommandArgCompleter.requireInt(args[0], i -> i > 0);
             claim = plugin.getClaimById(claimId);
             if (claim == null) throw new CommandWarn("Claim not found: " + claimId);
         } else if (args.length == 0) {
+            if (!(sender instanceof Player player)) {
+                throw new CommandWarn("[claimadmin:info] Player expected");
+            }
             claim = plugin.getClaimAt(player.getLocation());
             if (claim == null) throw new CommandWarn("There is no claim here!");
         } else {
             return false;
         }
-        player.sendMessage(text(claim.getRow().toString(), AQUA));
-        player.sendMessage(text("Subclaims: " + claim.getSubclaims().size(), AQUA));
+        sender.sendMessage(text(claim.getRow().toString(), AQUA));
+        sender.sendMessage(text("Subclaims: " + claim.getSubclaims().size(), AQUA));
         for (SQLClaimTrust row : claim.getTrusted().values()) {
-            player.sendMessage(text("+ " + row.getType() + " "  + PlayerCache.nameForUuid(row.getTrustee()), YELLOW));
+            sender.sendMessage(text("+ " + row.getType() + " "  + PlayerCache.nameForUuid(row.getTrustee()), YELLOW));
         }
         return true;
     }

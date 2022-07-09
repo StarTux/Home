@@ -178,7 +178,7 @@ public final class ClaimCommand extends AbstractCommand<HomePlugin> {
         player.sendMessage("");
         player.sendMessage(Util.frame("Claim Info"));
         player.sendMessage(makeClaimInfo(player, claim));
-        if (claim.getTrustType(player).canBuild()) {
+        if (!claim.isAdminClaim() && claim.getTrustType(player).canBuild()) {
             player.sendMessage(text("Teleport ", GRAY)
                                .append(text("[Port]", BLUE))
                                .hoverEvent(showText(text("Port to this claim", BLUE)))
@@ -288,6 +288,9 @@ public final class ClaimCommand extends AbstractCommand<HomePlugin> {
             }
             if (!claim.getTrustType(uuid).canBuild()) {
                 throw new CommandWarn("Cannot build in claim");
+            }
+            if (claim.isAdminClaim()) {
+                throw new CommandWarn("Cannot port to admin claim");
             }
         } else {
             claim = plugin.findPrimaryClaim(player.getUniqueId());

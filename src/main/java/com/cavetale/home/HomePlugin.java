@@ -163,18 +163,46 @@ public final class HomePlugin extends JavaPlugin {
      */
     private void findPlaceToBuildCallback(RemotePlayer player, List<SQLHomeWorld> rows) {
         if (rows.isEmpty()) {
-            getLogger().severe("No home worlds configred!");
+            getLogger().severe("No home worlds configured!");
             player.sendMessage(Component.text("Something went wrong. Please contact an administrator.", RED));
             return;
         }
-        //rows.sort((a, b) -> Long.compare(b.getFree(), a.getFree()));
-        Collections.shuffle(rows);
-        SQLHomeWorld homeWorld = rows.get(0);
+        final SQLHomeWorld homeWorld;
+        if (rows.size() == 1) {
+            homeWorld = rows.get(0);
+        } else {
+            // Pick the most suitable world; favoring the lowest population
+            Map<String, Integer> serverPlayerCount = new HashMap<>();
+            for (SQLHomeWorld row : rows) {
+                serverPlayerCount.put(row.getServer(), 0);
+            }
+            int totalPlayerCount = 0; // on all home servers
+            for (RemotePlayer remote : Connect.get().getRemotePlayers()) {
+                String serverName = remote.getOriginServerName();
+                if (!serverPlayerCount.containsKey(serverName)) continue;
+                serverPlayerCount.put(serverName, serverPlayerCount.get(serverName) + 1);
+                totalPlayerCount += 1;
+            }
+            List<SQLHomeWorld> weightedRows = new ArrayList<>();
+            for (SQLHomeWorld row : rows) {
+                int weight = Math.max(1, totalPlayerCount - serverPlayerCount.get(row.getServer()));
+                for (int i = 0; i < weight; i += 1) {
+                    weightedRows.add(row);
+                }
+            }
+            homeWorld = weightedRows.get(random.nextInt(weightedRows.size()));
+            getLogger().info("[FindPlaceToBuild]"
+                             + " total:" + totalPlayerCount
+                             + " map:" + serverPlayerCount
+                             + " result:" + homeWorld.getWorld() + "/" + homeWorld.getServer());
+        }
+        // Send to server
         if (!homeWorld.isOnThisServer() && player.isPlayer()) {
             Connect.get().dispatchRemoteCommand(player.getPlayer(), "wild", homeWorld.getServer());
             return;
         }
-        String worldName = rows.get(0).getWorld();
+        // Send to world
+        String worldName = homeWorld.getWorld();
         World bworld = getServer().getWorld(worldName);
         if (bworld == null) {
             getLogger().warning("Home world not found: " + worldName);

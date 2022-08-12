@@ -524,11 +524,13 @@ final class ClaimListener implements Listener {
     @EventHandler(ignoreCancelled = true, priority = EventPriority.LOW)
     public void onEntityInteract(EntityInteractEvent event) {
         Block block = event.getBlock();
-        Claim claim = plugin.getClaimAt(block);
-        if (claim == null) return;
         Material mat = block.getType();
         if (mat == Material.FARMLAND || mat == Material.TURTLE_EGG) {
+            Claim claim = plugin.getClaimAt(block);
+            if (claim == null) return;
             event.setCancelled(true);
+        } else if (event.getEntity() instanceof Projectile projectile && projectile.getShooter() instanceof Player player) {
+            checkPlayerAction(player, block, TrustType.INTERACT, event, false);
         }
     }
 

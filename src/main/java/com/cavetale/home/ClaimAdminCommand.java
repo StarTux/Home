@@ -77,6 +77,10 @@ public final class ClaimAdminCommand extends AbstractCommand<HomePlugin> {
         rootNode.addChild("ignore").denyTabCompletion()
             .description("Toggle Home/Claim Ignore")
             .playerCaller(plugin.homeAdminCommand::ignore);
+        rootNode.addChild("testoldalgo")
+            .description("Test old algorithm")
+            .completers(CommandArgCompleter.PLAYER_CACHE)
+            .playerCaller(this::testOldAlgo);
     }
 
     private boolean list(CommandSender sender, String[] args) {
@@ -342,6 +346,47 @@ public final class ClaimAdminCommand extends AbstractCommand<HomePlugin> {
                                 + " claims=" + claimCount
                                 + " trust=" + trustCount
                                 + " subclaim=" + subclaimCount, AQUA));
+        return true;
+    }
+
+    public static int distanceToPoint(Area area, int x, int y) {
+        int dx;
+        int dy;
+        if (x < area.ax) {
+            dx = area.ax - x;
+        } else if (x > area.bx) {
+            dx = x - area.bx;
+        } else {
+            dx = 0;
+        }
+        if (y < area.ay) {
+            dy = area.ay - y;
+        } else if (y > area.by) {
+            dy = y - area.by;
+        } else {
+            dy = 0;
+        }
+        return dx + dy;
+    }
+
+    private boolean testOldAlgo(Player player, String[] args) {
+        if (args.length != 1) return false;
+        PlayerCache target = CommandArgCompleter.requirePlayerCache(args[0]);
+        Location playerLocation = player.getLocation();
+        String playerWorld = playerLocation.getWorld().getName();
+        int x = playerLocation.getBlockX();
+        int z = playerLocation.getBlockZ();
+        int minDist = Integer.MAX_VALUE;
+        Claim result = null;
+        Area area = new Area(x - 512, z - 512, x + 512, z + 512);
+        for (Claim claim : plugin.getClaimCache().within(playerWorld, area)) {
+            if (!claim.isOwner(target.uuid)) continue;
+            int dist = distanceToPoint(claim.getArea(), x, z);
+            if (dist >= minDist) continue;
+            result = claim;
+            minDist = dist;
+        }
+        player.sendMessage("Result: " + (result != null ? result.getId() : "null"));
         return true;
     }
 }

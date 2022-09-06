@@ -3,8 +3,8 @@ package com.cavetale.home;
 import com.cavetale.core.command.AbstractCommand;
 import com.cavetale.core.command.CommandArgCompleter;
 import com.cavetale.core.command.CommandWarn;
+import com.cavetale.core.playercache.PlayerCache;
 import com.cavetale.home.sql.SQLClaimTrust;
-import com.winthier.playercache.PlayerCache;
 import java.util.List;
 import java.util.UUID;
 import java.util.function.Consumer;
@@ -34,6 +34,15 @@ public final class ClaimAdminCommand extends AbstractCommand<HomePlugin> {
             .description("List Player Claims")
             .completers(PlayerCache.NAME_COMPLETER)
             .senderCaller(this::list);
+        rootNode.addChild("nearby").arguments("<radius>")
+            .description("Find nearby claims")
+            .completers(CommandArgCompleter.integer(i -> i > 0))
+            .playerCaller(this::nearby);
+        rootNode.addChild("find").arguments("<player> <trust>")
+            .description("Find claims by player and trust")
+            .completers(CommandArgCompleter.PLAYER_CACHE,
+                        CommandArgCompleter.enumLowerList(TrustType.class))
+            .senderCaller(this::find);
         rootNode.addChild("info").arguments("[id]")
             .description("Print Claim Info")
             .completers(CommandArgCompleter.integer(i -> i > 0))
@@ -80,15 +89,60 @@ public final class ClaimAdminCommand extends AbstractCommand<HomePlugin> {
         sender.sendMessage(text(player.name + " has " + count
                                           + (count == 1 ? " claim:" : " claims:"),
                                           YELLOW));
-        int id = 0;
         for (Claim claim : claims) {
             String brief = "-"
-                + " id=" + claim.getId()
-                + (" loc=" + claim.getWorld() + ":"
+                + " id:" + claim.getId()
+                + (" loc:" + claim.getWorld() + ":"
                    + claim.getArea().centerX() + "," + claim.getArea().centerY())
-                + " blocks=" + claim.getBlocks();
+                + " blocks:" + claim.getBlocks();
             String cmd = "/claimadmin tp " + claim.getId();
             sender.sendMessage(text(brief, YELLOW)
+                               .hoverEvent(showText(text(cmd, YELLOW)))
+                               .clickEvent(runCommand(cmd)));
+        }
+        return true;
+    }
+
+    private boolean find(CommandSender sender, String[] args) {
+        if (args.length != 2) return false;
+        PlayerCache player = CommandArgCompleter.requirePlayerCache(args[0]);
+        TrustType trust = CommandArgCompleter.requireEnum(TrustType.class, args[1]);
+        List<Claim> claims = plugin.findClaims(player.uuid, trust);
+        if (claims.isEmpty()) {
+            throw new CommandWarn(player.name + " does not have claims with " + trust.displayName + " trust");
+        }
+        sender.sendMessage(text(player.name + " has " + claims.size() + " claims with " + trust.displayName + " trust:", AQUA));
+        for (Claim claim : claims) {
+            String brief = "-"
+                + " id:" + claim.getId()
+                + " owner:" + claim.getOwnerName()
+                + " loc:" + claim.getArea().centerX() + "," + claim.getArea().centerY()
+                + " blocks:" + claim.getBlocks();
+            String cmd = "/claimadmin tp " + claim.getId();
+            sender.sendMessage(text(brief, YELLOW)
+                               .hoverEvent(showText(text(cmd, YELLOW)))
+                               .clickEvent(runCommand(cmd)));
+        }
+        return true;
+    }
+
+    private boolean nearby(Player player, String[] args) {
+        if (args.length != 1) return false;
+        final int range = CommandArgCompleter.requireInt(args[0], i -> i > 0);
+        Location location = player.getLocation();
+        Area area = new Area(location.getBlockX() - range, location.getBlockZ() - range,
+                             location.getBlockX() + range, location.getBlockZ() + range);
+        List<Claim> claims = plugin.getClaimCache().within(player.getWorld().getName(), area);
+        if (claims.isEmpty()) throw new CommandWarn("No claims within " + range + " blocks!");
+        player.sendMessage(text(claims.size() + " claims within " + range + " blocks:", AQUA));
+        for (Claim claim : claims) {
+            String brief = "-"
+                + " id:" + claim.getId()
+                + " owner:" + claim.getOwnerName()
+                + " loc:" + claim.getArea().centerX() + "," + claim.getArea().centerY()
+                + " blocks:" + claim.getBlocks();
+            String cmd = "/claimadmin tp " + claim.getId();
+            player.sendMessage(text(brief, YELLOW)
                                .hoverEvent(showText(text(cmd, YELLOW)))
                                .clickEvent(runCommand(cmd)));
         }

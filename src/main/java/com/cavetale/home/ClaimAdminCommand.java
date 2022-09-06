@@ -116,7 +116,7 @@ public final class ClaimAdminCommand extends AbstractCommand<HomePlugin> {
             String brief = "-"
                 + " id:" + claim.getId()
                 + " owner:" + claim.getOwnerName()
-                + " loc:" + claim.getArea().centerX() + "," + claim.getArea().centerY()
+                + " loc:" + claim.getWorld() + ":" + claim.getArea().centerX() + "," + claim.getArea().centerY()
                 + " blocks:" + claim.getBlocks();
             String cmd = "/claimadmin tp " + claim.getId();
             sender.sendMessage(text(brief, YELLOW)

@@ -1,6 +1,6 @@
 package com.cavetale.home;
 
-import com.winthier.playercache.PlayerCache;
+import com.cavetale.core.playercache.PlayerCache;
 import java.util.Map;
 import java.util.Set;
 import java.util.UUID;

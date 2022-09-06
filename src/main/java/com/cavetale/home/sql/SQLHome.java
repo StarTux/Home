@@ -1,9 +1,9 @@
 package com.cavetale.home.sql;
 
+import com.cavetale.core.playercache.PlayerCache;
 import com.cavetale.core.util.Json;
 import com.cavetale.home.HomePlugin;
 import com.cavetale.home.struct.BlockVector;
-import com.winthier.playercache.PlayerCache;
 import com.winthier.sql.SQLRow;
 import java.time.Duration;
 import java.time.Instant;

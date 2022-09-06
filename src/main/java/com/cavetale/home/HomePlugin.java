@@ -513,10 +513,10 @@ public final class HomePlugin extends JavaPlugin {
         return list;
     }
 
-    public List<Claim> findClaims(UUID owner, TrustType trust) {
+    public List<Claim> findClaims(UUID player, TrustType trust) {
         List<Claim> list = new ArrayList<>();
         for (Claim claim : claimCache.getAllClaims()) {
-            if (claim.getTrustType(owner).gte(trust)) list.add(claim);
+            if (claim.getTrustType(player).gte(trust)) list.add(claim);
         }
         Collections.sort(list, (a, b) -> b.getCreated().compareTo(a.getCreated()));
         return list;

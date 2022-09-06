@@ -1,12 +1,12 @@
 package com.cavetale.home;
 
 import com.cavetale.core.perm.Perm;
+import com.cavetale.core.playercache.PlayerCache;
 import com.cavetale.core.util.Json;
 import com.cavetale.home.sql.SQLClaim;
 import com.cavetale.home.sql.SQLClaimTrust;
 import com.cavetale.home.struct.BlockVector;
 import com.cavetale.home.struct.Vec2i;
-import com.winthier.playercache.PlayerCache;
 import java.util.ArrayList;
 import java.util.Date;
 import java.util.EnumMap;

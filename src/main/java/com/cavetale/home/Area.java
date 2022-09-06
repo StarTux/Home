@@ -49,16 +49,16 @@ public final class Area {
         int dx;
         int dy;
         if (x < ax) {
-            dx = ax - x;
+            dx = Math.abs(ax - x);
         } else if (x > bx) {
-            dx = x - bx;
+            dx = Math.abs(x - bx);
         } else {
             dx = 0;
         }
         if (y < ay) {
-            dy = ay - y;
+            dy = Math.abs(ay - y);
         } else if (y > by) {
-            dy = y - by;
+            dy = Math.abs(y - by);
         } else {
             dy = 0;
         }

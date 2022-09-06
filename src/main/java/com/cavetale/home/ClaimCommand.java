@@ -364,10 +364,13 @@ public final class ClaimCommand extends AbstractCommand<HomePlugin> {
         BuyClaimBlocks meta = new BuyClaimBlocks(buyClaimBlocks, price, claim.getId(), ""
                                                  + ThreadLocalRandom.current().nextInt(9999));
         plugin.setMetadata(player, plugin.META_BUY, meta);
+        String claimName = claim.getName() != null ? claim.getName() : claim.getOwnerName();
         ComponentLike message = text().color(WHITE)
             .content("Buying ")
             .append(text(buyClaimBlocks, GREEN))
-            .append(text(" for "))
+            .append(text(" for claim \""))
+            .append(text(claimName, GREEN))
+            .append(text("\" for "))
             .append(Coin.format(price))
             .append(text("."))
             .append(newline())
@@ -421,6 +424,7 @@ public final class ClaimCommand extends AbstractCommand<HomePlugin> {
                 .detail(Detail.COUNT, meta.amount)
                 .detail(Detail.MONEY, meta.price)
                 .callEvent();
+            plugin.getLogger().info(player.getName() + " purchased " + meta.amount + " blocks for claim #" + claim.getId());
             return true;
         }
         // AbandonClaim confirm

@@ -67,8 +67,6 @@ public final class HomePlugin extends JavaPlugin {
     // Utilty
     protected long ticks;
     protected Random random = ThreadLocalRandom.current();
-    // Interface
-    private DynmapClaims dynmapClaims;
     // Commands
     protected final HomeAdminCommand homeAdminCommand = new HomeAdminCommand(this);
     protected final ClaimAdminCommand claimAdminCommand = new ClaimAdminCommand(this);
@@ -116,7 +114,6 @@ public final class HomePlugin extends JavaPlugin {
         inviteHomeCommand.enable();
         unInviteHomeCommand.enable();
         subclaimCommand.enable();
-        enableDynmap();
         if (getServer().getPluginManager().isPluginEnabled("MagicMap")) {
             magicMapListener = new MagicMapListener(this).enable();
         }
@@ -129,7 +126,6 @@ public final class HomePlugin extends JavaPlugin {
         homes.clear();
         db.waitForAsyncTask();
         db.close();
-        disableDynmap();
     }
 
     protected void findPlaceToBuild(RemotePlayer player) {
@@ -605,22 +601,6 @@ public final class HomePlugin extends JavaPlugin {
         return claim != null
             ? claim.isPvPAllowed(blockVector)
             : false;
-    }
-
-    protected void enableDynmap() {
-        if (!getServer().getPluginManager().isPluginEnabled("dynmap")) return;
-        try {
-            dynmapClaims = new DynmapClaims(this).enable();
-        } catch (Exception e) {
-            getLogger().log(Level.SEVERE, "Enabling dynmap", e);
-            dynmapClaims = null;
-        }
-    }
-
-    protected void disableDynmap() {
-        if (dynmapClaims == null) return;
-        dynmapClaims.disable();
-        dynmapClaims = null;
     }
 
     public SQLHomeWorld findHomeWorld(String worldName) {

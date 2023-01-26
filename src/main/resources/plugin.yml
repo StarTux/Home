@@ -137,3 +137,7 @@ permissions:
   home.ignore:
     description: Ignore all claims
     default: false
+
+  home.back:
+    description: Record back locations
+    default: true

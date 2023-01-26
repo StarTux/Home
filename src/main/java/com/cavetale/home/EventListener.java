@@ -1,13 +1,17 @@
 package com.cavetale.home;
 
+import com.cavetale.core.back.Back;
 import com.cavetale.core.event.player.PluginPlayerQuery;
 import lombok.RequiredArgsConstructor;
 import org.bukkit.entity.Player;
 import org.bukkit.event.EventHandler;
 import org.bukkit.event.EventPriority;
 import org.bukkit.event.Listener;
+import org.bukkit.event.entity.EntityDeathEvent;
+import org.bukkit.event.player.PlayerJoinEvent;
 import org.bukkit.event.player.PlayerKickEvent;
 import org.bukkit.event.player.PlayerQuitEvent;
+import org.bukkit.event.player.PlayerTeleportEvent;
 
 @RequiredArgsConstructor
 public final class EventListener implements Listener {
@@ -49,5 +53,49 @@ public final class EventListener implements Listener {
             boolean insideTrustedClaim = claim != null ? (!claim.isOwner(player) && claim.getTrustType(player).canBuild()) : false;
             PluginPlayerQuery.Name.INSIDE_TRUSTED_CLAIM.respond(query, plugin, insideTrustedClaim);
         }
+    }
+
+    private boolean checkBackConditions(Player player) {
+        return true;
+    }
+
+    @EventHandler
+    private void onPlayerQuitBack(PlayerQuitEvent event) {
+        Player player = event.getPlayer();
+        if (player.isDead()) return;
+        if (!player.hasPermission("home.back")) return;
+        if (!plugin.isLocalHomeWorld(player.getWorld())) return;
+        Back.setBackLocation(player, plugin, player.getLocation(), "Home world logout");
+    }
+
+    @EventHandler
+    private void onPlayerJoinBack(PlayerJoinEvent event) {
+        Player player = event.getPlayer();
+        if (!player.hasPermission("home.back")) return;
+        if (!plugin.isLocalHomeWorld(player.getWorld())) return;
+        Back.resetBackLocation(player, plugin);
+    }
+
+    @EventHandler(ignoreCancelled = true, priority = EventPriority.MONITOR)
+    private void onPlayerTeleportBack(PlayerTeleportEvent event) {
+        Player player = event.getPlayer();
+        if (player.isDead()) return;
+        if (!player.hasPermission("home.back")) return;
+        if (event.getFrom().getWorld().equals(event.getTo().getWorld())) return;
+        boolean from = plugin.isLocalHomeWorld(event.getFrom().getWorld());
+        boolean to = plugin.isLocalHomeWorld(event.getTo().getWorld());
+        if (from && !to) {
+            // Warp out of the home worlds
+            Back.setBackLocation(player, plugin, player.getLocation(), "Home world teleport");
+        }
+    }
+
+    @EventHandler
+    private void onPlayerDeathBack(EntityDeathEvent event) {
+        if (!(event.getEntity() instanceof Player player)) return;
+        if (!player.isDead()) return;
+        if (!player.hasPermission("home.back")) return;
+        if (!plugin.isLocalHomeWorld(player.getWorld())) return;
+        Back.resetBackLocation(player);
     }
 }

@@ -325,7 +325,7 @@ public final class Session {
 
     protected void onPlayerHud(Player player, PlayerHudEvent event) {
         if (currentHomeWorld == null) return;
-        List<Component> header = new ArrayList<>();
+        List<Component> footer = new ArrayList<>();
         if (currentClaim != null) {
             TrustType trust = currentClaim.getTrustType(player);
             String claimName = currentClaim.getName() != null
@@ -333,15 +333,15 @@ public final class Session {
                 : currentClaim.getOwnerName();
             TextColor claimColor = trust.canBuild() ? BLUE : (trust.canInteract() ? AQUA : RED);
             Component claimLine = join(noSeparators(), text(tiny("claim "), GRAY), text(claimName, claimColor));
-            header.add(claimLine);
+            footer.add(claimLine);
             if (notifyTicks > 0) {
                 BossBar.Color bossColor = trust.canBuild() ? BossBar.Color.BLUE : BossBar.Color.RED;
                 float progress = (float) notifyTicks / (float) MAX_NOTIFY;
                 event.bossbar(PlayerHudPriority.LOWEST, claimLine, bossColor, BossBar.Overlay.PROGRESS, Set.of(), progress);
             }
         } else {
-            header.add(join(noSeparators(), text(tiny("claim "), GRAY), text(tiny("none"), DARK_GRAY)));
+            footer.add(join(noSeparators(), text(tiny("claim "), GRAY), text(tiny("none"), DARK_GRAY)));
         }
-        event.header(PlayerHudPriority.HIGH, header);
+        event.footer(PlayerHudPriority.DEFAULT, footer);
     }
 }

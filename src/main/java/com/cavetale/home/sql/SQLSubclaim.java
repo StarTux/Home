@@ -1,40 +1,30 @@
 package com.cavetale.home.sql;
 
 import com.cavetale.home.Area;
+import com.winthier.sql.SQLRow.Name;
+import com.winthier.sql.SQLRow.NotNull;
 import com.winthier.sql.SQLRow;
-import javax.persistence.Column;
-import javax.persistence.Id;
-import javax.persistence.Index;
-import javax.persistence.Table;
 import lombok.Data;
 
 @Data
-@Table(name = "subclaims",
-       indexes = @Index(name = "claim_id", columnList = "claim_id"))
+@Name("subclaims")
+@NotNull
 public final class SQLSubclaim implements SQLRow {
-    @Id
-    private Integer id;
+    @Id private int id;
 
-    @Column(nullable = false)
-    private int claimId;
+    @Keyed private int claimId;
 
-    @Column(nullable = false)
-    private String world;
+    @VarChar(32) private String world;
 
-    @Column(nullable = false)
     private int ax;
 
-    @Column(nullable = false)
     private int ay;
 
-    @Column(nullable = false)
     private int bx;
 
-    @Column(nullable = false)
     private int by;
 
-    @Column(nullable = false, length = 4096)
-    private String tag;
+    @Text private String tag;
 
     public SQLSubclaim() { }
 

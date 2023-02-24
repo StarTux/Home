@@ -118,7 +118,7 @@ public final class Claim {
     }
 
     public int getId() {
-        return row.getId() != null ? row.getId() : 0;
+        return row.getId();
     }
 
     public UUID getOwner() {

@@ -53,7 +53,7 @@ public final class Subclaim {
     }
 
     public int getId() {
-        return row.getId() != null ? row.getId() : 0;
+        return row.getId();
     }
 
     public String getListInfo() {

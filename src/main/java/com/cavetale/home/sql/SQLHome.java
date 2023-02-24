@@ -4,6 +4,9 @@ import com.cavetale.core.playercache.PlayerCache;
 import com.cavetale.core.util.Json;
 import com.cavetale.home.HomePlugin;
 import com.cavetale.home.struct.BlockVector;
+import com.winthier.sql.SQLRow.Name;
+import com.winthier.sql.SQLRow.NotNull;
+import com.winthier.sql.SQLRow.UniqueKey;
 import com.winthier.sql.SQLRow;
 import java.time.Duration;
 import java.time.Instant;
@@ -14,65 +17,41 @@ import java.util.HashSet;
 import java.util.Map;
 import java.util.Set;
 import java.util.UUID;
-import javax.persistence.Column;
-import javax.persistence.Id;
-import javax.persistence.Index;
-import javax.persistence.Table;
-import javax.persistence.UniqueConstraint;
 import lombok.Data;
 import org.bukkit.Bukkit;
 import org.bukkit.Location;
 import org.bukkit.World;
 
 @Data
-@Table(name = "homes",
-       indexes = {
-           @Index(name = "owner", columnList = "owner"),
-           @Index(name = "name", columnList = "name"),
-       },
-       uniqueConstraints = {
-           @UniqueConstraint(columnNames = {"owner", "name"}),
-           @UniqueConstraint(columnNames = {"public_name"}),
-       })
+@NotNull
+@Name("homes")
+@UniqueKey({"owner", "name"})
 public final class SQLHome implements SQLRow {
-    @Id
-    private Integer id;
+    @Id private int id;
 
-    @Column(nullable = false)
-    private UUID owner;
+    @Keyed private UUID owner;
 
-    @Column(nullable = true, length = 32)
-    private String name;
+    @Keyed @Nullable @VarChar(32) private String name;
 
-    @Column(nullable = false)
     private Date created;
 
-    @Column(nullable = false, length = 32)
-    private String world;
+    @VarChar(32) private String world;
 
-    @Column(nullable = false)
     private double x;
 
-    @Column(nullable = false)
     private double y;
 
-    @Column(nullable = false)
     private double z;
 
-    @Column(nullable = false)
     private double pitch;
 
-    @Column(nullable = false)
     private double yaw;
 
-    @Column(nullable = true, length = 32)
-    private String publicName;
+    @Unique @Nullable @VarChar(32) private String publicName;
 
-    @Column(nullable = false)
     private int score;
 
-    @Column(nullable = true, length = 4096)
-    private String json;
+    @Nullable @Text private String json;
 
     private final transient Set<UUID> invites = new HashSet<>();
     private transient Tag tag = new Tag();
@@ -212,7 +191,7 @@ public final class SQLHome implements SQLRow {
 
     public void saveToDatabase() {
         pack();
-        if (id == null) {
+        if (id == 0) {
             HomePlugin.getInstance().getDb().insertAsync(this, res -> {
                     HomePlugin.getInstance().getConnectListener().broadcastHomeUpdate(this);
                     HomePlugin.getInstance().getHomes().add(this);

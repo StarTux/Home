@@ -1,30 +1,22 @@
 package com.cavetale.home.sql;
 
+import com.winthier.sql.SQLRow.Name;
+import com.winthier.sql.SQLRow.NotNull;
+import com.winthier.sql.SQLRow.UniqueKey;
 import com.winthier.sql.SQLRow;
 import java.util.UUID;
-import javax.persistence.Column;
-import javax.persistence.Id;
-import javax.persistence.Index;
-import javax.persistence.Table;
-import javax.persistence.UniqueConstraint;
 import lombok.Data;
 
 @Data
-@Table(name = "home_invites",
-       indexes = {
-           @Index(name = "home_id", columnList = "home_id"),
-           @Index(name = "invitee", columnList = "invitee"),
-       },
-       uniqueConstraints = @UniqueConstraint(columnNames = {"home_id", "invitee"}))
+@Name("home_invites")
+@NotNull
+@UniqueKey({"homeId", "invitee"})
 public final class SQLHomeInvite implements SQLRow {
-    @Id
-    private Integer id;
+    @Id private int id;
 
-    @Column(nullable = false)
-    private Integer homeId;
+    @Keyed private int homeId;
 
-    @Column(nullable = false)
-    private UUID invitee;
+    @Keyed private UUID invitee;
 
     public SQLHomeInvite() { }
 

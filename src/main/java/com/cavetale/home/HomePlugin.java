@@ -10,6 +10,7 @@ import com.cavetale.home.sql.SQLClaimTrust;
 import com.cavetale.home.sql.SQLHome;
 import com.cavetale.home.sql.SQLHomeInvite;
 import com.cavetale.home.sql.SQLHomeWorld;
+import com.cavetale.home.sql.SQLStatic;
 import com.cavetale.home.sql.SQLSubclaim;
 import com.cavetale.home.struct.BlockVector;
 import com.winthier.sql.SQLDatabase;
@@ -84,12 +85,7 @@ public final class HomePlugin extends JavaPlugin {
     public void onEnable() {
         instance = this;
         db = new SQLDatabase(this);
-        db.registerTables(List.of(SQLHomeWorld.class,
-                                  SQLClaim.class,
-                                  SQLClaimTrust.class,
-                                  SQLSubclaim.class,
-                                  SQLHome.class,
-                                  SQLHomeInvite.class));
+        db.registerTables(SQLStatic.getAllTableClasses());
         db.createAllTables();
         loadFromDatabase();
         if (localHomeWorlds.isEmpty()) {

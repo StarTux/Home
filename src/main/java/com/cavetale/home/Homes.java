@@ -20,7 +20,7 @@ public final class Homes implements Iterable<SQLHome> {
     }
 
     public void add(SQLHome home) {
-        if (home.getId() != null) {
+        if (home.getId() > 0) {
             idMap.put(home.getId(), home);
         }
         ownerMap.computeIfAbsent(home.getOwner(), u -> new HashMap<>()).put(home.getName(), home);
@@ -30,7 +30,7 @@ public final class Homes implements Iterable<SQLHome> {
     }
 
     public void remove(SQLHome home) {
-        if (home.getId() != null) {
+        if (home.getId() > 0) {
             idMap.remove(home.getId());
         }
         ownerMap.computeIfAbsent(home.getOwner(), u -> new HashMap<>()).remove(home.getName());

@@ -27,6 +27,7 @@ import net.kyori.adventure.title.Title;
 import org.bukkit.Chunk;
 import org.bukkit.Location;
 import org.bukkit.World;
+import org.bukkit.WorldBorder;
 import org.bukkit.entity.Player;
 import static net.kyori.adventure.text.Component.empty;
 import static net.kyori.adventure.text.Component.join;
@@ -149,6 +150,13 @@ public final class HomesCommand extends AbstractCommand<HomePlugin> {
         return true;
     }
 
+    private static boolean checkWorldBorder(Location location) {
+        WorldBorder border = location.getWorld().getWorldBorder();
+        return border != null
+            ? border.isInside(location)
+            : true;
+    }
+
     private void home0(RemotePlayer player) {
         final UUID uuid = player.getUniqueId();
         // Try to find a set home
@@ -169,7 +177,10 @@ public final class HomesCommand extends AbstractCommand<HomePlugin> {
             }
             Location location = home.createLocation();
             if (location == null) {
-                throw new CommandWarn("Primary home could not be found.");
+                throw new CommandWarn("Primary home could not be found");
+            }
+            if (!checkWorldBorder(location)) {
+                throw new CommandWarn("Cannot use homes outside the world border");
             }
             player.bring(plugin, location, player2 -> {
                     if (player2 == null) return;
@@ -249,7 +260,10 @@ public final class HomesCommand extends AbstractCommand<HomePlugin> {
         }
         Location location = home.createLocation();
         if (location == null) {
-            throw new CommandWarn("Home could not be found.");
+            throw new CommandWarn("Home could not be found");
+        }
+        if (!checkWorldBorder(location)) {
+            throw new CommandWarn("Cannot use homes outside the world border");
         }
         Claim claim = plugin.getClaimAt(location);
         if (claim != null && !claim.canBuild(home.getOwner(), home.createBlockVector())) {
@@ -287,7 +301,11 @@ public final class HomesCommand extends AbstractCommand<HomePlugin> {
         if (!plugin.isLocalHomeWorld(player.getWorld())) {
             throw new CommandWarn("You cannot set homes in this world");
         }
-        BlockVector blockVector = BlockVector.of(player.getLocation());
+        Location location = player.getLocation();
+        if (!checkWorldBorder(location)) {
+            throw new CommandWarn("Cannot set homes outside the world border");
+        }
+        BlockVector blockVector = BlockVector.of(location);
         Claim claim = plugin.getClaimAt(blockVector);
         if (claim != null && !claim.canBuild(player, blockVector)) {
             throw new CommandWarn("You cannot set homes in this claim");
@@ -337,7 +355,7 @@ public final class HomesCommand extends AbstractCommand<HomePlugin> {
         } else {
             home = plugin.getHomes().findOwnedHome(player.getUniqueId(), args[0]);
         }
-        if (home == null) throw new CommandWarn("Home not found.");
+        if (home == null) throw new CommandWarn("Home not found");
         if (home.getName() == null) {
             player.sendMessage(Util.frame("Primary Home Info"));
         } else {
@@ -459,9 +477,9 @@ public final class HomesCommand extends AbstractCommand<HomePlugin> {
             if (home == null) throw new CommandWarn("Home not found: " + arg + "!");
         } else {
             home = plugin.getHomes().findPrimaryHome(player.getUniqueId());
-            if (home == null) throw new CommandWarn("Default home not set.");
+            if (home == null) throw new CommandWarn("Default home not set");
         }
-        if (!home.getInvites().contains(target)) throw new CommandWarn("Player not invited.");
+        if (!home.getInvites().contains(target)) throw new CommandWarn("Player not invited");
         plugin.getDb().find(SQLHomeInvite.class)
             .eq("home_id", home.getId())
             .eq("invitee", target).deleteAsync(r -> {
@@ -589,7 +607,10 @@ public final class HomesCommand extends AbstractCommand<HomePlugin> {
         final String publicName = home.getPublicName();
         Location location = home.createLocation();
         if (location == null) {
-            throw new CommandWarn("Could not take you to this home.");
+            throw new CommandWarn("Could not take you to this home");
+        }
+        if (!checkWorldBorder(location)) {
+            throw new CommandWarn("Cannot use homes outside the world border");
         }
         player.bring(plugin, location, player2 -> {
                 home.onVisit(player2.getUniqueId());

@@ -14,7 +14,7 @@ import lombok.Data;
 @NotNull
 @UniqueKey({"claim_id", "trustee"})
 public final class SQLClaimTrust implements SQLRow {
-    @Id private int id;
+    @Id private Integer id;
 
     @Keyed private Integer claimId;
 

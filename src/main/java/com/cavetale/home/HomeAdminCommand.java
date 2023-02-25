@@ -108,7 +108,7 @@ public final class HomeAdminCommand extends AbstractCommand<HomePlugin> {
         for (SQLHome home : plugin.getHomes()) {
             if (from.uuid.equals(home.getOwner())) {
                 plugin.db.delete(home);
-                home.setId(0);
+                home.setId(null);
                 home.setOwner(to.uuid);
                 plugin.db.save(home);
                 homeCount += 1;

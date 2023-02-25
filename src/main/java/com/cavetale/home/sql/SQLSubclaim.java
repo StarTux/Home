@@ -10,7 +10,7 @@ import lombok.Data;
 @Name("subclaims")
 @NotNull
 public final class SQLSubclaim implements SQLRow {
-    @Id private int id;
+    @Id private Integer id;
 
     @Keyed private int claimId;
 

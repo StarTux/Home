@@ -12,7 +12,7 @@ import lombok.Data;
 @NotNull
 @Name("claims")
 public final class SQLClaim implements SQLRow {
-    @Id private int id;
+    @Id private Integer id;
 
     private UUID owner;
 

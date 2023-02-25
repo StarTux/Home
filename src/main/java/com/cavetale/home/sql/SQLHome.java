@@ -27,7 +27,7 @@ import org.bukkit.World;
 @Name("homes")
 @UniqueKey({"owner", "name"})
 public final class SQLHome implements SQLRow {
-    @Id private int id;
+    @Id private Integer id;
 
     @Keyed private UUID owner;
 
@@ -191,7 +191,7 @@ public final class SQLHome implements SQLRow {
 
     public void saveToDatabase() {
         pack();
-        if (id == 0) {
+        if (id == null) {
             HomePlugin.getInstance().getDb().insertAsync(this, res -> {
                     HomePlugin.getInstance().getConnectListener().broadcastHomeUpdate(this);
                     HomePlugin.getInstance().getHomes().add(this);

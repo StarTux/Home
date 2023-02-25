@@ -12,7 +12,7 @@ import lombok.Data;
 @NotNull
 @UniqueKey({"homeId", "invitee"})
 public final class SQLHomeInvite implements SQLRow {
-    @Id private int id;
+    @Id private Integer id;
 
     @Keyed private int homeId;
 

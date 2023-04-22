@@ -7,6 +7,7 @@ import com.cavetale.core.event.hud.PlayerHudEvent;
 import com.cavetale.core.structure.Structures;
 import com.cavetale.home.struct.BlockVector;
 import com.destroystokyo.paper.event.entity.PreCreatureSpawnEvent;
+import io.papermc.paper.entity.Bucketable;
 import java.util.Iterator;
 import java.util.List;
 import java.util.Objects;
@@ -71,7 +72,6 @@ import org.bukkit.event.player.PlayerArmorStandManipulateEvent;
 import org.bukkit.event.player.PlayerBucketEmptyEvent;
 import org.bukkit.event.player.PlayerBucketFillEvent;
 import org.bukkit.event.player.PlayerEggThrowEvent;
-import org.bukkit.event.player.PlayerInteractAtEntityEvent;
 import org.bukkit.event.player.PlayerInteractEntityEvent;
 import org.bukkit.event.player.PlayerInteractEvent;
 import org.bukkit.event.player.PlayerShearEntityEvent;
@@ -82,6 +82,7 @@ import org.bukkit.event.vehicle.VehicleDamageEvent;
 import org.bukkit.event.vehicle.VehicleDestroyEvent;
 import org.bukkit.event.vehicle.VehicleEntityCollisionEvent;
 import org.bukkit.inventory.InventoryHolder;
+import org.bukkit.inventory.ItemStack;
 import org.spigotmc.event.entity.EntityMountEvent;
 import static com.cavetale.core.util.CamelCase.toCamelCase;
 import static net.kyori.adventure.text.Component.empty;
@@ -387,17 +388,14 @@ final class ClaimListener implements Listener {
         final Entity entity = event.getRightClicked();
         if (entity instanceof Player) return;
         if (isOwner(player, entity)) return;
-        checkPlayerAction(player, entity.getLocation().getBlock(), TrustType.BUILD, event, true);
-    }
-
-    @EventHandler(ignoreCancelled = true, priority = EventPriority.LOW)
-    public void onPlayerInteractAtEntity(PlayerInteractAtEntityEvent event) {
-        final Player player = event.getPlayer();
-        if (plugin.doesIgnoreClaims(player)) return;
-        final Entity entity = event.getRightClicked();
-        if (entity instanceof Player) return;
-        if (isOwner(player, entity)) return;
-        checkPlayerAction(player, entity.getLocation().getBlock(), TrustType.BUILD, event, false);
+        ItemStack item = player.getInventory().getItemInMainHand();
+        if (entity instanceof Animals animals && item != null && animals.isBreedItem(item)) {
+            checkPlayerAction(player, entity.getLocation().getBlock(), TrustType.CONTAINER, event, true);
+        } else if (entity instanceof Bucketable && item != null && item.getType() == Material.WATER_BUCKET) {
+            checkPlayerAction(player, entity.getLocation().getBlock(), TrustType.CONTAINER, event, true);
+        } else {
+            checkPlayerAction(player, entity.getLocation().getBlock(), TrustType.BUILD, event, true);
+        }
     }
 
     @EventHandler(ignoreCancelled = true, priority = EventPriority.LOW)

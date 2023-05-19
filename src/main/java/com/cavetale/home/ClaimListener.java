@@ -452,6 +452,9 @@ final class ClaimListener implements Listener {
             if (mat == Material.FARMLAND || mat == Material.TURTLE_EGG) {
                 event.setCancelled(true);
             } else {
+                if (Tag.PRESSURE_PLATES.isTagged(mat)) return;
+                if (Tag.REDSTONE_ORES.isTagged(mat)) return;
+                if (mat == Material.BIG_DRIPLEAF) return;
                 checkPlayerAction(event.getPlayer(), block, TrustType.INTERACT, event, false);
             }
             return;

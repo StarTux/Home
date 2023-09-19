@@ -7,7 +7,9 @@ import java.util.Iterator;
 import java.util.List;
 import java.util.TreeMap;
 import java.util.UUID;
+import lombok.Getter;
 
+@Getter
 public final class Homes implements Iterable<SQLHome> {
     private TreeMap<Integer, SQLHome> idMap = new TreeMap<>();
     private HashMap<UUID, HashMap<String, SQLHome>> ownerMap = new HashMap<>();

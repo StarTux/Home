@@ -1,14 +1,24 @@
 package com.cavetale.home;
 
 import com.cavetale.core.command.AbstractCommand;
+import com.cavetale.core.command.CommandContext;
+import com.cavetale.core.command.CommandNode;
 import com.cavetale.core.command.CommandWarn;
 import com.cavetale.core.playercache.PlayerCache;
 import com.cavetale.home.sql.SQLHome;
 import com.cavetale.home.sql.SQLHomeInvite;
+import com.cavetale.home.sql.SQLHomeWorld;
+import java.util.ArrayList;
 import java.util.List;
+import java.util.UUID;
+import net.kyori.adventure.text.Component;
+import org.bukkit.Location;
 import org.bukkit.command.CommandSender;
 import org.bukkit.entity.Player;
+import static net.kyori.adventure.text.Component.join;
 import static net.kyori.adventure.text.Component.text;
+import static net.kyori.adventure.text.Component.textOfChildren;
+import static net.kyori.adventure.text.JoinConfiguration.separator;
 import static net.kyori.adventure.text.format.NamedTextColor.*;
 
 public final class HomeAdminCommand extends AbstractCommand<HomePlugin> {
@@ -25,6 +35,16 @@ public final class HomeAdminCommand extends AbstractCommand<HomePlugin> {
             .description("List Player Homes")
             .completers(PlayerCache.NAME_COMPLETER)
             .senderCaller(this::list);
+        rootNode.addChild("info").arguments("<player> <name>")
+            .description("Print player home info")
+            .completers(PlayerCache.NAME_COMPLETER,
+                        this::completePlayerHomeNames)
+            .playerCaller(this::info);
+        rootNode.addChild("tp").arguments("<player> <name>")
+            .description("Teleport to player home")
+            .completers(PlayerCache.NAME_COMPLETER,
+                        this::completePlayerHomeNames)
+            .playerCaller(this::tp);
         rootNode.addChild("ignore").denyTabCompletion()
             .description("Toggle Home/Claim Ignore")
             .playerCaller(this::ignore);
@@ -36,6 +56,17 @@ public final class HomeAdminCommand extends AbstractCommand<HomePlugin> {
         rootNode.addChild("debug").denyTabCompletion()
             .description("Debug Spam")
             .senderCaller(this::debug);
+        // Public
+        CommandNode publicNode = rootNode.addChild("public")
+            .description("Public home comands");
+        publicNode.addChild("info").arguments("<home>")
+            .description("Display info on public home")
+            .completers((c, n, a) -> plugin.getHomesCommand().completePublicHomes(c, n, a))
+            .senderCaller(this::publicInfo);
+        publicNode.addChild("remove").arguments("<home>")
+            .description("Remove a public home")
+            .completers((c, n, a) -> plugin.getHomesCommand().completePublicHomes(c, n, a))
+            .senderCaller(this::publicRemove);
     }
 
     private boolean reload(CommandSender sender, String[] args) {
@@ -70,6 +101,72 @@ public final class HomeAdminCommand extends AbstractCommand<HomePlugin> {
             sender.sendMessage(text(brief, YELLOW));
         }
         return true;
+    }
+
+    private void teleport(Player player, SQLHome home) {
+        SQLHomeWorld homeWorld = plugin.findHomeWorld(home.getWorld());
+        if (homeWorld != null && !homeWorld.isOnThisServer()) {
+            ConnectListener.teleport(player.getUniqueId(), home);
+            return;
+        }
+        Location location = home.createLocation();
+        if (location == null) throw new CommandWarn("Location not found: " + home);
+        player.teleport(location);
+    }
+
+    private boolean info(CommandSender sender, String[] args) {
+        if (args.length < 1 || args.length > 2) return false;
+        PlayerCache owner = PlayerCache.require(args[0]);
+        SQLHome home = args.length >= 2
+            ? plugin.getHomes().findOwnedHome(owner.uuid, args[1])
+            : plugin.getHomes().findPrimaryHome(owner.uuid);
+        final String homeName = owner.name + ":" + (args.length >= 2 ? args[1] : "");
+        if (home == null) {
+            throw new CommandWarn("Home not found: " + homeName);
+        }
+        sender.sendMessage(text("" + home, YELLOW));
+        List<Component> invites = new ArrayList<>();
+        for (UUID invitee : home.getInvites()) {
+            invites.add(text("" + PlayerCache.nameForUuid(invitee), YELLOW));
+        }
+        sender.sendMessage(textOfChildren(text("Invites(", GRAY),
+                                          text(invites.size(), YELLOW),
+                                          text(") ", GRAY),
+                                          join(separator(text(", ", GRAY)), invites)));
+        return true;
+    }
+
+    private boolean tp(Player player, String[] args) {
+        if (args.length < 1 || args.length > 2) return false;
+        PlayerCache owner = PlayerCache.require(args[0]);
+        SQLHome home = args.length >= 2
+            ? plugin.getHomes().findOwnedHome(owner.uuid, args[1])
+            : plugin.getHomes().findPrimaryHome(owner.uuid);
+        final String homeName = owner.name + ":" + (args.length >= 2 ? args[1] : "");
+        if (home == null) {
+            throw new CommandWarn("Home not found: " + homeName);
+        }
+        teleport(player, home);
+        player.sendMessage(text("Teleporting to home " + homeName, YELLOW));
+        return true;
+    }
+
+    /**
+     * Complete the home name argument for commands which take the
+     * owner name followed by the home name.
+     */
+    protected List<String> completePlayerHomeNames(CommandContext context, CommandNode node, String arg) {
+        if (context.args.length < 2) return List.of();
+        final String playerName = context.args[context.args.length - 2];
+        PlayerCache player = PlayerCache.forArg(playerName);
+        if (player == null) return List.of();
+        String lower = arg.toLowerCase();
+        List<String> result = new ArrayList<>();
+        for (var row : plugin.getHomes().findOwnedHomes(player.uuid)) {
+            String name = row.isPrimary() ? "" : row.getName();
+            if (name.toLowerCase().contains(lower)) result.add(name);
+        }
+        return result;
     }
 
     protected void ignore(Player player) {
@@ -134,6 +231,29 @@ public final class HomeAdminCommand extends AbstractCommand<HomePlugin> {
                                 + " homes=" + homeCount
                                 + " invites=" + inviteCount + "/" + inviteRows.size(),
                                 AQUA));
+        return true;
+    }
+
+    private boolean publicInfo(CommandSender sender, String[] args) {
+        if (args.length != 1) return false;
+        SQLHome home = plugin.getHomes().findPublicHome(args[0]);
+        if (home == null) throw new CommandWarn("Public home not found: " + args[0]);
+        sender.sendMessage("" + home);
+        return true;
+    }
+
+    private boolean publicRemove(CommandSender sender, String[] args) {
+        if (args.length != 1) return false;
+        SQLHome home = plugin.getHomes().findPublicHome(args[0]);
+        if (home == null) throw new CommandWarn("Public home not found: " + args[0]);
+        final String oldPublicName = home.getPublicName();
+        plugin.getHomes().getPublicNameMap().remove(oldPublicName);
+        home.setPublicName(null);
+        home.setJson(null);
+        home.setTag(null);
+        home.setScore(0);
+        home.saveToDatabase();
+        sender.sendMessage(text("Public home removed (set to non-public): " + oldPublicName, YELLOW));
         return true;
     }
 }

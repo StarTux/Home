@@ -14,6 +14,7 @@ import com.cavetale.home.sql.SQLHome;
 import com.cavetale.home.sql.SQLHomeInvite;
 import com.cavetale.home.sql.SQLHomeWorld;
 import com.cavetale.home.struct.BlockVector;
+import com.cavetale.mytems.util.Collision;
 import java.time.Duration;
 import java.util.ArrayList;
 import java.util.List;
@@ -29,6 +30,8 @@ import org.bukkit.Location;
 import org.bukkit.World;
 import org.bukkit.WorldBorder;
 import org.bukkit.entity.Player;
+import org.bukkit.util.BoundingBox;
+import org.bukkit.util.Vector;
 import static net.kyori.adventure.text.Component.empty;
 import static net.kyori.adventure.text.Component.join;
 import static net.kyori.adventure.text.Component.newline;
@@ -612,18 +615,26 @@ public final class HomesCommand extends AbstractCommand<HomePlugin> {
         if (!checkWorldBorder(location)) {
             throw new CommandWarn("Cannot use homes outside the world border");
         }
-        player.bring(plugin, location, player2 -> {
-                home.onVisit(player2.getUniqueId());
-                player2.sendMessage(text("Teleported to "
-                                         + ownerName + "'s public home \""
-                                         + publicName + "\"",
-                                         GREEN));
-                PluginPlayerEvent.Name.VISIT_PUBLIC_HOME
-                    .make(plugin, player2)
-                    .detail(Detail.NAME, publicName)
-                    .detail(Detail.OWNER, home.getOwner())
-                    .detail(Detail.LOCATION, location)
-                    .callEvent();
+        location.getWorld().getChunkAtAsync(location.getBlockX() >> 4, location.getBlockZ() >> 4, (Consumer<Chunk>) chunk -> {
+                final Vector center = location.toVector().add(new Vector(0.0, 0.9, 0.0));
+                final BoundingBox bb = BoundingBox.of(center, 0.3, 0.9, 0.3);
+                if (Collision.collidesWithBlock(location.getWorld(), bb)) {
+                    player.sendMessage(text("Invite target is blocked", RED));
+                    return;
+                }
+                player.bring(plugin, location, player2 -> {
+                        home.onVisit(player2.getUniqueId());
+                        player2.sendMessage(text("Teleported to "
+                                                 + ownerName + "'s public home \""
+                                                 + publicName + "\"",
+                                                 GREEN));
+                        PluginPlayerEvent.Name.VISIT_PUBLIC_HOME
+                            .make(plugin, player2)
+                            .detail(Detail.NAME, publicName)
+                            .detail(Detail.OWNER, home.getOwner())
+                            .detail(Detail.LOCATION, location)
+                            .callEvent();
+                    });
             });
         return true;
     }

@@ -8,7 +8,6 @@ import org.bukkit.event.EventHandler;
 import org.bukkit.event.EventPriority;
 import org.bukkit.event.Listener;
 import org.bukkit.event.entity.EntityDeathEvent;
-import org.bukkit.event.player.PlayerJoinEvent;
 import org.bukkit.event.player.PlayerKickEvent;
 import org.bukkit.event.player.PlayerQuitEvent;
 import org.bukkit.event.player.PlayerTeleportEvent;
@@ -55,10 +54,6 @@ public final class EventListener implements Listener {
         }
     }
 
-    private boolean checkBackConditions(Player player) {
-        return true;
-    }
-
     @EventHandler
     private void onPlayerQuitBack(PlayerQuitEvent event) {
         Player player = event.getPlayer();
@@ -66,14 +61,6 @@ public final class EventListener implements Listener {
         if (!player.hasPermission("home.back")) return;
         if (!plugin.isLocalHomeWorld(player.getWorld())) return;
         Back.setBackLocation(player, plugin, player.getLocation(), "Home world logout");
-    }
-
-    @EventHandler
-    private void onPlayerJoinBack(PlayerJoinEvent event) {
-        Player player = event.getPlayer();
-        if (!player.hasPermission("home.back")) return;
-        if (!plugin.isLocalHomeWorld(player.getWorld())) return;
-        Back.resetBackLocation(player, plugin);
     }
 
     @EventHandler(ignoreCancelled = true, priority = EventPriority.MONITOR)

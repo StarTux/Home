@@ -733,7 +733,9 @@ final class ClaimListener implements Listener {
         case NATURAL:
             if (entityType == EntityType.PHANTOM) {
                 // No phantom spawning in the home world
-                event.setCancelled(true);
+                if (plugin.getClaimAt(location) != null) {
+                    event.setCancelled(true);
+                }
                 return;
             }
             break;

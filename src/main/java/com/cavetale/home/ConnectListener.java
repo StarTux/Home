@@ -26,7 +26,7 @@ public final class ConnectListener implements Listener {
     }
 
     @Value
-    private static class PlayerHomePacket {
+    private static final class PlayerHomePacket {
         private UUID player;
         private int homeId;
     }

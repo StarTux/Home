@@ -140,7 +140,7 @@ public final class ClaimCommand extends AbstractCommand<HomePlugin> {
     }
 
     @Value
-    private static class BuyClaimBlocks {
+    private static final class BuyClaimBlocks {
         int amount;
         double price;
         int claimId;
@@ -148,7 +148,7 @@ public final class ClaimCommand extends AbstractCommand<HomePlugin> {
     }
 
     @Value
-    private static class NewClaimMeta {
+    private static final class NewClaimMeta {
         String world;
         int x;
         int z;

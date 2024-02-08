@@ -5,9 +5,11 @@ import com.cavetale.core.command.CommandArgCompleter;
 import com.cavetale.core.command.CommandWarn;
 import com.cavetale.core.playercache.PlayerCache;
 import com.cavetale.home.sql.SQLClaimTrust;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.UUID;
 import java.util.function.Consumer;
+import net.kyori.adventure.text.Component;
 import org.bukkit.Bukkit;
 import org.bukkit.Chunk;
 import org.bukkit.Location;
@@ -16,7 +18,11 @@ import org.bukkit.block.Block;
 import org.bukkit.command.CommandSender;
 import org.bukkit.entity.Player;
 import org.bukkit.event.player.PlayerTeleportEvent.TeleportCause;
+import static net.kyori.adventure.text.Component.join;
+import static net.kyori.adventure.text.Component.space;
 import static net.kyori.adventure.text.Component.text;
+import static net.kyori.adventure.text.Component.textOfChildren;
+import static net.kyori.adventure.text.JoinConfiguration.separator;
 import static net.kyori.adventure.text.event.ClickEvent.runCommand;
 import static net.kyori.adventure.text.event.HoverEvent.showText;
 import static net.kyori.adventure.text.format.NamedTextColor.*;
@@ -47,6 +53,10 @@ public final class ClaimAdminCommand extends AbstractCommand<HomePlugin> {
             .description("Print Claim Info")
             .completers(CommandArgCompleter.integer(i -> i > 0))
             .senderCaller(this::info);
+        rootNode.addChild("regioninfo").arguments("[id]")
+            .description("Print Region INfo")
+            .completers(CommandArgCompleter.integer(i -> i > 0))
+            .senderCaller(this::regionInfo);
         rootNode.addChild("blocks").arguments("<amount>")
             .completers(CommandArgCompleter.integer(i -> i != 0))
             .description("Change Claim Blocks")
@@ -164,11 +174,75 @@ public final class ClaimAdminCommand extends AbstractCommand<HomePlugin> {
         } else {
             return false;
         }
-        sender.sendMessage(text(claim.getRow().toString(), AQUA));
-        sender.sendMessage(text("Subclaims: " + claim.getSubclaims().size(), AQUA));
-        for (SQLClaimTrust row : claim.getTrusted().values()) {
-            sender.sendMessage(text("+ " + row.getType() + " "  + PlayerCache.nameForUuid(row.getTrustee()), YELLOW));
+        sender.sendMessage(textOfChildren(text("Owner ", AQUA), text(claim.getOwnerName(), WHITE)));
+        sender.sendMessage(textOfChildren(text("Name ", AQUA),
+                                          (claim.getName() != null
+                                           ? text(claim.getName(), WHITE)
+                                           : text("N/A", DARK_GRAY))));
+        sender.sendMessage(textOfChildren(text("Location ", AQUA),
+                                          text(claim.getRow().getWorld(), WHITE),
+                                          text(" " + claim.getArea(), WHITE)));
+        sender.sendMessage(textOfChildren(text("Size ", AQUA),
+                                          text(claim.getArea().width(), WHITE),
+                                          text("x", AQUA),
+                                          text(claim.getArea().height(), WHITE),
+                                          text(" " + claim.getArea().size(), WHITE),
+                                          text("/", GRAY),
+                                          text(claim.getRow().getBlocks())));
+        List<Component> settings = new ArrayList<>();
+        for (var setting : ClaimSetting.values()) {
+            settings.add(claim.getSetting(setting)
+                         ? text("+" + setting.name().toLowerCase(), GREEN)
+                         : text("-" + setting.name().toLowerCase(), RED));
         }
+        sender.sendMessage(textOfChildren(text("Settings ", AQUA), join(separator(space()), settings)));
+        sender.sendMessage(textOfChildren(text("Subclaims ", AQUA),
+                                          text(claim.getSubclaims().size(), WHITE)));
+        for (SQLClaimTrust row : claim.getTrusted().values()) {
+            sender.sendMessage(textOfChildren(text("+ ", AQUA),
+                                              text(row.parseTrustType().displayName, WHITE),
+                                              text(" "  + PlayerCache.nameForUuid(row.getTrustee()), GREEN)));
+        }
+        return true;
+    }
+
+    private boolean regionInfo(CommandSender sender, String[] args) {
+        final Claim claim;
+        if (args.length == 1) {
+            int claimId = CommandArgCompleter.requireInt(args[0], i -> i > 0);
+            claim = plugin.getClaimById(claimId);
+            if (claim == null) throw new CommandWarn("Claim not found: " + claimId);
+        } else if (args.length == 0) {
+            if (!(sender instanceof Player player)) {
+                throw new CommandWarn("[claimadmin:info] Player expected");
+            }
+            claim = plugin.getClaimAt(player.getLocation());
+            if (claim == null) throw new CommandWarn("There is no claim here!");
+        } else {
+            return false;
+        }
+        final String centerStr = claim.getArea().centerX() + " " + claim.getArea().centerY();
+        sender.sendMessage(textOfChildren(text("Center ", AQUA), text(centerStr, WHITE))
+                           .hoverEvent(text(centerStr, GRAY))
+                           .insertion(centerStr));
+        final String borderStr = "" + Math.max(claim.getArea().width(), claim.getArea().height());
+        sender.sendMessage(textOfChildren(text("Border ", AQUA), text(borderStr, WHITE))
+                           .hoverEvent(text(borderStr, GRAY))
+                           .insertion(borderStr));
+        final int rax = claim.getArea().getAx() >> 9;
+        final int rbx = claim.getArea().getBx() >> 9;
+        final int ray = claim.getArea().getAy() >> 9;
+        final int rby = claim.getArea().getBy() >> 9;
+        final List<String> regions = new ArrayList<>();
+        for (int ry = ray; ry <= rby; ry += 1) {
+            for (int rx = rax; rx <= rbx; rx += 1) {
+                regions.add("r." + rx + "." + ry + ".mca");
+            }
+        }
+        final String regionStr = String.join(" ", regions);
+        sender.sendMessage(textOfChildren(text("Regions ", AQUA), text(regionStr, WHITE))
+                           .hoverEvent(text(regionStr, GRAY))
+                           .insertion(regionStr));
         return true;
     }
 

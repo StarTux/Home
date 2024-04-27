@@ -35,6 +35,7 @@ import org.bukkit.entity.Player;
 import org.bukkit.entity.Projectile;
 import org.bukkit.entity.Tameable;
 import org.bukkit.entity.Vehicle;
+import org.bukkit.entity.minecart.RideableMinecart;
 import org.bukkit.event.Cancellable;
 import org.bukkit.event.Event;
 import org.bukkit.event.EventHandler;
@@ -393,6 +394,8 @@ final class ClaimListener implements Listener {
             checkPlayerAction(player, entity.getLocation().getBlock(), TrustType.CONTAINER, event, true);
         } else if (entity instanceof Bucketable && item != null && item.getType() == Material.WATER_BUCKET) {
             checkPlayerAction(player, entity.getLocation().getBlock(), TrustType.CONTAINER, event, true);
+        } else if (entity instanceof RideableMinecart) {
+            checkPlayerAction(player, entity.getLocation().getBlock(), TrustType.INTERACT, event, true);
         } else {
             checkPlayerAction(player, entity.getLocation().getBlock(), TrustType.BUILD, event, true);
         }

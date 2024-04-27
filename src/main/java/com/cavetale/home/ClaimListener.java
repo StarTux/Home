@@ -23,6 +23,7 @@ import org.bukkit.Tag;
 import org.bukkit.World;
 import org.bukkit.block.Block;
 import org.bukkit.block.data.type.RespawnAnchor;
+import org.bukkit.entity.AbstractArrow;
 import org.bukkit.entity.AnimalTamer;
 import org.bukkit.entity.Animals;
 import org.bukkit.entity.Entity;
@@ -34,6 +35,7 @@ import org.bukkit.entity.Monster;
 import org.bukkit.entity.Player;
 import org.bukkit.entity.Projectile;
 import org.bukkit.entity.Tameable;
+import org.bukkit.entity.Trident;
 import org.bukkit.entity.Vehicle;
 import org.bukkit.entity.minecart.RideableMinecart;
 import org.bukkit.event.Cancellable;
@@ -294,6 +296,9 @@ final class ClaimListener implements Listener {
         if (player == null) return;
         Block block = event.getHitBlock();
         if (block != null) {
+            if (block.getType() == Material.TARGET && projectile instanceof AbstractArrow && !(projectile instanceof Trident)) {
+                return;
+            }
             checkPlayerAction(player, block, TrustType.BUILD, event, false);
         }
     }

@@ -1,9 +1,9 @@
 package com.cavetale.home.sql;
 
 import com.cavetale.core.connect.Connect;
+import com.winthier.sql.SQLRow;
 import com.winthier.sql.SQLRow.Name;
 import com.winthier.sql.SQLRow.NotNull;
-import com.winthier.sql.SQLRow;
 import lombok.Data;
 
 @Data @NotNull @Name("worlds")

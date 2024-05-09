@@ -1,5 +1,6 @@
 package com.cavetale.home;
 
+import com.cavetale.core.chat.Chat;
 import com.cavetale.core.command.AbstractCommand;
 import com.cavetale.core.command.CommandArgCompleter;
 import com.cavetale.core.command.CommandContext;
@@ -322,8 +323,7 @@ public final class ClaimCommand extends AbstractCommand<HomePlugin> {
                 }
                 player.bring(plugin, location, player2 -> {
                         if (player2 == null) return;
-                        player2.sendMessage(text("Teleporting to claim", GREEN));
-                        player2.sendMessage("x=" + x + ", z=" + z);
+                        Chat.sendAndLog(player2, text("Teleporting to claim", GREEN));
                     });
             });
         return true;

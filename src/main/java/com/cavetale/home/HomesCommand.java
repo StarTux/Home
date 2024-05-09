@@ -1,5 +1,6 @@
 package com.cavetale.home;
 
+import com.cavetale.core.chat.Chat;
 import com.cavetale.core.command.AbstractCommand;
 import com.cavetale.core.command.CommandArgCompleter;
 import com.cavetale.core.command.CommandContext;
@@ -190,7 +191,7 @@ public final class HomesCommand extends AbstractCommand<HomePlugin> {
                     PluginPlayerEvent.Name.USE_PRIMARY_HOME.make(plugin, player2)
                         .detail(Detail.LOCATION, location)
                         .callEvent();
-                    player2.sendMessage(text("Welcome home :)", GREEN));
+                    Chat.sendAndLog(player2, text("Welcome home :)", GREEN));
                     player2.showTitle(Title.title(empty(),
                                                   text("Welcome home :)", GREEN),
                                                   Title.Times.times(Duration.ofMillis(500),
@@ -216,8 +217,7 @@ public final class HomesCommand extends AbstractCommand<HomePlugin> {
                     Location location = bworld.getHighestBlockAt(x, z).getLocation().add(0.5, 0.0, 0.5);
                     player.bring(plugin, location, player2 -> {
                             if (player2 == null) return;
-                            player2.sendMessage(text("Welcome to your claim. :)",
-                                                     GREEN));
+                            Chat.sendAndLog(player2, text("Welcome to your claim. :)", GREEN));
                         });
                 });
             return;
@@ -274,7 +274,7 @@ public final class HomesCommand extends AbstractCommand<HomePlugin> {
         }
         player.bring(plugin, location, player2 -> {
                 if (player2 == null) return;
-                player2.sendMessage(text("Welcome home", GREEN));
+                Chat.sendAndLog(player2, text("Welcome home", GREEN));
                 player2.showTitle(Title.title(empty(),
                                               text("Welcome home", GREEN),
                                               Title.Times.times(Duration.ofMillis(500),
@@ -624,10 +624,7 @@ public final class HomesCommand extends AbstractCommand<HomePlugin> {
                 }
                 player.bring(plugin, location, player2 -> {
                         home.onVisit(player2.getUniqueId());
-                        player2.sendMessage(text("Teleported to "
-                                                 + ownerName + "'s public home \""
-                                                 + publicName + "\"",
-                                                 GREEN));
+                        Chat.sendAndLog(player2, text("Teleported to " + ownerName + "'s public home \"" + publicName + "\"", GREEN));
                         PluginPlayerEvent.Name.VISIT_PUBLIC_HOME
                             .make(plugin, player2)
                             .detail(Detail.NAME, publicName)

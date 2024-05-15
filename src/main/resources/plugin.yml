@@ -9,7 +9,7 @@ author: StarTux
 website: https://cavetale.com
 
 depend: [Core, Mytems, SQL]
-softdepend: [MagicMap, PlayerInfo]
+softdepend: [PlayerInfo]
 
 commands:
 

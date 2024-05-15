@@ -62,7 +62,6 @@ public final class HomePlugin extends JavaPlugin {
     protected final ClaimCache claimCache = new ClaimCache();
     protected final Sessions sessions = new Sessions(this);
     protected final EventListener eventListener = new EventListener(this);
-    private MagicMapListener magicMapListener;
     protected final ConnectListener connectListener = new ConnectListener(this);
     // Utilty
     protected long ticks;
@@ -109,9 +108,6 @@ public final class HomePlugin extends JavaPlugin {
         inviteHomeCommand.enable();
         unInviteHomeCommand.enable();
         subclaimCommand.enable();
-        if (getServer().getPluginManager().isPluginEnabled("MagicMap")) {
-            magicMapListener = new MagicMapListener(this).enable();
-        }
         Bukkit.getScheduler().runTaskTimer(this, this::updateFreeSpace, 0L, 20L * 60L);
     }
 

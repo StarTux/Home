@@ -1,6 +1,7 @@
 package com.cavetale.home.sql;
 
 import com.cavetale.core.connect.Connect;
+import com.cavetale.core.connect.NetworkServer;
 import com.winthier.sql.SQLRow;
 import com.winthier.sql.SQLRow.Name;
 import com.winthier.sql.SQLRow.NotNull;
@@ -39,5 +40,13 @@ public final class SQLHomeWorld implements SQLRow {
             displayName = computeDisplayName();
         }
         return displayName;
+    }
+
+    public NetworkServer getNetworkServer() {
+        return NetworkServer.of(server);
+    }
+
+    public boolean is(NetworkServer isServer, String isWorld) {
+        return isServer == getNetworkServer() && isWorld.equals(world);
     }
 }

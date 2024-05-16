@@ -2,6 +2,7 @@ package com.cavetale.home;
 
 import com.cavetale.core.command.RemotePlayer;
 import com.cavetale.core.connect.Connect;
+import com.cavetale.core.connect.NetworkServer;
 import com.cavetale.core.event.player.PluginPlayerEvent;
 import com.cavetale.core.perm.Perm;
 import com.cavetale.home.claimcache.ClaimCache;
@@ -621,5 +622,12 @@ public final class HomePlugin extends JavaPlugin {
         for (SQLHomeWorld row : map.values()) {
             db.updateAsync(row, null, "claims", "free");
         }
+    }
+
+    public boolean isHomeWorld(NetworkServer server, String worldName) {
+        for (SQLHomeWorld it : worldList) {
+            if (it.is(server, worldName)) return true;
+        }
+        return false;
     }
 }

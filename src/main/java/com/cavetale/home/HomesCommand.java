@@ -299,24 +299,29 @@ public final class HomesCommand extends AbstractCommand<HomePlugin> {
 
     protected boolean set(Player player, String[] args) {
         if (args.length > 1) return false;
-        if (args.length == 1 && args[0].equals("help")) return false;
-        UUID uuid = player.getUniqueId();
+        final UUID uuid = player.getUniqueId();
         if (!plugin.isLocalHomeWorld(player.getWorld())) {
             throw new CommandWarn("You cannot set homes in this world");
         }
-        Location location = player.getLocation();
+        final Location location = player.getLocation();
         if (!checkWorldBorder(location)) {
             throw new CommandWarn("Cannot set homes outside the world border");
         }
-        BlockVector blockVector = BlockVector.of(location);
-        Claim claim = plugin.getClaimAt(blockVector);
+        final BlockVector blockVector = BlockVector.of(location);
+        final Claim claim = plugin.getClaimAt(blockVector);
         if (claim != null && !claim.canBuild(player, blockVector)) {
             throw new CommandWarn("You cannot set homes in this claim");
         }
-        String playerWorld = player.getWorld().getName();
-        int playerX = player.getLocation().getBlockX();
-        int playerZ = player.getLocation().getBlockZ();
-        String homeName = args.length == 0 ? null : args[0];
+        final String playerWorld = player.getWorld().getName();
+        final int playerX = player.getLocation().getBlockX();
+        final int playerZ = player.getLocation().getBlockZ();
+        final String homeName = args.length == 0 ? null : args[0];
+        if (homeName.length() > 32) {
+            throw new CommandWarn("Name too long: " + homeName);
+        }
+        if (homeName.contains(":")) {
+            throw new CommandWarn("Home name must not contain ':'");
+        }
         for (SQLHome home : plugin.getHomes().findOwnedHomes(uuid)) {
             if (home.isInWorld(playerWorld)
                 && !home.isNamed(homeName)

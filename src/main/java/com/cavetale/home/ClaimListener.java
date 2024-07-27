@@ -447,84 +447,92 @@ final class ClaimListener implements Listener {
     }
 
     @EventHandler(ignoreCancelled = true, priority = EventPriority.LOW)
-    public void onPlayerInteract(PlayerInteractEvent event) {
+    public void onPlayerInteractBlock(PlayerInteractEvent event) {
         final Player player = event.getPlayer();
         if (plugin.doesIgnoreClaims(player)) return;
         final Block block = event.getClickedBlock();
         if (block == null) return;
-        Material mat = block.getType();
-        Claim claim = plugin.getClaimAt(block);
         // Consider soil trampling
         switch (event.getAction()) {
         case PHYSICAL:
-            if (mat == Material.FARMLAND || mat == Material.TURTLE_EGG) {
-                event.setCancelled(true);
-            } else {
-                if (Tag.PRESSURE_PLATES.isTagged(mat)) return;
-                if (Tag.REDSTONE_ORES.isTagged(mat)) return;
-                if (mat == Material.BIG_DRIPLEAF) return;
-                checkPlayerAction(event.getPlayer(), block, TrustType.INTERACT, event, false);
-            }
-            return;
+            onPlayerInteractPhysical(event, player, block);
+            break;
         case RIGHT_CLICK_BLOCK:
-            if (plugin.sessions.of(player).onPlayerInteract(event)) return;
-            if (mat.isInteractable()) {
-                if (Tag.DOORS.isTagged(mat) || Tag.BUTTONS.isTagged(mat) || Tag.TRAPDOORS.isTagged(mat)) {
-                    checkPlayerAction(player, block, TrustType.INTERACT, event, true);
-                } else if (Tag.ANVIL.isTagged(mat)) {
-                    checkPlayerAction(player, block, TrustType.CONTAINER, event, true);
-                } else if (Tag.BEDS.isTagged(mat)) {
-                    if (block.getWorld().getEnvironment() != World.Environment.NORMAL) {
-                        if (claim != null && !claim.getSetting(ClaimSetting.EXPLOSIONS)) {
-                            plugin.sessions.of(player).notify(player, claim);
-                            event.setCancelled(true);
-                            return;
-                        }
-                    }
-                    checkPlayerAction(player, block, TrustType.INTERACT, event, true);
-                } else {
-                    switch (mat) {
-                    case ENCHANTING_TABLE:
-                    case CRAFTING_TABLE:
-                    case ENDER_CHEST:
-                    case GRINDSTONE:
-                    case STONECUTTER:
-                    case LEVER:
-                    case SMITHING_TABLE:
-                        checkPlayerAction(player, block, TrustType.INTERACT, event, true);
-                        break;
-                    case RESPAWN_ANCHOR:
-                        if (block.getWorld().getEnvironment() != World.Environment.NETHER) {
-                            RespawnAnchor data = (RespawnAnchor) block.getBlockData();
-                            if (data.getCharges() >= data.getMaximumCharges() && claim != null && !claim.getSetting(ClaimSetting.EXPLOSIONS)) {
-                                plugin.sessions.of(player).notify(player, claim);
-                                event.setCancelled(true);
-                                return;
-                            }
-                        }
-                        checkPlayerAction(player, block, TrustType.BUILD, event, true);
-                        break;
-                    case JUKEBOX:
-                        checkPlayerAction(player, block, TrustType.CONTAINER, event, true);
-                        break;
-                    default:
-                        if (block.getState() instanceof InventoryHolder) {
-                            checkPlayerAction(player, block, TrustType.CONTAINER, event, true);
-                        } else {
-                            checkPlayerAction(player, block, TrustType.BUILD, event, false);
-                        }
-                        break;
-                    }
-                }
-            } else {
-                checkPlayerAction(player, block, TrustType.INTERACT, event, false);
-            }
-            return;
+            onPlayerInteractRightClickBlock(event, player, block);
+            break;
         case LEFT_CLICK_BLOCK:
             checkPlayerAction(player, block, TrustType.INTERACT, event, true);
-            return;
+            break;
         default:
             break;
+        }
+    }
+
+    private void onPlayerInteractPhysical(PlayerInteractEvent event, Player player, Block block) {
+        final Material mat = block.getType();
+        if (mat == Material.FARMLAND || mat == Material.TURTLE_EGG) {
+            event.setCancelled(true);
+        } else {
+            if (Tag.PRESSURE_PLATES.isTagged(mat)) return;
+            if (Tag.REDSTONE_ORES.isTagged(mat)) return;
+            if (mat == Material.BIG_DRIPLEAF) return;
+            checkPlayerAction(event.getPlayer(), block, TrustType.INTERACT, event, false);
+        }
+    }
+
+    private void onPlayerInteractRightClickBlock(PlayerInteractEvent event, Player player, Block block) {
+        final Material mat = block.getType();
+        if (plugin.sessions.of(player).onPlayerInteract(event)) return;
+        if (Tag.DOORS.isTagged(mat) || Tag.BUTTONS.isTagged(mat) || Tag.TRAPDOORS.isTagged(mat)) {
+            checkPlayerAction(player, block, TrustType.INTERACT, event, true);
+        } else if (Tag.ANVIL.isTagged(mat)) {
+            checkPlayerAction(player, block, TrustType.CONTAINER, event, true);
+        } else if (Tag.BEDS.isTagged(mat)) {
+            if (block.getWorld().getEnvironment() != World.Environment.NORMAL) {
+                final Claim claim = plugin.getClaimAt(block);
+                if (claim != null && !claim.getSetting(ClaimSetting.EXPLOSIONS)) {
+                    plugin.sessions.of(player).notify(player, claim);
+                    event.setCancelled(true);
+                    return;
+                }
+            }
+            checkPlayerAction(player, block, TrustType.INTERACT, event, true);
+        } else {
+            switch (mat) {
+            case ENCHANTING_TABLE:
+            case CRAFTING_TABLE:
+            case ENDER_CHEST:
+            case GRINDSTONE:
+            case STONECUTTER:
+            case LEVER:
+            case SMITHING_TABLE:
+            case CARTOGRAPHY_TABLE:
+            case FLETCHING_TABLE:
+                checkPlayerAction(player, block, TrustType.INTERACT, event, true);
+                break;
+            case RESPAWN_ANCHOR:
+                if (block.getWorld().getEnvironment() != World.Environment.NETHER) {
+                    RespawnAnchor data = (RespawnAnchor) block.getBlockData();
+                    final Claim claim = plugin.getClaimAt(block);
+                    if (data.getCharges() >= data.getMaximumCharges() && claim != null && !claim.getSetting(ClaimSetting.EXPLOSIONS)) {
+                        plugin.sessions.of(player).notify(player, claim);
+                        event.setCancelled(true);
+                        return;
+                    }
+                }
+                checkPlayerAction(player, block, TrustType.BUILD, event, true);
+                break;
+            case JUKEBOX:
+                checkPlayerAction(player, block, TrustType.CONTAINER, event, true);
+                break;
+            default:
+                if (block.getState() instanceof InventoryHolder) {
+                    checkPlayerAction(player, block, TrustType.CONTAINER, event, true);
+                } else {
+                    checkPlayerAction(player, block, TrustType.BUILD, event, false);
+                }
+                break;
+            }
         }
     }
 

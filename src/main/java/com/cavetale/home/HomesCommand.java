@@ -316,11 +316,13 @@ public final class HomesCommand extends AbstractCommand<HomePlugin> {
         final int playerX = player.getLocation().getBlockX();
         final int playerZ = player.getLocation().getBlockZ();
         final String homeName = args.length == 0 ? null : args[0];
-        if (homeName.length() > 32) {
-            throw new CommandWarn("Name too long: " + homeName);
-        }
-        if (homeName.contains(":")) {
-            throw new CommandWarn("Home name must not contain ':'");
+        if (homeName != null) {
+            if (homeName.length() > 32) {
+                throw new CommandWarn("Name too long: " + homeName);
+            }
+            if (homeName.contains(":")) {
+                throw new CommandWarn("Home name must not contain ':'");
+            }
         }
         for (SQLHome home : plugin.getHomes().findOwnedHomes(uuid)) {
             if (home.isInWorld(playerWorld)

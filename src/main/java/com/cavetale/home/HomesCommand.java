@@ -630,6 +630,7 @@ public final class HomesCommand extends AbstractCommand<HomePlugin> {
                     return;
                 }
                 player.bring(plugin, location, player2 -> {
+                        if (player2 == null) return;
                         home.onVisit(player2.getUniqueId());
                         Chat.sendAndLog(player2, text("Teleported to " + ownerName + "'s public home \"" + publicName + "\"", GREEN));
                         PluginPlayerEvent.Name.VISIT_PUBLIC_HOME

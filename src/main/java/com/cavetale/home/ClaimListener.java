@@ -23,20 +23,7 @@ import org.bukkit.Tag;
 import org.bukkit.World;
 import org.bukkit.block.Block;
 import org.bukkit.block.data.type.RespawnAnchor;
-import org.bukkit.entity.AbstractArrow;
-import org.bukkit.entity.AnimalTamer;
-import org.bukkit.entity.Animals;
-import org.bukkit.entity.Entity;
-import org.bukkit.entity.EntityType;
-import org.bukkit.entity.IronGolem;
-import org.bukkit.entity.LivingEntity;
-import org.bukkit.entity.Mob;
-import org.bukkit.entity.Monster;
-import org.bukkit.entity.Player;
-import org.bukkit.entity.Projectile;
-import org.bukkit.entity.Tameable;
-import org.bukkit.entity.Trident;
-import org.bukkit.entity.Vehicle;
+import org.bukkit.entity.*;
 import org.bukkit.entity.minecart.RideableMinecart;
 import org.bukkit.event.Cancellable;
 import org.bukkit.event.Event;
@@ -400,6 +387,10 @@ final class ClaimListener implements Listener {
         } else if (entity instanceof Bucketable && item != null && item.getType() == Material.WATER_BUCKET) {
             checkPlayerAction(player, entity.getLocation().getBlock(), TrustType.CONTAINER, event, true);
         } else if (entity instanceof RideableMinecart) {
+            checkPlayerAction(player, entity.getLocation().getBlock(), TrustType.INTERACT, event, true);
+        } else if (entity instanceof Boat) {
+            checkPlayerAction(player, entity.getLocation().getBlock(), TrustType.INTERACT, event, true);
+        } else if (entity instanceof Villager) {
             checkPlayerAction(player, entity.getLocation().getBlock(), TrustType.INTERACT, event, true);
         } else {
             checkPlayerAction(player, entity.getLocation().getBlock(), TrustType.BUILD, event, true);

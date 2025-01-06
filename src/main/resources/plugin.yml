@@ -141,3 +141,7 @@ permissions:
   home.back:
     description: Record back locations
     default: true
+
+  home.nocooldown:
+    description: Skip cooldowns
+    default: false

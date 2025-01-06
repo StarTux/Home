@@ -198,7 +198,11 @@ public final class HomePlugin extends JavaPlugin {
             return;
         }
         WildTask wildTask = new WildTask(this, bworld, player);
-        wildTask.withCooldown();
+        if (player.hasPermission("home.nocooldown")) {
+            wildTask.withoutCooldown();
+        } else {
+            wildTask.withCooldown();
+        }
         if (player.isPlayer()) {
             PluginPlayerEvent.Name.USE_WILD.call(this, player.getPlayer());
         }

@@ -13,12 +13,14 @@ import net.kyori.adventure.text.ComponentLike;
 import net.kyori.adventure.text.JoinConfiguration;
 import net.kyori.adventure.text.event.ClickEvent;
 import net.kyori.adventure.text.event.HoverEvent;
-import net.kyori.adventure.text.format.NamedTextColor;
 import org.bukkit.Chunk;
 import org.bukkit.Location;
 import org.bukkit.World;
 import org.bukkit.WorldBorder;
 import org.bukkit.block.Block;
+import static net.kyori.adventure.text.Component.newline;
+import static net.kyori.adventure.text.Component.text;
+import static net.kyori.adventure.text.format.NamedTextColor.*;
 
 @RequiredArgsConstructor
 final class WildTask {
@@ -31,7 +33,7 @@ final class WildTask {
     protected int blockZ;
     private static final Map<UUID, Long> LAST_USES = new HashMap<>();
 
-    protected void withCooldown() {
+    public void withCooldown() {
         long now = System.nanoTime() / NANOS;
         long last = LAST_USES.getOrDefault(player.getUniqueId(), -1L);
         if (last >= 0) {
@@ -39,14 +41,16 @@ final class WildTask {
             long cooldown = (long) Globals.WILD_COOLDOWN;
             long remain = cooldown - since;
             if (remain > 0) {
-                player.sendMessage(Component.text("Please wait " + remain + " more seconds",
-                                                  NamedTextColor.RED));
+                player.sendMessage(text("Please wait " + remain + " more seconds", RED));
                 return;
             }
         }
         LAST_USES.put(player.getUniqueId(), now);
-        player.sendMessage(Component.text("Looking for an unclaimed place to build...",
-                                          NamedTextColor.YELLOW));
+        withoutCooldown();
+    }
+
+    public void withoutCooldown() {
+        player.sendMessage(text("Looking for an unclaimed place to build...", YELLOW));
         plugin.getServer().getScheduler().runTask(plugin, this::findPlaceToBuild);
     }
 
@@ -55,15 +59,13 @@ final class WildTask {
         long now = System.nanoTime() / NANOS;
         LAST_USES.put(player.getUniqueId(), now);
         if (attempts++ > 50) {
-            player.sendMessage(Component.text("Could not find a place to build. Please try again",
-                                              NamedTextColor.RED));
+            player.sendMessage(text("Could not find a place to build. Please try again", RED));
             return;
         }
         // Determine center and border
         if (!plugin.isLocalHomeWorld(world)) {
             plugin.getLogger().warning("WildTask: World not found: " + world.getName());
-            player.sendMessage(Component.text("Something went wrong. Please contact an administrator",
-                                              NamedTextColor.RED));
+            player.sendMessage(text("Something went wrong. Please contact an administrator", RED));
         }
         // Borders
         int margin = Globals.CLAIM_MARGIN;
@@ -121,26 +123,26 @@ final class WildTask {
         player.bring(plugin, location, player2 -> {
                 if (player2 == null) return;
                 Component claimNewTooltip = Component
-                    .join(JoinConfiguration.separator(Component.newline()),
-                          Component.text("/claim new", NamedTextColor.GREEN),
-                          Component.text("Create a claim and set a home"),
-                          Component.text("at this location so you can"),
-                          Component.text("build and return any time."))
-                    .color(NamedTextColor.GRAY);
+                    .join(JoinConfiguration.separator(newline()),
+                          text("/claim new", GREEN),
+                          text("Create a claim and set a home"),
+                          text("at this location so you can"),
+                          text("build and return any time."))
+                    .color(GRAY);
                 Component wildTooltip = Component
-                    .join(JoinConfiguration.separator(Component.newline()),
-                          Component.text("/wild", NamedTextColor.GREEN),
-                          Component.text("Find another place to build"))
-                    .color(NamedTextColor.GRAY);
-                ComponentLike message = Component.text().color(NamedTextColor.WHITE)
-                    .append(Component.text("Found you a place to build."))
-                    .append(Component.newline())
-                    .append(Component.text("Do you like it? ", NamedTextColor.GRAY))
-                    .append(Component.text("[Claim]", NamedTextColor.GREEN)
+                    .join(JoinConfiguration.separator(newline()),
+                          text("/wild", GREEN),
+                          text("Find another place to build"))
+                    .color(GRAY);
+                ComponentLike message = text().color(WHITE)
+                    .append(text("Found you a place to build."))
+                    .append(newline())
+                    .append(text("Do you like it? ", GRAY))
+                    .append(text("[Claim]", GREEN)
                             .clickEvent(ClickEvent.suggestCommand("/claim new"))
                             .hoverEvent(HoverEvent.showText(claimNewTooltip)))
-                    .append(Component.text(" or "))
-                    .append(Component.text("[Try Again]", NamedTextColor.AQUA)
+                    .append(text(" or "))
+                    .append(text("[Try Again]", AQUA)
                             .clickEvent(ClickEvent.suggestCommand("/wild"))
                             .hoverEvent(HoverEvent.showText(wildTooltip)));
                 player2.sendMessage(message);

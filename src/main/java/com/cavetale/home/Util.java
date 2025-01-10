@@ -1,7 +1,6 @@
 package com.cavetale.home;
 
 import net.kyori.adventure.text.Component;
-import net.kyori.adventure.text.ComponentLike;
 import net.kyori.adventure.text.format.NamedTextColor;
 import net.kyori.adventure.text.format.TextColor;
 import net.kyori.adventure.text.format.TextDecoration;
@@ -9,7 +8,7 @@ import net.kyori.adventure.text.format.TextDecoration;
 public final class Util {
     private Util() { }
 
-    public static ComponentLike frame(Component text, TextColor frameColor) {
+    public static Component frame(Component text, TextColor frameColor) {
         return Component.text().color(frameColor)
             .append(Component.text("            ", null, TextDecoration.STRIKETHROUGH))
             .append(Component.text("[ "))

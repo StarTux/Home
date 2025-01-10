@@ -1,5 +1,6 @@
 package com.cavetale.home;
 
+import com.cavetale.core.money.Money;
 import com.cavetale.core.perm.Perm;
 import com.cavetale.core.playercache.PlayerCache;
 import com.cavetale.core.util.Json;
@@ -19,6 +20,7 @@ import java.util.function.Consumer;
 import java.util.function.Predicate;
 import lombok.Getter;
 import lombok.Setter;
+import net.kyori.adventure.text.Component;
 import org.bukkit.Chunk;
 import org.bukkit.Location;
 import org.bukkit.World;
@@ -26,6 +28,14 @@ import org.bukkit.block.Block;
 import org.bukkit.entity.Player;
 import org.bukkit.event.player.PlayerTeleportEvent.TeleportCause;
 import static com.cavetale.home.ConnectListener.broadcastClaimUpdate;
+import static net.kyori.adventure.text.Component.join;
+import static net.kyori.adventure.text.Component.newline;
+import static net.kyori.adventure.text.Component.text;
+import static net.kyori.adventure.text.Component.textOfChildren;
+import static net.kyori.adventure.text.JoinConfiguration.separator;
+import static net.kyori.adventure.text.event.ClickEvent.runCommand;
+import static net.kyori.adventure.text.event.HoverEvent.showText;
+import static net.kyori.adventure.text.format.NamedTextColor.*;
 
 public final class Claim {
     public static final UUID ADMIN_ID = new UUID(0L, 0L);
@@ -349,18 +359,6 @@ public final class Claim {
         return subclaims.remove(subclaim);
     }
 
-    public ClaimOperationResult growTo(int x, int z) {
-        Area newArea = area.growTo(x, z);
-        if (getBlocks() < newArea.size()) return ClaimOperationResult.INSUFFICIENT_BLOCKS;
-        for (Claim other : plugin.findClaimsInWorld(getWorld())) {
-            if (other != this && other.getArea().overlaps(newArea)) {
-                return ClaimOperationResult.OVERLAP;
-            }
-        }
-        setArea(newArea);
-        return ClaimOperationResult.SUCCESS;
-    }
-
     public List<PlayerCache> listPlayers(Predicate<TrustType> predicate) {
         List<PlayerCache> result = new ArrayList<>();
         for (SQLClaimTrust trustedRow : trusted.values()) {
@@ -385,5 +383,66 @@ public final class Claim {
 
     public boolean isValid() {
         return getId() > 0 && !deleted;
+    }
+
+    /**
+     * Try to resize the claim and check if the operation is possible
+     * given all map conditions.
+     *
+     * @param newArea the new desired claim area
+     * @return The claim operation result enum
+     */
+    public ClaimOperationResult tryToResize(Area newArea) {
+        for (Claim other : plugin.getClaimCache().within(getWorld(), newArea)) {
+            if (other == this) continue;
+            return ClaimOperationResult.OVERLAP;
+        }
+        if (getBlocks() < newArea.size()) {
+            return ClaimOperationResult.INSUFFICIENT_BLOCKS;
+        }
+        for (Subclaim subclaim : getSubclaims()) {
+            if (!newArea.contains(subclaim.getArea())) {
+                return ClaimOperationResult.SUBCLAIM_EXCLUDED;
+            }
+        }
+        setArea(newArea);
+        return ClaimOperationResult.SUCCESS;
+    }
+
+    /**
+     * Try to resize the claim and send all error messages or prepare
+     * the claim snippet for rebuying claim blocks.
+     * Stay silent only if the operation was a success.
+     *
+     * @param player the player issuing the resizing
+     * @param newArea the new desired claim area
+     *
+     * @return true if successful, false otherwise
+     */
+    public boolean tryToResizeFullAuto(Player player, Area newArea) {
+        ClaimOperationResult cor = tryToResize(newArea);
+        if (cor.isSuccessful()) return true;
+        if (cor == ClaimOperationResult.INSUFFICIENT_BLOCKS) {
+            final int needed = newArea.size() - getBlocks();
+            final Component tooltip = join(separator(newline()),
+                                           text("/claim buy " + needed, YELLOW),
+                                           text("Buy more " + needed + " claim blocks", GRAY),
+                                           text("for ", GRAY),
+                                           Money.get().toComponent((double) needed * Globals.CLAIM_BLOCK_COST));
+            Component message = textOfChildren(text(needed + " more claim blocks required.", YELLOW),
+                                               (text("  [Buy More]", GREEN)
+                                                .clickEvent(runCommand("/claim buy " + needed))
+                                                .hoverEvent(showText(tooltip))),
+                                               (text("  [Cancel]", RED)
+                                                .clickEvent(runCommand("/claim cancel"))
+                                                .hoverEvent(showText(text("Cancel growth", RED)))));
+            player.sendMessage(message);
+            final Location location = player.getLocation();
+            ClaimGrowSnippet snippet = new ClaimGrowSnippet(player.getLocation(), this, newArea);
+            plugin.sessions.of(player).setClaimGrowSnippet(snippet);
+            return false;
+        }
+        player.sendMessage(text(cor.getWarningMessage(), RED));
+        return false;
     }
 }

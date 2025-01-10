@@ -93,6 +93,7 @@ public final class HomePlugin extends JavaPlugin {
         }
         if (!localHomeWorlds.isEmpty()) {
             new ClaimListener(this).enable();
+            new ClaimToolListener(this).enable();
         }
         sessions.enable();
         eventListener.enable();
@@ -421,6 +422,12 @@ public final class HomePlugin extends JavaPlugin {
             minDist = dist;
         }
         return result;
+    }
+
+    public List<Claim> findNearbyClaims(Location location, int range) {
+        final Area area = new Area(location.getBlockX() - range, location.getBlockZ() - range,
+                             location.getBlockX() + range, location.getBlockZ() + range);
+        return claimCache.within(location.getWorld().getName(), area);
     }
 
     public void highlightClaim(Claim claim, Player player) {

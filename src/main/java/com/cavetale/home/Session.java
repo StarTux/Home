@@ -13,7 +13,6 @@ import java.util.UUID;
 import java.util.function.Function;
 import lombok.Getter;
 import lombok.Setter;
-import lombok.Value;
 import net.kyori.adventure.bossbar.BossBar;
 import net.kyori.adventure.text.Component;
 import net.kyori.adventure.text.event.ClickEvent;
@@ -52,6 +51,7 @@ public final class Session {
     private Claim currentClaim;
     private int ticks;
     private int notifyTicks;
+    @Getter @Setter private ClaimToolSession claimTool;
 
     public Session(final HomePlugin plugin, final Player player) {
         this.plugin = plugin;
@@ -74,9 +74,11 @@ public final class Session {
     }
 
     /**
+     * Click a block with the claim tool.
+     *
      * @return true if the event was handled by this session in some
-     * way, false otherwise. It is up to the callback to cancel the
-     * event if required.
+     *   way, false otherwise. It is up to the callback to cancel the
+     *   event if required.
      */
     public boolean onPlayerInteract(PlayerInteractEvent event) {
         if (playerInteractCallback == null) return false;
@@ -173,26 +175,6 @@ public final class Session {
         notifyCooldown = now + 1000L;
         player.sendActionBar(component);
         return true;
-    }
-
-    /**
-     * Created when a player enters "/claim grow" but has claim blocks
-     * missing.
-     * Used when the same player confirms "/claim buy" and is still
-     * nearby.
-     */
-    @Value
-    public static final class ClaimGrowSnippet {
-        public final String world;
-        public final int x;
-        public final int z;
-        public final int claimId;
-
-        public boolean isNear(Location location) {
-            return location.getWorld().getName().equals(world)
-                && location.getBlockX() == x
-                && location.getBlockZ() == z;
-        }
     }
 
     /**

@@ -482,7 +482,6 @@ final class ClaimListener implements Listener {
 
     private void onPlayerInteractRightClickBlock(PlayerInteractEvent event, Player player, Block block) {
         final Material mat = block.getType();
-        if (plugin.sessions.of(player).onPlayerInteract(event)) return;
         if (Tag.DOORS.isTagged(mat) || Tag.BUTTONS.isTagged(mat) || Tag.TRAPDOORS.isTagged(mat)) {
             checkPlayerAction(player, block, TrustType.INTERACT, event, true);
         } else if (Tag.ANVIL.isTagged(mat)) {

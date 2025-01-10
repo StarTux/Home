@@ -1,22 +1,29 @@
 package com.cavetale.home;
 
+import com.cavetale.core.font.VanillaItems;
+import com.cavetale.mytems.Mytems;
 import java.util.HashMap;
 import java.util.Map;
+import lombok.Getter;
 import lombok.RequiredArgsConstructor;
+import net.kyori.adventure.text.ComponentLike;
 
+@Getter
 @RequiredArgsConstructor
 public enum TrustType {
-    BAN("Banned"),
-    NONE("N/A"),
-    INTERACT("Interact"),
-    CONTAINER("Container"),
-    BUILD("Build"),
-    CO_OWNER("Co-Owner"),
-    OWNER("Owner");
+    BAN("Banned", Mytems.STEEL_HAMMER, "ban"),
+    NONE("N/A", VanillaItems.BARRIER, ""),
+    INTERACT("Interact", Mytems.MOUSE_CURSOR, "interact-trust"),
+    CONTAINER("Container", VanillaItems.CHEST_MINECART, "container-trust"),
+    BUILD("Build", VanillaItems.IRON_PICKAXE, "trust"),
+    CO_OWNER("Co-Owner", Mytems.SILVER_VOTE_TROPHY, "co-owner-trust"),
+    OWNER("Owner", Mytems.GOLD_VOTE_TROPHY, "owner-trust");
 
     private static final Map<String, TrustType> KEY_MAP = new HashMap<>();
     public final String key = name().toLowerCase();
     public final String displayName;
+    private final ComponentLike icon;
+    private final String commandName;
 
     static {
         for (TrustType it : TrustType.values()) {

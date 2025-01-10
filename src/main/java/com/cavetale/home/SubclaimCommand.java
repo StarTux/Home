@@ -6,7 +6,7 @@ import com.cavetale.core.command.CommandNode;
 import com.cavetale.core.command.CommandWarn;
 import com.cavetale.core.event.player.PluginPlayerEvent;
 import com.cavetale.core.event.player.PluginPlayerEvent.Detail;
-import java.util.ArrayList;
+import com.cavetale.mytems.Mytems;
 import java.util.Collections;
 import java.util.List;
 import java.util.Map;
@@ -15,10 +15,6 @@ import java.util.Set;
 import java.util.UUID;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
-import net.kyori.adventure.text.Component;
-import net.kyori.adventure.text.ComponentLike;
-import net.kyori.adventure.text.JoinConfiguration;
-import net.kyori.adventure.text.format.NamedTextColor;
 import net.kyori.adventure.title.Title;
 import org.bukkit.Location;
 import org.bukkit.Sound;
@@ -28,7 +24,9 @@ import org.bukkit.block.Block;
 import org.bukkit.entity.Player;
 import org.bukkit.event.player.PlayerInteractEvent;
 import org.bukkit.inventory.EquipmentSlot;
+import static net.kyori.adventure.text.Component.empty;
 import static net.kyori.adventure.text.Component.text;
+import static net.kyori.adventure.text.Component.textOfChildren;
 import static net.kyori.adventure.text.format.NamedTextColor.*;
 
 public final class SubclaimCommand extends AbstractCommand<HomePlugin> {
@@ -85,15 +83,14 @@ public final class SubclaimCommand extends AbstractCommand<HomePlugin> {
         if (subclaims.isEmpty()) {
             throw new CommandWarn("There are no subclaims");
         }
-        player.sendMessage(Component.text((subclaims.size() == 1
-                                           ? "There is 1 subclaim:"
-                                           : "There are " + subclaims.size() + " subclaims:"),
-                                          NamedTextColor.AQUA));
+        player.sendMessage(text((subclaims.size() == 1
+                                 ? "There is 1 subclaim:"
+                                 : "There are " + subclaims.size() + " subclaims:"),
+                                AQUA));
         int i = 0;
         for (Subclaim subclaim : subclaims) {
             int index = ++i;
-            player.sendMessage(Component.text(" " + index + ") " + subclaim.getListInfo(),
-                                              NamedTextColor.DARK_AQUA));
+            player.sendMessage(text(" " + index + ") " + subclaim.getListInfo(), DARK_AQUA));
             if (subclaim.isInWorld(player.getWorld())) {
                 plugin.highlightSubclaim(subclaim, player);
             }
@@ -108,9 +105,8 @@ public final class SubclaimCommand extends AbstractCommand<HomePlugin> {
             throw new CommandWarn("You do not own this claim!");
         }
         plugin.sessions.of(player).setPlayerInteractCallback(event -> createPickBlock(player, player.getWorld(), event, claim, null));
-        player.sendMessage(Component.text("Click a corner block for the new subclaim", NamedTextColor.AQUA));
-        player.showTitle(Title.title(Component.empty(),
-                                     Component.text("Click a corner block", NamedTextColor.AQUA)));
+        player.sendMessage(textOfChildren(Mytems.CLAIM_TOOL, text("Click a corner block for the new subclaim with the Claim Tool", AQUA)));
+        player.showTitle(Title.title(Mytems.CLAIM_TOOL.asComponent(), text("Click a corner block", AQUA)));
         player.playSound(player.getLocation(), Sound.UI_BUTTON_CLICK, SoundCategory.MASTER, 0.2f, 2.0f);
         return true;
     }
@@ -128,19 +124,16 @@ public final class SubclaimCommand extends AbstractCommand<HomePlugin> {
         event.setCancelled(true);
         Claim clickedClaim = plugin.getClaimAt(block);
         if (clickedClaim != claim || !player.getWorld().equals(world)) {
-            player.sendMessage(Component.text("You left the claim. Subclaim creation aborted", NamedTextColor.RED));
-            player.showTitle(Title.title(Component.empty(),
-                                         Component.text("Subclaim creation aborted", NamedTextColor.RED)));
+            player.sendMessage(text("You left the claim. Subclaim creation aborted", RED));
+            player.showTitle(Title.title(empty(), text("Subclaim creation aborted", RED)));
             plugin.sessions.of(player).setPlayerInteractCallback(null);
             player.playSound(player.getLocation(), Sound.UI_BUTTON_CLICK, SoundCategory.MASTER, 0.2f, 0.5f);
             return true;
         }
         Subclaim existing = claim.getSubclaimAt(block);
         if (existing != null) {
-            player.sendMessage(Component.text("There's already a subclaim here! Subclaim creation aborted",
-                                              NamedTextColor.RED));
-            player.showTitle(Title.title(Component.empty(),
-                                         Component.text("Subclaim creation aborted", NamedTextColor.RED)));
+            player.sendMessage(text("There's already a subclaim here! Subclaim creation aborted", RED));
+            player.showTitle(Title.title(empty(), text("Subclaim creation aborted", RED)));
             plugin.sessions.of(player).setPlayerInteractCallback(null);
             player.playSound(player.getLocation(), Sound.UI_BUTTON_CLICK, SoundCategory.MASTER, 0.2f, 0.5f);
             plugin.highlightSubclaim(existing, player);
@@ -148,10 +141,8 @@ public final class SubclaimCommand extends AbstractCommand<HomePlugin> {
         }
         if (blockA == null) {
             plugin.sessions.of(player).setPlayerInteractCallback(event2 -> createPickBlock(player, world, event2, claim, block));
-            player.sendMessage(Component.text("Now click another corner block of the new subclaim",
-                                              NamedTextColor.AQUA));
-            player.showTitle(Title.title(Component.empty(),
-                                         Component.text("Click another corner block", NamedTextColor.AQUA)));
+            player.sendMessage(textOfChildren(Mytems.CLAIM_TOOL, text("Now click another corner block of the new subclaim", AQUA)));
+            player.showTitle(Title.title(Mytems.CLAIM_TOOL.asComponent(), text("Click another corner block", AQUA)));
             player.playSound(player.getLocation(), Sound.UI_BUTTON_CLICK, SoundCategory.MASTER, 0.2f, 2.0f);
             plugin.highlightSubclaim(new Area(block.getX(), block.getZ(), block.getX(), block.getZ()), player);
             return true;
@@ -161,20 +152,16 @@ public final class SubclaimCommand extends AbstractCommand<HomePlugin> {
                              Math.max(block.getX(), blockA.getX()),
                              Math.max(block.getZ(), blockA.getZ()));
         if (!claim.getArea().contains(area)) {
-            player.sendMessage(Component.text("The subclaim would exceed the containing claim. Aborting",
-                                              NamedTextColor.RED));
-            player.showTitle(Title.title(Component.empty(),
-                                         Component.text("Subclaim creation aborted", NamedTextColor.RED)));
+            player.sendMessage(text("The subclaim would exceed the containing claim. Aborting", RED));
+            player.showTitle(Title.title(empty(), text("Subclaim creation aborted", RED)));
             plugin.sessions.of(player).setPlayerInteractCallback(null);
             player.playSound(player.getLocation(), Sound.UI_BUTTON_CLICK, SoundCategory.MASTER, 0.2f, 0.5f);
             return true;
         }
         for (Subclaim other : claim.getSubclaims(world)) {
             if (other.getArea().overlaps(area)) {
-                player.sendMessage(Component.text("The subclaim would overlap with an existing subclaim. Aborting.",
-                                                  NamedTextColor.RED));
-                player.showTitle(Title.title(Component.empty(),
-                                             Component.text("Subclaim creation aborted", NamedTextColor.RED)));
+                player.sendMessage(text("The subclaim would overlap with an existing subclaim. Aborting.", RED));
+                player.showTitle(Title.title(empty(), text("Subclaim creation aborted", RED)));
                 plugin.sessions.of(player).setPlayerInteractCallback(null);
                 player.playSound(player.getLocation(), Sound.UI_BUTTON_CLICK, SoundCategory.MASTER, 0.2f, 0.5f);
                 plugin.highlightSubclaim(other, player);
@@ -186,38 +173,36 @@ public final class SubclaimCommand extends AbstractCommand<HomePlugin> {
         subclaim.insertIntoDatabase();
         plugin.sessions.of(player).setPlayerInteractCallback(null);
         plugin.highlightSubclaim(subclaim, player);
-        player.sendMessage(Component.text("Subclaim created!", NamedTextColor.AQUA));
-        player.showTitle(Title.title(Component.empty(),
-                                     Component.text("Subclaim created", NamedTextColor.AQUA)));
+        player.sendMessage(text("Subclaim created!", AQUA));
+        player.showTitle(Title.title(empty(), text("Subclaim created", AQUA)));
         player.playSound(player.getLocation(), Sound.ENTITY_PLAYER_LEVELUP, SoundCategory.MASTER, 0.2f, 2.0f);
         PluginPlayerEvent.Name.CREATE_SUBCLAIM.call(plugin, player);
         return true;
     }
 
-    boolean info(Player player, String[] args) {
+    private boolean info(Player player, String[] args) {
         if (args.length != 0) return false;
         Subclaim subclaim = requireSubclaim(player);
-        List<ComponentLike> lines = new ArrayList<>();
-        lines.add(Component.empty());
-        lines.add(Util.frame(Component.text("Subclaim Info", NamedTextColor.WHITE),
-                             NamedTextColor.AQUA));
-        lines.add(Component.text(" Area ", NamedTextColor.AQUA)
-                  .append(Component.text("" + subclaim.getArea(), NamedTextColor.WHITE)));
-        lines.add(Component.text(" Parent claim ", NamedTextColor.AQUA)
-                  .append(Component.text(subclaim.getParent().getOwnerName(), NamedTextColor.WHITE)));
+        showSubclaimInfo(player, subclaim);
+        plugin.highlightSubclaim(subclaim, player);
+        return true;
+    }
+
+    public void showSubclaimInfo(Player player, Subclaim subclaim) {
+        player.sendMessage(empty());
+        player.sendMessage(Util.frame(text("Subclaim Info", WHITE), AQUA));
+        player.sendMessage(textOfChildren(text(" Area ", AQUA), text("" + subclaim.getArea(), WHITE)));
+        player.sendMessage(textOfChildren(text(" Parent claim ", AQUA), text(subclaim.getParent().getOwnerName(), WHITE)));
         for (Map.Entry<SubclaimTrust, Set<UUID>> entry : subclaim.getTrustedMap().entrySet()) {
             Set<UUID> set = entry.getValue();
             if (set == null || set.isEmpty()) continue;
             SubclaimTrust trust = entry.getKey();
-            lines.add(Component.text(" " + trust.displayName + " Trust ", NamedTextColor.AQUA)
-                      .append(Component.text(set.stream()
-                                             .map(Subclaim::cachedPlayerName)
-                                             .collect(Collectors.joining(", ")), NamedTextColor.WHITE)));
+            player.sendMessage(textOfChildren(text(" " + trust.displayName + " Trust ", AQUA),
+                                              text(set.stream()
+                                                   .map(Subclaim::cachedPlayerName)
+                                                   .collect(Collectors.joining(", ")), WHITE)));
         }
-        lines.add(Component.empty());
-        player.sendMessage(Component.join(JoinConfiguration.separator(Component.newline()), lines));
-        plugin.highlightSubclaim(subclaim, player);
-        return true;
+        player.sendMessage(empty());
     }
 
     boolean trust(Player player, String[] args) {
@@ -244,8 +229,7 @@ public final class SubclaimCommand extends AbstractCommand<HomePlugin> {
             throw new CommandWarn("Invalid trust: " + trustName);
         }
         subclaim.setTrust(uuid, trust);
-        player.sendMessage(Component.text("Player trusted: " + playerName + " (" + trust.displayName + ")",
-                                          NamedTextColor.AQUA));
+        player.sendMessage(text("Player trusted: " + playerName + " (" + trust.displayName + ")", AQUA));
         PluginPlayerEvent.Name.SUBCLAIM_TRUST.make(plugin, player)
             .detail(Detail.TARGET, uuid)
             .detail(Detail.NAME, trust.key)
@@ -331,8 +315,7 @@ public final class SubclaimCommand extends AbstractCommand<HomePlugin> {
                 if (!subclaim.getParent().getTrustType(player).isCoOwner()) return; // Safety first
                 if (!subclaim.getParent().removeSubclaim(subclaim)) return; // ???
                 subclaim.deleteFromDatabase();
-                player.sendMessage(Component.text("Subclaim deleted: " + subclaim.getListInfo(),
-                                                  NamedTextColor.AQUA));
+                player.sendMessage(text("Subclaim deleted: " + subclaim.getListInfo(), AQUA));
             });
         return true;
     }

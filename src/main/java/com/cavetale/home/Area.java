@@ -2,6 +2,7 @@ package com.cavetale.home;
 
 import com.cavetale.home.struct.Vec2i;
 import lombok.Value;
+import org.bukkit.block.BlockFace;
 
 @Value
 public final class Area {
@@ -117,5 +118,57 @@ public final class Area {
                 ? Vec2i.of(nearby.x, by + 1)
                 : Vec2i.of(nearby.x, ay - 1);
         }
+    }
+
+    /**
+     * Resize the claim from the given corner side so it contains the
+     * given coordinates.
+     * @return The resized claim or null if it is impossible from the
+     *   given corner.
+     */
+    public Area resizeToContain(BlockFace corner, int x, int y) {
+        int ax2 = ax;
+        int bx2 = bx;
+        int ay2 = ay;
+        int by2 = by;
+        if (corner.getModX() < 0) {
+            // Westward
+            if (x > bx) return null;
+            ax2 = x;
+        } else if (corner.getModX() > 0) {
+            // Eastward
+            if (x < ax) return null;
+            bx2 = x;
+        }
+        if (corner.getModZ() < 0) {
+            // Northward
+            if (y > by) return null;
+            ay2 = y;
+        } else if (corner.getModZ() > 0) {
+            // Southward
+            if (y < ay) return null;
+            by2 = y;
+        }
+        return new Area(ax2, ay2, bx2, by2);
+    }
+
+    public BlockFace getClickedFace(int x, int y) {
+        final boolean west = x == ax;
+        final boolean east = x == bx;
+        final boolean north = y == ay;
+        final boolean south = y == by;
+        if (north) {
+            if (east) return BlockFace.NORTH_EAST;
+            if (west) return BlockFace.NORTH_WEST;
+            return BlockFace.NORTH;
+        }
+        if (south) {
+            if (east) return BlockFace.SOUTH_EAST;
+            if (west) return BlockFace.SOUTH_WEST;
+            return BlockFace.SOUTH;
+        }
+        if (west) return BlockFace.WEST;
+        if (east) return BlockFace.EAST;
+        return null;
     }
 }

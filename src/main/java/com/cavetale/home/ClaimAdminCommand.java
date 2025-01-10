@@ -174,6 +174,7 @@ public final class ClaimAdminCommand extends AbstractCommand<HomePlugin> {
         } else {
             return false;
         }
+        sender.sendMessage(textOfChildren(text("Id #", AQUA), text(claim.getId(), WHITE)));
         sender.sendMessage(textOfChildren(text("Owner ", AQUA), text(claim.getOwnerName(), WHITE)));
         sender.sendMessage(textOfChildren(text("Name ", AQUA),
                                           (claim.getName() != null

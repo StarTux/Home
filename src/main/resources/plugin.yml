@@ -79,7 +79,7 @@ commands:
       /visit [name] - Visit public home.
 
   claim:
-    aliases: [c, cl, claims]
+    aliases: [cl, claims]
     description: Manage your claims.
     permission: home.claim
     usage: |-

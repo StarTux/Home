@@ -40,6 +40,9 @@ public final class ClaimAdminCommand extends AbstractCommand<HomePlugin> {
             .description("List Player Claims")
             .completers(PlayerCache.NAME_COMPLETER)
             .senderCaller(this::list);
+        rootNode.addChild("listadmin").denyTabCompletion()
+            .description("List Admin Claims")
+            .senderCaller(this::listAdmin);
         rootNode.addChild("nearby").arguments("<radius>")
             .description("Find nearby claims")
             .completers(CommandArgCompleter.integer(i -> i > 0))
@@ -111,6 +114,28 @@ public final class ClaimAdminCommand extends AbstractCommand<HomePlugin> {
                                .clickEvent(runCommand(cmd)));
         }
         return true;
+    }
+
+    private void listAdmin(CommandSender sender) {
+        final List<Claim> claims = new ArrayList<>();
+        for (Claim claim : plugin.getClaimCache().getAllClaims()) {
+            if (claim.isAdminClaim()) claims.add(claim);
+        }
+        final int count = claims.size();
+        sender.sendMessage(text("There are " + count + " admin " + (count == 1 ? "claim:" : "claims:"), YELLOW));
+        for (Claim claim : claims) {
+            final String cmd = "/claimadmin tp " + claim.getId();
+            final String name = claim.getName();
+            sender.sendMessage(textOfChildren(text("- " + claim.getId(), YELLOW),
+                                              space(),
+                                              text("loc:", GRAY), text(claim.getWorld() + ":" + claim.getArea().centerX() + "," + claim.getArea().centerY(), WHITE),
+                                              space(),
+                                              text("blocks:", GRAY), text(claim.getBlocks(), WHITE),
+                                              space(),
+                                              (name != null ? text("\"" + name + "\"", AQUA) : text("N/A", DARK_RED)))
+                               .hoverEvent(showText(text(cmd, YELLOW)))
+                               .clickEvent(runCommand(cmd)));
+        }
     }
 
     private boolean find(CommandSender sender, String[] args) {

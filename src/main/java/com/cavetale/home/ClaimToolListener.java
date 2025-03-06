@@ -27,6 +27,7 @@ public final class ClaimToolListener implements Listener {
 
     @EventHandler(priority = EventPriority.LOW, ignoreCancelled = false)
     public void onPlayerInteract(PlayerInteractEvent event) {
+        if (!Mytems.CLAIM_TOOL.isItem(event.getItem())) return;
         final Player player = event.getPlayer();
         boolean left = false;
         boolean right = false;
@@ -39,12 +40,11 @@ public final class ClaimToolListener implements Listener {
             break;
         case LEFT_CLICK_AIR:
         case RIGHT_CLICK_AIR:
-            onRightClickAir(player);
+            onClickAir(player);
             return;
         default:
             return;
         }
-        if (!Mytems.CLAIM_TOOL.isItem(event.getItem())) return;
         if (plugin.sessions.of(player).onPlayerInteract(event)) return;
         if (left) {
             onLeftClick(player, event.getClickedBlock());

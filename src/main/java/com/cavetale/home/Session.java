@@ -5,6 +5,7 @@ import com.cavetale.core.event.hud.PlayerHudEvent;
 import com.cavetale.core.event.hud.PlayerHudPriority;
 import com.cavetale.core.event.player.PluginPlayerQuery;
 import com.cavetale.home.sql.SQLHomeWorld;
+import com.cavetale.mytems.Mytems;
 import java.time.Duration;
 import java.util.ArrayList;
 import java.util.List;
@@ -32,6 +33,7 @@ import static net.kyori.adventure.text.Component.join;
 import static net.kyori.adventure.text.Component.newline;
 import static net.kyori.adventure.text.Component.space;
 import static net.kyori.adventure.text.Component.text;
+import static net.kyori.adventure.text.Component.textOfChildren;
 import static net.kyori.adventure.text.JoinConfiguration.noSeparators;
 import static net.kyori.adventure.text.JoinConfiguration.separator;
 import static net.kyori.adventure.text.format.NamedTextColor.*;
@@ -325,5 +327,12 @@ public final class Session {
             footer.add(join(noSeparators(), text(tiny("claim "), GRAY), text(tiny("none"), DARK_GRAY)));
         }
         event.footer(PlayerHudPriority.DEFAULT, footer);
+        if (claimTool != null && claimTool.getClaim() != null) {
+            Component text = claimTool.getClaim().getName() != null
+                ? textOfChildren(text("Resizing ", YELLOW), text(claimTool.getClaim().getName(), BLUE))
+                : text("Resizing", YELLOW);
+            event.bossbar(PlayerHudPriority.HIGH, textOfChildren(Mytems.CLAIM_TOOL, text),
+                          BossBar.Color.YELLOW, BossBar.Overlay.PROGRESS, Set.of(), 1f);
+        }
     }
 }

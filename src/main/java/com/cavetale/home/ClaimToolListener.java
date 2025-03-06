@@ -3,6 +3,8 @@ package com.cavetale.home;
 import com.cavetale.mytems.Mytems;
 import lombok.RequiredArgsConstructor;
 import org.bukkit.Bukkit;
+import org.bukkit.Sound;
+import org.bukkit.SoundCategory;
 import org.bukkit.block.Block;
 import org.bukkit.block.BlockFace;
 import org.bukkit.entity.Player;
@@ -25,6 +27,7 @@ public final class ClaimToolListener implements Listener {
 
     @EventHandler(priority = EventPriority.LOW, ignoreCancelled = false)
     public void onPlayerInteract(PlayerInteractEvent event) {
+        final Player player = event.getPlayer();
         boolean left = false;
         boolean right = false;
         switch (event.getAction()) {
@@ -34,11 +37,14 @@ public final class ClaimToolListener implements Listener {
         case RIGHT_CLICK_BLOCK:
             right = true;
             break;
+        case LEFT_CLICK_AIR:
+        case RIGHT_CLICK_AIR:
+            onRightClickAir(player);
+            return;
         default:
             return;
         }
         if (!Mytems.CLAIM_TOOL.isItem(event.getItem())) return;
-        final Player player = event.getPlayer();
         if (plugin.sessions.of(player).onPlayerInteract(event)) return;
         if (left) {
             onLeftClick(player, event.getClickedBlock());
@@ -52,6 +58,7 @@ public final class ClaimToolListener implements Listener {
         if (session.getClaimTool() != null) {
             session.setClaimTool(null);
             player.sendMessage(textOfChildren(Mytems.CLAIM_TOOL, text("Claim resizing cancelled", YELLOW)));
+            player.playSound(player.getLocation(), Sound.UI_BUTTON_CLICK, SoundCategory.MASTER, 1f, 1f);
             return;
         }
         final Claim claim = plugin.getClaimAt(block);
@@ -60,6 +67,7 @@ public final class ClaimToolListener implements Listener {
             for (Claim nearby : plugin.findNearbyClaims(player.getLocation(), 64)) {
                 plugin.highlightClaim(nearby, player);
             }
+            player.playSound(player.getLocation(), Sound.UI_BUTTON_CLICK, SoundCategory.MASTER, 1f, 1f);
             return;
         }
         // Highlight
@@ -74,6 +82,7 @@ public final class ClaimToolListener implements Listener {
         } else {
             plugin.getClaimCommand().showClaimInfo(player, claim);
         }
+        player.playSound(player.getLocation(), Sound.UI_BUTTON_CLICK, SoundCategory.MASTER, 1f, 1f);
     }
 
     /**
@@ -100,6 +109,7 @@ public final class ClaimToolListener implements Listener {
                 player.sendMessage(textOfChildren(Mytems.CLAIM_TOOL, text("Wrong direction. Resize cancelled", RED)));
                 plugin.highlightClaim(claim, player);
                 session.setClaimTool(null);
+                player.playSound(player.getLocation(), Sound.UI_BUTTON_CLICK, SoundCategory.MASTER, 1f, 1f);
                 return;
             }
             if (newArea.equals(claim.getArea())) {
@@ -111,6 +121,7 @@ public final class ClaimToolListener implements Listener {
                 player.sendMessage(textOfChildren(Mytems.CLAIM_TOOL, text("Claim resized", GREEN)));
                 session.setClaimTool(null);
                 plugin.highlightClaim(claim, player);
+                player.playSound(player.getLocation(), Sound.UI_BUTTON_CLICK, SoundCategory.MASTER, 1f, 1f);
                 // Finish
             }
         }
@@ -132,25 +143,63 @@ public final class ClaimToolListener implements Listener {
             for (Claim nearby : plugin.findNearbyClaims(player.getLocation(), 64)) {
                 plugin.highlightClaim(nearby, player);
             }
+            player.playSound(player.getLocation(), Sound.UI_BUTTON_CLICK, SoundCategory.MASTER, 1f, 1f);
             return;
         }
         if (!claim.isOwner(player)) {
             player.sendMessage(textOfChildren(Mytems.CLAIM_TOOL, text("You cannot resize this claim.", RED)));
             plugin.highlightClaim(claim, player);
+            player.playSound(player.getLocation(), Sound.UI_BUTTON_CLICK, SoundCategory.MASTER, 1f, 1f);
             return;
         }
         final BlockFace blockFace = claim.getArea().getClickedFace(block.getX(), block.getZ());
         if (blockFace == null) {
             player.sendMessage(textOfChildren(Mytems.CLAIM_TOOL, text("Resize this claim by clicking one of its corners.", RED)));
             plugin.highlightClaim(claim, player);
+            player.playSound(player.getLocation(), Sound.UI_BUTTON_CLICK, SoundCategory.MASTER, 1f, 1f);
             return;
         }
         session.setClaimTool(new ClaimToolSession(claim.getId(), blockFace));
         player.sendMessage(textOfChildren(Mytems.CLAIM_TOOL, text("Resizing Claim " + toCamelCase(" ", blockFace) + " ", YELLOW),
+                                          text("[", GREEN),
                                           Mytems.MOUSE_RIGHT,
-                                          text(" move border ", GREEN),
+                                          text(" Move border]", GREEN),
+                                          text(" [", RED),
                                           Mytems.MOUSE_LEFT,
-                                          text(" cancel", RED)));
+                                          text(" Cancel]", RED)));
         plugin.highlightClaim(claim, player);
+        player.playSound(player.getLocation(), Sound.UI_BUTTON_CLICK, SoundCategory.MASTER, 1f, 1f);
+    }
+
+    private void onClickAir(Player player) {
+        final Session session = plugin.getSessions().of(player);
+        if (session.getClaimTool() != null) {
+            session.setClaimTool(null);
+            player.sendMessage(textOfChildren(Mytems.CLAIM_TOOL, text("Claim resizing cancelled", YELLOW)));
+            player.playSound(player.getLocation(), Sound.UI_BUTTON_CLICK, SoundCategory.MASTER, 1f, 1f);
+            return;
+        }
+        final Claim claim = plugin.getClaimAt(player.getLocation());
+        if (claim == null) {
+            player.sendMessage(textOfChildren(Mytems.CLAIM_TOOL, text("There is no claim here.", RED)));
+            for (Claim nearby : plugin.findNearbyClaims(player.getLocation(), 64)) {
+                plugin.highlightClaim(nearby, player);
+            }
+            player.playSound(player.getLocation(), Sound.UI_BUTTON_CLICK, SoundCategory.MASTER, 1f, 1f);
+            return;
+        }
+        // Highlight
+        plugin.highlightClaim(claim, player);
+        for (Subclaim subclaim : claim.getSubclaims(player.getWorld())) {
+            plugin.highlightSubclaim(subclaim, player);
+        }
+        // Show info
+        final Subclaim subclaim = claim.getSubclaimAt(player.getLocation());
+        if (subclaim != null) {
+            plugin.getSubclaimCommand().showSubclaimInfo(player, subclaim);
+        } else {
+            plugin.getClaimCommand().showClaimInfo(player, claim);
+        }
+        player.playSound(player.getLocation(), Sound.UI_BUTTON_CLICK, SoundCategory.MASTER, 1f, 1f);
     }
 }

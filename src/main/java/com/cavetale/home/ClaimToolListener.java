@@ -96,7 +96,7 @@ public final class ClaimToolListener implements Listener {
             onRightClickClaimFirst(player, session, block);
         } else {
             final Claim claim = claimTool.getClaim();
-            if (claim == null || !claim.isOwner(player) || !claim.isInWorld(block.getWorld().getName())) {
+            if (claim == null || !claim.getTrustType(player).entails(TrustType.CO_OWNER) || !claim.isInWorld(block.getWorld().getName())) {
                 session.setClaimTool(null);
                 onRightClickClaimFirst(player, session, block);
                 return;
@@ -146,7 +146,7 @@ public final class ClaimToolListener implements Listener {
             player.playSound(player.getLocation(), Sound.UI_BUTTON_CLICK, SoundCategory.MASTER, 1f, 1f);
             return;
         }
-        if (!claim.isOwner(player)) {
+        if (!claim.getTrustType(player).entails(TrustType.CO_OWNER)) {
             player.sendMessage(textOfChildren(Mytems.CLAIM_TOOL, text("You cannot resize this claim.", RED)));
             plugin.highlightClaim(claim, player);
             player.playSound(player.getLocation(), Sound.UI_BUTTON_CLICK, SoundCategory.MASTER, 1f, 1f);

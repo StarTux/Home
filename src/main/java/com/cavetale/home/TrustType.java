@@ -36,6 +36,10 @@ public enum TrustType {
         return result != null ? result : TrustType.NONE;
     }
 
+    public boolean entails(TrustType other) {
+        return gte(other);
+    }
+
     public boolean gte(TrustType other) {
         return ordinal() >= other.ordinal();
     }

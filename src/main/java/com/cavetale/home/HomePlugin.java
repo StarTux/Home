@@ -405,7 +405,7 @@ public final class HomePlugin extends JavaPlugin {
         return claimCache.at(w, x, y);
     }
 
-    protected Claim findNearestOwnedClaim(Player player, int radius) {
+    protected Claim findNearestClaim(Player player, int radius, TrustType trust) {
         Location playerLocation = player.getLocation();
         String playerWorld = playerLocation.getWorld().getName();
         final String w = mirrorWorlds.getOrDefault(playerWorld, playerWorld);
@@ -415,7 +415,7 @@ public final class HomePlugin extends JavaPlugin {
         Claim result = null;
         Area area = new Area(x - radius, z - radius, x + radius, z + radius);
         for (Claim claim : claimCache.within(w, area)) {
-            if (!claim.isOwner(player)) continue;
+            if (!claim.getTrustType(player).entails(trust)) continue;
             int dist = claim.getArea().distanceToPoint(x, z);
             if (dist >= minDist) continue;
             result = claim;

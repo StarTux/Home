@@ -353,12 +353,12 @@ public final class ClaimCommand extends AbstractCommand<HomePlugin> {
         if (snippet != null && snippet.isNear(player.getLocation())) {
             claim = plugin.getClaimById(snippet.getClaimId());
         } else {
-            claim = plugin.findNearestOwnedClaim(player, 512);
+            claim = plugin.findNearestClaim(player, 512, TrustType.CO_OWNER);
         }
         if (claim == null) {
             throw new CommandWarn("There is no claim here!");
         }
-        if (!claim.isOwner(player)) {
+        if (!claim.getTrustType(player).entails(TrustType.CO_OWNER)) {
             throw new CommandWarn("You do not own this claim!");
         }
         double price = (double) buyClaimBlocks * Globals.CLAIM_BLOCK_COST;
@@ -413,8 +413,10 @@ public final class ClaimCommand extends AbstractCommand<HomePlugin> {
                 throw new CommandWarn(textOfChildren(text("You cannot afford ", RED), Money.get().toComponent(meta.price)));
             }
             claim.setBlocks(claim.getBlocks() + meta.amount);
-            ClaimGrowSnippet snippet = plugin.sessions.of(player).getClaimGrowSnippet();
-            plugin.sessions.of(player).setClaimGrowSnippet(null);
+            final Session session = plugin.getSessions().of(player);
+            final ClaimGrowSnippet snippet = session.getClaimGrowSnippet();
+            session.setClaimGrowSnippet(null);
+            session.setClaimTool(null);
             if (snippet != null && snippet.isNear(player.getLocation()) && claim.tryToResize(snippet.getNewArea()).isSuccessful()) {
                 player.sendMessage(text("Added " + meta.amount + " blocks and grew claim!"));
                 plugin.highlightClaim(claim, player);
@@ -574,8 +576,8 @@ public final class ClaimCommand extends AbstractCommand<HomePlugin> {
         if (claim == null) {
             throw new CommandWarn("Stand in the claim you wish to edit");
         }
-        if (!claim.isOwner(player)) {
-            throw new CommandWarn("Only the claim owner can do this");
+        if (!claim.getTrustType(player).entails(TrustType.CO_OWNER)) {
+            throw new CommandWarn("Only the claim owner or co-owner can do this");
         }
         if (args.length == 0) {
             showClaimSettings(claim, player);
@@ -639,7 +641,7 @@ public final class ClaimCommand extends AbstractCommand<HomePlugin> {
         Location playerLocation = player.getLocation();
         int x = playerLocation.getBlockX();
         int z = playerLocation.getBlockZ();
-        Claim claim = plugin.findNearestOwnedClaim(player, 512);
+        Claim claim = plugin.findNearestClaim(player, 512, TrustType.CO_OWNER);
         if (claim == null) {
             throw new CommandWarn("You don't have a claim nearby");
         }
@@ -671,8 +673,8 @@ public final class ClaimCommand extends AbstractCommand<HomePlugin> {
         if (claim == null) {
             throw new CommandWarn("Stand in the claim you wish to shrink");
         }
-        if (!claim.isOwner(player)) {
-            throw new CommandWarn("You can only shrink your own claims");
+        if (!claim.getTrustType(player).entails(TrustType.CO_OWNER)) {
+            throw new CommandWarn("Only the claim owner or co-owner can do this");
         }
         Area area = claim.getArea();
         int ax = area.ax;

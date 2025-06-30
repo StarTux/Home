@@ -777,7 +777,7 @@ final class ClaimListener implements Listener {
     protected void onPlayerTeleport(PlayerTeleportEvent event) {
         switch (event.getCause()) {
         case ENDER_PEARL:
-        case CHORUS_FRUIT: {
+        case CONSUMABLE_EFFECT: {
             Player player = event.getPlayer();
             Claim claim = plugin.getClaimAt(event.getTo());
             if (claim == null) return;

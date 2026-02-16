@@ -85,6 +85,14 @@
       <scope>provided</scope>
     </dependency>
 
+    <!-- ConnectCore -->
+    <dependency>
+      <groupId>com.winthier.connect</groupId>
+      <artifactId>connect-core</artifactId>
+      <version>0.1-SNAPSHOT</version>
+      <scope>provided</scope>
+    </dependency>
+
   </dependencies>
   <build>
     <finalName>${project.name}</finalName>

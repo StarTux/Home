@@ -8,8 +8,13 @@ description: Manage the Home world. Users need to find a place to build, make a 
 author: StarTux
 website: https://cavetale.com
 
-depend: [Core, Mytems, SQL]
-softdepend: [PlayerInfo]
+depend:
+- Core
+- Mytems
+- SQL
+- Connect
+softdepend:
+- PlayerInfo
 
 commands:
 

@@ -2,10 +2,8 @@ package com.cavetale.home;
 
 import com.cavetale.core.command.RemotePlayer;
 import com.cavetale.core.event.player.PluginPlayerEvent;
-import java.util.HashMap;
+import com.winthier.connect.Redis;
 import java.util.List;
-import java.util.Map;
-import java.util.UUID;
 import java.util.function.Consumer;
 import lombok.RequiredArgsConstructor;
 import net.kyori.adventure.text.Component;
@@ -13,6 +11,7 @@ import net.kyori.adventure.text.ComponentLike;
 import net.kyori.adventure.text.JoinConfiguration;
 import net.kyori.adventure.text.event.ClickEvent;
 import net.kyori.adventure.text.event.HoverEvent;
+import org.bukkit.Bukkit;
 import org.bukkit.Chunk;
 import org.bukkit.Location;
 import org.bukkit.World;
@@ -31,22 +30,79 @@ final class WildTask {
     protected static final long NANOS = 1000000000L;
     protected int blockX;
     protected int blockZ;
-    private static final Map<UUID, Long> LAST_USES = new HashMap<>();
+
+    private String getCooldownKey() {
+        return "home:wild-cooldown-" + player.getUniqueId();
+    }
+
+    private long getCooldown() {
+        final String value = Redis.get(getCooldownKey());
+        return value != null
+            ? Long.parseLong(value)
+            : 0L;
+    }
+
+    private void getCooldownAsync(Consumer<Long> callback) {
+        Bukkit.getScheduler().runTaskAsynchronously(
+            plugin,
+            () -> {
+                final long cooldown = getCooldown();
+                Bukkit.getScheduler().runTask(plugin, () -> callback.accept(cooldown));
+            }
+        );
+    }
+
+    private void setCooldownSeconds(long seconds) {
+        plugin.getLogger().info("[WildTask] Setting cooldown " + player.getName() + ": " + seconds + "s");
+        if (seconds <= 0L) {
+            Redis.del(getCooldownKey());
+            return;
+        }
+        final long value = System.currentTimeMillis() + 1000L * seconds;
+        Redis.set(getCooldownKey(), "" + value, seconds);
+    }
+
+    private void setCooldownSecondsAsync(long seconds, Runnable callback) {
+        Bukkit.getScheduler().runTaskAsynchronously(
+            plugin,
+            () -> {
+                setCooldownSeconds(seconds);
+                Bukkit.getScheduler().runTask(plugin, callback);
+            }
+        );
+    }
 
     public void withCooldown() {
-        long now = System.nanoTime() / NANOS;
-        long last = LAST_USES.getOrDefault(player.getUniqueId(), -1L);
-        if (last >= 0) {
-            long since = now - last;
-            long cooldown = (long) Globals.WILD_COOLDOWN;
-            long remain = cooldown - since;
-            if (remain > 0) {
-                player.sendMessage(text("Please wait " + remain + " more seconds", RED));
-                return;
-            }
+        if (plugin.doesIgnoreClaims(player.getUniqueId())) {
+            withoutCooldown();
         }
-        LAST_USES.put(player.getUniqueId(), now);
-        withoutCooldown();
+        final long now = System.currentTimeMillis();
+        getCooldownAsync(
+            cooldown -> {
+                if (cooldown > now) {
+                    final long remainingSeconds = (cooldown - now - 1L) / 1000L + 1L;
+                    if (remainingSeconds > 0L) {
+                        if (remainingSeconds > 60L) {
+                            final long remainingMinutes = (remainingSeconds - 1L) / 60L + 1L;
+                            if (remainingMinutes == 1L) {
+                                player.sendMessage(text("Please wait one more minute", RED));
+                            } else {
+                                player.sendMessage(text("Please wait " + remainingMinutes + " more minutes", RED));
+                            }
+                        } else {
+                            if (remainingSeconds == 1L) {
+                                player.sendMessage(text("Please wait one more second", RED));
+                            } else {
+                                player.sendMessage(text("Please wait " + remainingSeconds + " more seconds", RED));
+                            }
+                        }
+                        return;
+                    }
+                } else {
+                    setCooldownSecondsAsync(Globals.WILD_COOLDOWN, this::withoutCooldown);
+                }
+            }
+        );
     }
 
     public void withoutCooldown() {
@@ -56,10 +112,9 @@ final class WildTask {
 
     private void findPlaceToBuild() {
         // Attempts
-        long now = System.nanoTime() / NANOS;
-        LAST_USES.put(player.getUniqueId(), now);
         if (attempts++ > 50) {
             player.sendMessage(text("Could not find a place to build. Please try again", RED));
+            setCooldownSecondsAsync(0L, () -> { });
             return;
         }
         // Determine center and border
@@ -120,6 +175,13 @@ final class WildTask {
         }
         Location location = block.getLocation().add(0.5, 1.0, 0.5);
         // Teleport, notify, and set cooldown
+        if (!plugin.doesIgnoreClaims(player.getUniqueId())) {
+            if (plugin.hasAClaim(player.getUniqueId())) {
+                setCooldownSecondsAsync(Globals.WILD_WITH_CLAIM_COOLDOWN, () -> { });
+            } else {
+                setCooldownSecondsAsync(Globals.WILD_COOLDOWN, () -> { });
+            }
+        }
         player.bring(plugin, location, player2 -> {
                 if (player2 == null) return;
                 Component claimNewTooltip = Component

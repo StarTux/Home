@@ -19,7 +19,7 @@ public final class Subclaim {
     public static final UUID PUBLIC_UUID = new UUID(0, 0);
 
     private final HomePlugin plugin;
-    @Getter private final Claim parent;
+    @Getter private Claim parent;
     @Getter private final SQLSubclaim row;
 
     @Getter private Area area;
@@ -149,5 +149,11 @@ public final class Subclaim {
         plugin.getDb().deleteAsync(row, res -> {
                 plugin.getConnectListener().broadcastClaimUpdate(parent);
             });
+    }
+
+    public void setParent(Claim newParent) {
+        parent = newParent;
+        row.setClaimId(newParent.getId());
+        plugin.getDb().updateAsync(row, _r -> { }, "claim_id");
     }
 }

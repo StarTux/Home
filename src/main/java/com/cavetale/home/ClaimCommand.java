@@ -16,6 +16,14 @@ import com.cavetale.core.playercache.PlayerCache;
 import com.cavetale.home.sql.SQLHomeWorld;
 import com.cavetale.home.struct.BlockVector;
 import com.cavetale.mytems.Mytems;
+import io.papermc.paper.dialog.Dialog;
+import io.papermc.paper.registry.data.dialog.ActionButton;
+import io.papermc.paper.registry.data.dialog.DialogBase;
+import io.papermc.paper.registry.data.dialog.DialogRegistryEntry;
+import io.papermc.paper.registry.data.dialog.action.DialogAction;
+import io.papermc.paper.registry.data.dialog.body.DialogBody;
+import io.papermc.paper.registry.data.dialog.type.DialogType;
+import java.time.Duration;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
@@ -26,6 +34,7 @@ import lombok.Value;
 import net.kyori.adventure.text.Component;
 import net.kyori.adventure.text.ComponentLike;
 import net.kyori.adventure.text.TextComponent;
+import net.kyori.adventure.text.event.ClickCallback;
 import net.kyori.adventure.text.format.TextColor;
 import org.bukkit.Bukkit;
 import org.bukkit.Chunk;
@@ -47,6 +56,10 @@ import static net.kyori.adventure.text.format.NamedTextColor.*;
 
 public final class ClaimCommand extends AbstractCommand<HomePlugin> {
     private final int pageLen = 9;
+    private static final String CONFIRM_BUY = "buy";
+    private static final String CONFIRM_ABANDON = "abandon";
+    private static final String CONFIRM_NEW = "new";
+    private static final String CONFIRM_MERGE = "merge";
 
     protected ClaimCommand(final HomePlugin plugin) {
         super(plugin, "claim");
@@ -126,6 +139,9 @@ public final class ClaimCommand extends AbstractCommand<HomePlugin> {
         rootNode.addChild("abandon").denyTabCompletion()
             .description("Delete this claim forever")
             .playerCaller(this::abandon);
+        rootNode.addChild("merge").denyTabCompletion()
+            .description("Merge this claim")
+            .playerCaller(this::merge);
         // Moderation
         rootNode.addChild("ban").arguments("<player>")
             .description("Ban someone from this claim")
@@ -270,7 +286,7 @@ public final class ClaimCommand extends AbstractCommand<HomePlugin> {
             .append(newline())
             .append(text("Proceed? ", GRAY))
             .append(text("[Confirm]", GREEN)
-                    .clickEvent(runCommand("/claim confirm " + ncmeta.token))
+                    .clickEvent(runCommand("/claim confirm " + CONFIRM_NEW + " " + ncmeta.token))
                     .hoverEvent(showText(text("Confirm this purchase", GREEN))))
             .append(space())
             .append(text("[Cancel]", RED)
@@ -383,7 +399,7 @@ public final class ClaimCommand extends AbstractCommand<HomePlugin> {
             .append(newline())
             .append(text("Confirm this purchase ", GRAY))
             .append(text("[Confirm]", GREEN)
-                    .clickEvent(runCommand("/claim confirm " + meta.token))
+                    .clickEvent(runCommand("/claim confirm " + CONFIRM_BUY + " " + meta.token))
                     .hoverEvent(showText(join(separator(newline()),
                                               text("Confirm", GREEN),
                                               text("Buy " + buyClaimBlocks + " for ", GRAY),
@@ -397,16 +413,20 @@ public final class ClaimCommand extends AbstractCommand<HomePlugin> {
     }
 
     private boolean confirm(Player player, String[] args) {
-        if (args.length != 1) return true;
+        if (args.length != 2) return true;
+        final String what = args[0];
+        final String token = args[1];
         final UUID uuid = player.getUniqueId();
-        // BuyClaimBlocks confirm
-        BuyClaimBlocks meta = plugin.getMetadata(player, plugin.META_BUY, BuyClaimBlocks.class)
-            .orElse(null);
-        if (meta != null) {
+        switch (what) {
+        case CONFIRM_BUY: {
+            // BuyClaimBlocks confirm
+            BuyClaimBlocks meta = plugin.getMetadata(player, plugin.META_BUY, BuyClaimBlocks.class)
+                .orElse(null);
+            if (meta == null) return true;
             plugin.removeMetadata(player, plugin.META_BUY);
             Claim claim = plugin.getClaimById(meta.claimId);
             if (claim == null) return true;
-            if (!args[0].equals(meta.token)) {
+            if (!token.equals(meta.token)) {
                 throw new CommandWarn("Purchase expired");
             }
             if (!Money.get().take(uuid, meta.price, plugin, "Buy " + meta.amount + " claim blocks")) {
@@ -435,24 +455,26 @@ public final class ClaimCommand extends AbstractCommand<HomePlugin> {
             plugin.getLogger().info(player.getName() + " purchased " + meta.amount + " blocks for claim #" + claim.getId());
             return true;
         }
-        // AbandonClaim confirm
-        int claimId = plugin.getMetadata(player, plugin.META_ABANDON, Integer.class).orElse(-1);
-        if (claimId >= 0) {
+        case CONFIRM_ABANDON: {
+            // AbandonClaim confirm
+            int claimId = plugin.getMetadata(player, plugin.META_ABANDON, Integer.class).orElse(-1);
+            if (claimId < 0) return true;
             plugin.removeMetadata(player, plugin.META_ABANDON);
             Claim claim = plugin.getClaimById(claimId);
-            if (claim == null || !claim.isOwner(player) || !args[0].equals("" + claimId)) {
+            if (claim == null || !claim.isOwner(player) || !token.equals("" + claimId)) {
                 throw new CommandWarn("Claim removal expired");
             }
             plugin.deleteClaim(claim);
             player.sendMessage(text("Claim removed", YELLOW));
             return true;
         }
-        // NewClaim confirm
-        NewClaimMeta ncmeta = plugin.getMetadata(player, plugin.META_NEWCLAIM, NewClaimMeta.class)
-            .orElse(null);
-        if (ncmeta != null) {
+        case CONFIRM_NEW: {
+            // NewClaim confirm
+            NewClaimMeta ncmeta = plugin.getMetadata(player, plugin.META_NEWCLAIM, NewClaimMeta.class)
+                .orElse(null);
+            if (ncmeta == null) return true;
             plugin.removeMetadata(player, plugin.META_NEWCLAIM);
-            if (!args[0].equals(ncmeta.token)) return true;
+            if (!token.equals(ncmeta.token)) return true;
             if (!plugin.isLocalHomeWorld(ncmeta.world)) return true;
             for (Claim claimInWorld : plugin.findClaimsInWorld(ncmeta.world)) {
                 // This whole check is a repeat from the new claim command.
@@ -488,7 +510,8 @@ public final class ClaimCommand extends AbstractCommand<HomePlugin> {
                 });
             return true;
         }
-        return true;
+        default: return true;
+        }
     }
 
     private boolean cancel(Player player, String[] args) {
@@ -725,7 +748,7 @@ public final class ClaimCommand extends AbstractCommand<HomePlugin> {
             .append(newline())
             .append(text("This cannot be undone! "))
             .append(text("[Confirm]", RED)
-                    .clickEvent(runCommand("/claim confirm " + claim.getId()))
+                    .clickEvent(runCommand("/claim confirm " + CONFIRM_ABANDON + " "  + claim.getId()))
                     .hoverEvent(showText(text("Confirm Claim Abandonment", RED))))
             .append(space())
             .append(text("[Cancel]", GREEN)
@@ -733,6 +756,95 @@ public final class ClaimCommand extends AbstractCommand<HomePlugin> {
                     .hoverEvent(showText(text("Cancel Claim Abandonment", GREEN))));
         player.sendMessage(message);
         return true;
+    }
+
+    public void merge(Player player) {
+        final Claim claim = plugin.getClaimAt(player.getLocation());
+        if (claim == null) {
+            throw new CommandWarn("There is no claim here.");
+        }
+        if (!claim.isOwner(player)) {
+            throw new CommandWarn("This claim does not belong to you.");
+        }
+        final List<Claim> others = new ArrayList<>();
+        // We start with claims right next to this one.
+        for (Claim nearby : plugin.getClaimCache().within(claim.getWorld(), claim.getArea().outset(1))) {
+            if (claim == nearby) continue;
+            if (!nearby.isOwner(player)) continue;
+            others.add(nearby);
+        }
+        if (others.isEmpty()) {
+            throw new CommandWarn("There are no bordering claims to merge with");
+        }
+        boolean foundMore = true;
+        while (foundMore) {
+            // Here we check again for claims that would overlap with
+            // the new area that also belong to the player and add
+            // them to the merge list.
+            // We repeat this as long as we keep finding claims that
+            // way.
+            foundMore = false;
+            Area newArea = claim.getArea();
+            for (Claim other : others) {
+                newArea = newArea.alsoContaining(other.getArea());
+            }
+            for (Claim nearby : plugin.getClaimCache().within(claim.getWorld(), newArea)) {
+                if (claim == nearby) continue;
+                if (others.contains(nearby)) continue;
+                if (!nearby.isOwner(player)) continue;
+                others.add(nearby);
+                foundMore = true;
+            }
+        }
+        // The list is now complete. Now let's check and confirm.
+        plugin.highlightClaim(claim, player);
+        for (Claim other : others) {
+            plugin.highlightClaim(other, player);
+        }
+        checkClaimForMerging(player, claim, others);
+        final List<Component> message = new ArrayList<>();
+        message.add(text("This will merge the following claims:"));
+        message.add(text("- " + claim.getSmartName(), GRAY));
+        for (Claim other : others) {
+            message.add(text("- " + other.getSmartName(), GRAY));
+        }
+        message.add(text("This cannot be undone. All claim blocks and subclaims will be merged as well."));
+        player.showDialog(
+            Dialog.create(
+                factory -> {
+                    DialogRegistryEntry.Builder builder = factory.empty();
+                    builder.base(
+                        DialogBase.builder(text("Claim Merge"))
+                        .body(List.of(DialogBody.plainMessage(join(separator(newline()), message))))
+                        .build()
+                    );
+                    builder.type(
+                        DialogType.confirmation(
+                            ActionButton.builder(text("Confirm"))
+                            .action(
+                                DialogAction.customClick(
+                                    (_a, _b) -> {
+                                        CommandNode.wrap(player, () -> {
+                                                checkClaimForMerging(player, claim, others);
+                                                claim.merge(others);
+                                                plugin.highlightClaim(claim, player);
+                                                player.sendMessage(text((others.size() + 1) + " claims merged into one!", GREEN));
+                                            });
+                                    },
+                                    ClickCallback.Options.builder()
+                                    .lifetime(Duration.ofMinutes(10))
+                                    .uses(1)
+                                    .build()
+                                )
+                            )
+                            .build(),
+                            ActionButton.builder(text("Never mind"))
+                            .build()
+                        )
+                    );
+                }
+            )
+        );
     }
 
     public List<Component> makeClaimInfo(final Player player, final Claim claim, final boolean withTooltip) {
@@ -1011,5 +1123,44 @@ public final class ClaimCommand extends AbstractCommand<HomePlugin> {
             if (playerCache.name.contains(arg)) result.add(playerCache.name);
         }
         return result;
+    }
+
+    private void checkClaimForMerging(Player player, Claim claim, List<Claim> others) {
+        if (others.contains(claim)) {
+            throw new CommandWarn("The original claim is included in the selection!");
+        }
+        if (!claim.isValid()) {
+            throw new CommandWarn("The claim is no longer valid");
+        }
+        for (Claim other : others) {
+            if (!other.isValid()) {
+                throw new CommandWarn("One of the claims is no longer valid");
+            }
+            if (!claim.getWorld().equals(other.getWorld())) {
+                throw new CommandWarn("Wrong world!");
+            }
+        }
+        if (!claim.isOwner(player)) {
+            throw new CommandWarn("This claim does not belong to you");
+        }
+        for (Claim other : others) {
+            if (!other.isOwner(player)) {
+                throw new CommandWarn("The claim \"" + other.getSmartName() + "\" does not belong to you");
+            }
+        }
+        int blocks = claim.getBlocks();
+        Area newArea = claim.getArea();
+        for (Claim other : others) {
+            newArea = newArea.alsoContaining(other.getArea());
+            blocks += other.getBlocks();
+        }
+        for (Claim existing : plugin.getClaimCache().within(claim.getWorld(), newArea)) {
+            if (existing != claim && !others.contains(existing)) {
+                throw new CommandWarn("The new claim would overlap with the claim \"" + existing.getSmartName() + "\"");
+            }
+        }
+        if (blocks < newArea.size()) {
+            throw new CommandWarn("Together the " + (others.size() + 1) + " claims only have " + blocks + "/" + newArea.size() + " claim blocks: Need " + (newArea.size() - blocks) + " more");
+        }
     }
 }

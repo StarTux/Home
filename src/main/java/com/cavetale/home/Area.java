@@ -105,6 +105,15 @@ public final class Area {
                         Math.max(bx, x), Math.max(by, y));
     }
 
+    public Area alsoContaining(Area other) {
+        return new Area(
+            Math.min(ax, other.ax),
+            Math.min(ay, other.ay),
+            Math.max(bx, other.bx),
+            Math.max(by, other.by)
+        );
+    }
+
     public Vec2i getNearestOutside(Vec2i nearby) {
         int distX = Math.min(Math.abs(ax - nearby.x), Math.abs(bx - nearby.x));
         int distY = Math.min(Math.abs(ay - nearby.y), Math.abs(by - nearby.y));
@@ -150,6 +159,10 @@ public final class Area {
             by2 = y;
         }
         return new Area(ax2, ay2, bx2, by2);
+    }
+
+    public Area outset(int amount) {
+        return new Area(ax - 1, ay - 1, bx + 1, by + 1);
     }
 
     public BlockFace getClickedFace(int x, int y) {

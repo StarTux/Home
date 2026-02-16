@@ -158,6 +158,10 @@ public final class Claim {
         return row.getName();
     }
 
+    public String getSmartName() {
+        return getName() != null ? getName() : getOwnerName();
+    }
+
     public void setName(String name) {
         row.setName(name);
         plugin.db.updateAsync(row, res -> broadcastClaimUpdate(this), "name");
@@ -444,5 +448,33 @@ public final class Claim {
         }
         player.sendMessage(text(cor.getWarningMessage(), RED));
         return false;
+    }
+
+    /**
+     * Merge all other claims into this one. Meaning, this claim will
+     * contain the entire area, all the claim blocks and
+     * subclaims. The other claims will be deleted.
+     */
+    public void merge(List<Claim> others) {
+        int newBlocks = 0;
+        Area newArea = area;
+        final List<Subclaim> newSubclaims = new ArrayList<>();
+        for (Claim other : others) {
+            newBlocks += other.getBlocks();
+            newArea = newArea.alsoContaining(other.getArea());
+            newSubclaims.addAll(other.getSubclaims());
+            other.getSubclaims().clear();
+        }
+        row.setBlocks(row.getBlocks() + newBlocks);
+        loadArea(newArea);
+        row.setArea(newArea);
+        for (Subclaim subclaim : newSubclaims) {
+            subclaim.setParent(this);
+            subclaims.add(subclaim);
+        }
+        plugin.db.updateAsync(row, res -> broadcastClaimUpdate(this), "blocks", "ax", "bx", "ay", "by");
+        for (Claim other : others) {
+            plugin.deleteClaim(other);
+        }
     }
 }

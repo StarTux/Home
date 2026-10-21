@@ -15,6 +15,7 @@ public enum ClaimSetting {
     ELYTRA("Allow flight", true),
     ENDER_PEARL("Allow ender teleport", true),
     INHERITANCE("Subclaims inherit claim trust", true),
+    NOTIFY("Notify when entering or leaving claim", true),
     // Admin only
     HIDDEN("Hide this claim", false),
     MOB_SPAWNING("Allow mob spawning", true);

@@ -283,24 +283,28 @@ public final class Session {
     private void notifyClaimChange(Player player, Claim oldClaim, Claim newClaim) {
         if (newClaim == null && oldClaim != null) {
             if (oldClaim.getSetting(ClaimSetting.HIDDEN)) return;
-            String name = oldClaim.getName();
-            String namePart = name != null ? " " + name : "";
-            Component message = oldClaim.isOwner(player)
-                ? text("Leaving your claim" + namePart, GRAY)
-                : text("Leaving " + oldClaim.getOwnerGenitive() + " claim" + namePart, GRAY);
-            player.sendActionBar(message);
+            if (oldClaim.getSetting(ClaimSetting.NOTIFY)) {
+                String name = oldClaim.getName();
+                String namePart = name != null ? " " + name : "";
+                Component message = oldClaim.isOwner(player)
+                    ? text("Leaving your claim" + namePart, GRAY)
+                    : text("Leaving " + oldClaim.getOwnerGenitive() + " claim" + namePart, GRAY);
+                player.sendActionBar(message);
+            }
             if (oldClaim.getSetting(ClaimSetting.SHOW_BORDERS)) {
                 plugin.highlightClaim(oldClaim, player);
             }
             return;
         } else if (newClaim != null) {
             if (newClaim.getSetting(ClaimSetting.HIDDEN)) return;
-            String name = newClaim.getName();
-            String namePart = name != null ? " " + name : "";
-            Component message = newClaim.isOwner(player)
-                ? text("Entering your claim" + namePart, GRAY)
-                : text("Entering " + newClaim.getOwnerGenitive() + " claim" + namePart, GRAY);
-            player.sendActionBar(message);
+            if (newClaim.getSetting(ClaimSetting.NOTIFY)) {
+                String name = newClaim.getName();
+                String namePart = name != null ? " " + name : "";
+                Component message = newClaim.isOwner(player)
+                    ? text("Entering your claim" + namePart, GRAY)
+                    : text("Entering " + newClaim.getOwnerGenitive() + " claim" + namePart, GRAY);
+                player.sendActionBar(message);
+            }
             if (newClaim.getSetting(ClaimSetting.SHOW_BORDERS)) {
                 plugin.highlightClaim(newClaim, player);
             }
